@@ -26,6 +26,12 @@
 MATCH_INITIAL_CATS    = 0
 MATCH_INITIAL_KITTENS = 8
 
+;; Cursor box dimensions (smaller than cell to leave gaps)
+;; Width: GRID_CELL_W - 1 byte = 2 pixels thinner
+;; Height: GRID_CELL_H - 2 pixels shorter
+CURSOR_W              = 5
+CURSOR_H              = 20
+
 S_BIG_NUMBERS_W = 3
 S_BIG_NUMBERS_H = 13
 
@@ -127,14 +133,14 @@ _draw_big_digit:
    sla c                             ;; C = digit * 2 (each table entry = 2 bytes)
    rl b                              ;; carry into B (always 0 for digits 0-9)
    add hl, bc                        ;; HL = &_big_num_ptrs[digit * 2]
-   ld a, (hl)
+   ld c, (hl)
    inc hl
-   ld h, (hl)
-   ld l, a                           ;; HL = sprite data pointer
+   ld b, (hl)                        ;; BC = sprite data pointer
    pop de                            ;; restore dest
-   ld c, #S_BIG_NUMBERS_W
-   ld b, #S_BIG_NUMBERS_H
-   call cpct_drawSprite_asm
+   ld__ixl S_BIG_NUMBERS_W
+   ld__ixh S_BIG_NUMBERS_H
+   ld hl, #transparency_table
+   call cpct_drawSpriteMaskedAlignedTable_asm
    ret
 
 ;;-----------------------------------------------------------------
@@ -310,11 +316,12 @@ _match_draw_cursor:
    ld a, (_cursor_row)
    ld b, a
    call _match_col_row_to_screen_addr  ;; DE = screen addr
+   inc de                              ;; shift cursor 1 byte (2px) right within cell
 
-   ;; Draw yellow solid box (fills cell with cursor color)
+   ;; Draw yellow solid box (cursor background, slightly smaller than cell)
    ld a, #CURSOR_COLOR
-   ld c, #GRID_CELL_W
-   ld b, #GRID_CELL_H
+   ld c, #CURSOR_W
+   ld b, #CURSOR_H
    call cpct_drawSolidBox_asm          ;; DE is clobbered
 
    ;; Recompute screen address (cpct_drawSolidBox_asm modified DE)
@@ -323,6 +330,7 @@ _match_draw_cursor:
    ld a, (_cursor_row)
    ld b, a
    call _match_col_row_to_screen_addr  ;; DE = screen addr
+   inc de                              ;; shift cursor 1 byte (2px) right within cell
 
    ;; Select sprite based on current player state and piece type
    ld a, (_match_state)

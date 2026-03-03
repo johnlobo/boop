@@ -31,10 +31,10 @@ sizeof_Player  = 6
 ;;   big_numbers are 3 bytes wide; cat/catty sprites are 5 bytes wide
 ;;   X centering: sprite_x + (5-3)/2 = sprite_x + 1
 ;;------------------------------------------------------------------------------
-HUD_P1_CATS_X    = 6    ;; below P1 cat   sprite (render x=5,  w=5)
-HUD_P1_KITTENS_X = 11   ;; below P1 catty sprite (render x=10, w=5)
-HUD_P2_CATS_X    = 66   ;; below P2 cat   sprite (render x=65, w=5)
-HUD_P2_KITTENS_X = 71   ;; below P2 catty sprite (render x=70, w=5)
+HUD_P1_CATS_X    = 5    ;; below P1 cat   sprite (render x=4,  w=5)
+HUD_P1_KITTENS_X = 10   ;; below P1 catty sprite (render x=9,  w=5)
+HUD_P2_CATS_X    = 67   ;; below P2 cat   sprite (render x=66, w=5)
+HUD_P2_KITTENS_X = 72   ;; below P2 catty sprite (render x=71, w=5)
 HUD_Y            = 89   ;; y = 68 (sprites top) + 17 (height) + 4 (gap)
 
 ;;------------------------------------------------------------------------------
@@ -66,9 +66,9 @@ BOARD_P2_KITTEN      = 4
 ;;   GRID_CELL_H       : cell height in pixels
 ;;   GRID_COLS / ROWS  : grid dimensions
 ;;------------------------------------------------------------------------------
-GRID_FIRST_CELL_X    = 22   ;; byte 21 (bg origin) + 1 left border byte
-GRID_FIRST_CELL_Y    = 35   ;; px  32 (bg origin) + 3 px top gap
-GRID_CELL_W          = 7    ;; byte pitch between cell origins (7 bytes)
+GRID_FIRST_CELL_X    = 19   ;; byte 18 (bg origin) + 1 left border byte
+GRID_FIRST_CELL_Y    = 36   ;; px  32 (bg origin) + 4 px top gap
+GRID_CELL_W          = 7    ;; byte pitch between cell origins (7 bytes = 4px gap)
 GRID_CELL_H          = 24   ;; px pitch between cell origins  (24 px)
 GRID_COLS            = 6
 GRID_ROWS            = 6
