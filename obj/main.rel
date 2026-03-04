@@ -1,0 +1,115 @@
+XL2
+H 4 areas 3A global symbols
+M cpct_keyboard
+S cpct_setInterruptHandler_asm Ref0000
+S _s_big_numbers_03 Ref0000
+S _s_big_numbers_04 Ref0000
+S _s_big_numbers_05 Ref0000
+S cpct_getScreenToSprite_asm Ref0000
+S _s_big_numbers_06 Ref0000
+S cpct_isKeyPressed_asm Ref0000
+S cpct_setPalette_asm Ref0000
+S _s_big_numbers_07 Ref0000
+S _g_palette0 Ref0000
+S _s_big_numbers_08 Ref0000
+S cpct_setPALColour_asm Ref0000
+S _s_big_numbers_09 Ref0000
+S cpct_drawSprite_asm Ref0000
+S sys_system_disable_firmware Ref0000
+S _cpct_keyboardStatusBuffer Ref0000
+S cpct_pens2pixelPatternPairM0_asm Ref0000
+S cpct_waitHalts_asm Ref0000
+S cpct_setSeed_mxor_asm Ref0000
+S .__.ABS. Def0000
+S _s_small_numbers_00 Ref0000
+S _s_catty_0 Ref0000
+S _s_small_numbers_01 Ref0000
+S _s_catty_1 Ref0000
+S _s_small_numbers_02 Ref0000
+S _s_small_numbers_03 Ref0000
+S _s_small_numbers_04 Ref0000
+S _s_small_numbers_05 Ref0000
+S _s_small_numbers_06 Ref0000
+S sys_game_init Ref0000
+S _s_basket Ref0000
+S _s_small_numbers_07 Ref0000
+S cpct_isAnyKeyPressed_asm Ref0000
+S _s_small_numbers_08 Ref0000
+S cpct_scanKeyboard_if_asm Ref0000
+S _bg_grid Ref0000
+S _s_small_numbers_09 Ref0000
+S sys_render_drawSpriteMaskedAlignedColorizeM0_asm Ref0000
+S _bg_header Ref0000
+S cpct_waitVSYNC_asm Ref0000
+S cpct_setVideoMode_asm Ref0000
+S cpct_px2byteM0_asm Ref0000
+S _s_font_0 Ref0000
+S _s_cat_0 Ref0000
+S _s_cat_1 Ref0000
+S sys_game_update Ref0000
+S cpct_disableFirmware_asm Ref0000
+S nInterrupt Ref0000
+S cpct_getRandom_mxor_u8_asm Ref0000
+S cpct_drawSolidBox_asm Ref0000
+S _s_big_numbers_00 Ref0000
+S _s_big_numbers_01 Ref0000
+S cpct_drawSpriteMaskedAlignedTable_asm Ref0000
+S cpct_waitVSYNCStart_asm Ref0000
+S cpct_getScreenPtr_asm Ref0000
+S _s_big_numbers_02 Ref0000
+A _CODE size B flags 0 addr 0
+S _main Def0000
+A _DATA size 0 flags 0 addr 0
+A _ABS size 0 flags 8 addr 0
+A _ABS0 size 100 flags 8 addr 100
+S transparency_table Def0100
+T 00 01
+R 00 00 03 00
+T 00 01
+R 00 00 03 00
+T 00 01 FF AA 55 00 AA AA 00 00 55 00 55 00 00 00
+R 00 00 03 00
+T 0E 01 00 00 AA AA 00 00 AA AA 00 00 00 00 00 00
+R 00 00 03 00
+T 1C 01 00 00 00 00 55 00 55 00 00 00 00 00 55 00
+R 00 00 03 00
+T 2A 01 55 00 00 00 00 00 00 00 00 00 00 00 00 00
+R 00 00 03 00
+T 38 01 00 00 00 00 00 00 00 00 AA AA 00 00 AA AA
+R 00 00 03 00
+T 46 01 00 00 00 00 00 00 00 00 00 00 AA AA 00 00
+R 00 00 03 00
+T 54 01 AA AA 00 00 00 00 00 00 00 00 00 00 00 00
+R 00 00 03 00
+T 62 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+R 00 00 03 00
+T 70 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+R 00 00 03 00
+T 7E 01 00 00 55 00 55 00 00 00 00 00 55 00 55 00
+R 00 00 03 00
+T 8C 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+R 00 00 03 00
+T 9A 01 00 00 00 00 00 00 55 00 55 00 00 00 00 00
+R 00 00 03 00
+T A8 01 55 00 55 00 00 00 00 00 00 00 00 00 00 00
+R 00 00 03 00
+T B6 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+R 00 00 03 00
+T C4 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+R 00 00 03 00
+T D2 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+R 00 00 03 00
+T E0 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+R 00 00 03 00
+T EE 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+R 00 00 03 00
+T FC 01 00 00 00 00
+R 00 00 03 00
+T 00 00
+R 00 00 00 00
+T 00 00 CD 00 00 CD 00 00
+R 00 00 00 00 02 03 0E 00 02 06 1D 00
+T 06 00
+R 00 00 00 00
+T 06 00 CD 00 00 18 FB
+R 00 00 00 00 02 03 2D 00

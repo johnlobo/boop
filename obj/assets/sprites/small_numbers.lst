@@ -1,0 +1,164 @@
+                              1 ;--------------------------------------------------------
+                              2 ; File Created by SDCC : free open source ANSI-C Compiler
+                              3 ; Version 3.6.8 #9946 (Linux)
+                              4 ;--------------------------------------------------------
+                              5 	.module small_numbers
+                              6 	.optsdcc -mz80
+                              7 	
+                              8 ;--------------------------------------------------------
+                              9 ; Public variables in this module
+                             10 ;--------------------------------------------------------
+                             11 	.globl _s_small_numbers_09
+                             12 	.globl _s_small_numbers_08
+                             13 	.globl _s_small_numbers_07
+                             14 	.globl _s_small_numbers_06
+                             15 	.globl _s_small_numbers_05
+                             16 	.globl _s_small_numbers_04
+                             17 	.globl _s_small_numbers_03
+                             18 	.globl _s_small_numbers_02
+                             19 	.globl _s_small_numbers_01
+                             20 	.globl _s_small_numbers_00
+                             21 ;--------------------------------------------------------
+                             22 ; special function registers
+                             23 ;--------------------------------------------------------
+                             24 ;--------------------------------------------------------
+                             25 ; ram data
+                             26 ;--------------------------------------------------------
+                             27 	.area _DATA
+                             28 ;--------------------------------------------------------
+                             29 ; ram data
+                             30 ;--------------------------------------------------------
+                             31 	.area _INITIALIZED
+                             32 ;--------------------------------------------------------
+                             33 ; absolute external ram data
+                             34 ;--------------------------------------------------------
+                             35 	.area _DABS (ABS)
+                             36 ;--------------------------------------------------------
+                             37 ; global & static initialisations
+                             38 ;--------------------------------------------------------
+                             39 	.area _HOME
+                             40 	.area _GSINIT
+                             41 	.area _GSFINAL
+                             42 	.area _GSINIT
+                             43 ;--------------------------------------------------------
+                             44 ; Home
+                             45 ;--------------------------------------------------------
+                             46 	.area _HOME
+                             47 	.area _HOME
+                             48 ;--------------------------------------------------------
+                             49 ; code
+                             50 ;--------------------------------------------------------
+                             51 	.area _CODE
+                             52 	.area _CODE
+   0000                      53 _s_small_numbers_00:
+   0000 FF                   54 	.db #0xff	; 255
+   0001 AA                   55 	.db #0xaa	; 170
+   0002 AA                   56 	.db #0xaa	; 170
+   0003 AA                   57 	.db #0xaa	; 170
+   0004 AA                   58 	.db #0xaa	; 170
+   0005 AA                   59 	.db #0xaa	; 170
+   0006 AA                   60 	.db #0xaa	; 170
+   0007 AA                   61 	.db #0xaa	; 170
+   0008 FF                   62 	.db #0xff	; 255
+   0009 AA                   63 	.db #0xaa	; 170
+   000A                      64 _s_small_numbers_01:
+   000A 55                   65 	.db #0x55	; 85	'U'
+   000B AA                   66 	.db #0xaa	; 170
+   000C 00                   67 	.db #0x00	; 0
+   000D AA                   68 	.db #0xaa	; 170
+   000E 00                   69 	.db #0x00	; 0
+   000F AA                   70 	.db #0xaa	; 170
+   0010 00                   71 	.db #0x00	; 0
+   0011 AA                   72 	.db #0xaa	; 170
+   0012 00                   73 	.db #0x00	; 0
+   0013 AA                   74 	.db #0xaa	; 170
+   0014                      75 _s_small_numbers_02:
+   0014 FF                   76 	.db #0xff	; 255
+   0015 AA                   77 	.db #0xaa	; 170
+   0016 00                   78 	.db #0x00	; 0
+   0017 AA                   79 	.db #0xaa	; 170
+   0018 FF                   80 	.db #0xff	; 255
+   0019 AA                   81 	.db #0xaa	; 170
+   001A AA                   82 	.db #0xaa	; 170
+   001B 00                   83 	.db #0x00	; 0
+   001C FF                   84 	.db #0xff	; 255
+   001D AA                   85 	.db #0xaa	; 170
+   001E                      86 _s_small_numbers_03:
+   001E FF                   87 	.db #0xff	; 255
+   001F AA                   88 	.db #0xaa	; 170
+   0020 00                   89 	.db #0x00	; 0
+   0021 AA                   90 	.db #0xaa	; 170
+   0022 55                   91 	.db #0x55	; 85	'U'
+   0023 AA                   92 	.db #0xaa	; 170
+   0024 00                   93 	.db #0x00	; 0
+   0025 AA                   94 	.db #0xaa	; 170
+   0026 FF                   95 	.db #0xff	; 255
+   0027 AA                   96 	.db #0xaa	; 170
+   0028                      97 _s_small_numbers_04:
+   0028 AA                   98 	.db #0xaa	; 170
+   0029 AA                   99 	.db #0xaa	; 170
+   002A AA                  100 	.db #0xaa	; 170
+   002B AA                  101 	.db #0xaa	; 170
+   002C FF                  102 	.db #0xff	; 255
+   002D AA                  103 	.db #0xaa	; 170
+   002E 00                  104 	.db #0x00	; 0
+   002F AA                  105 	.db #0xaa	; 170
+   0030 00                  106 	.db #0x00	; 0
+   0031 AA                  107 	.db #0xaa	; 170
+   0032                     108 _s_small_numbers_05:
+   0032 FF                  109 	.db #0xff	; 255
+   0033 AA                  110 	.db #0xaa	; 170
+   0034 AA                  111 	.db #0xaa	; 170
+   0035 00                  112 	.db #0x00	; 0
+   0036 FF                  113 	.db #0xff	; 255
+   0037 AA                  114 	.db #0xaa	; 170
+   0038 00                  115 	.db #0x00	; 0
+   0039 AA                  116 	.db #0xaa	; 170
+   003A FF                  117 	.db #0xff	; 255
+   003B AA                  118 	.db #0xaa	; 170
+   003C                     119 _s_small_numbers_06:
+   003C FF                  120 	.db #0xff	; 255
+   003D AA                  121 	.db #0xaa	; 170
+   003E AA                  122 	.db #0xaa	; 170
+   003F 00                  123 	.db #0x00	; 0
+   0040 FF                  124 	.db #0xff	; 255
+   0041 AA                  125 	.db #0xaa	; 170
+   0042 AA                  126 	.db #0xaa	; 170
+   0043 AA                  127 	.db #0xaa	; 170
+   0044 FF                  128 	.db #0xff	; 255
+   0045 AA                  129 	.db #0xaa	; 170
+   0046                     130 _s_small_numbers_07:
+   0046 FF                  131 	.db #0xff	; 255
+   0047 AA                  132 	.db #0xaa	; 170
+   0048 00                  133 	.db #0x00	; 0
+   0049 AA                  134 	.db #0xaa	; 170
+   004A 00                  135 	.db #0x00	; 0
+   004B AA                  136 	.db #0xaa	; 170
+   004C 00                  137 	.db #0x00	; 0
+   004D AA                  138 	.db #0xaa	; 170
+   004E 00                  139 	.db #0x00	; 0
+   004F AA                  140 	.db #0xaa	; 170
+   0050                     141 _s_small_numbers_08:
+   0050 FF                  142 	.db #0xff	; 255
+   0051 AA                  143 	.db #0xaa	; 170
+   0052 AA                  144 	.db #0xaa	; 170
+   0053 AA                  145 	.db #0xaa	; 170
+   0054 FF                  146 	.db #0xff	; 255
+   0055 AA                  147 	.db #0xaa	; 170
+   0056 AA                  148 	.db #0xaa	; 170
+   0057 AA                  149 	.db #0xaa	; 170
+   0058 FF                  150 	.db #0xff	; 255
+   0059 AA                  151 	.db #0xaa	; 170
+   005A                     152 _s_small_numbers_09:
+   005A FF                  153 	.db #0xff	; 255
+   005B AA                  154 	.db #0xaa	; 170
+   005C AA                  155 	.db #0xaa	; 170
+   005D AA                  156 	.db #0xaa	; 170
+   005E FF                  157 	.db #0xff	; 255
+   005F AA                  158 	.db #0xaa	; 170
+   0060 00                  159 	.db #0x00	; 0
+   0061 AA                  160 	.db #0xaa	; 170
+   0062 00                  161 	.db #0x00	; 0
+   0063 AA                  162 	.db #0xaa	; 170
+                            163 	.area _INITIALIZER
+                            164 	.area _CABS (ABS)

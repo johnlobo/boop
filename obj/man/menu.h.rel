@@ -1,0 +1,9 @@
+XL2
+H 1 areas 6 global symbols
+S man_menu_draw Ref0000
+S .__.ABS. Def0000
+S man_menu_init Ref0000
+S man_menu_confirmed Ref0000
+S man_menu_update Ref0000
+S man_menu_selected Ref0000
+A _CODE size 0 flags 0 addr 0

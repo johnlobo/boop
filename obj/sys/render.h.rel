@@ -1,0 +1,7 @@
+XL2
+H 1 areas 4 global symbols
+S sys_render_init Ref0000
+S .__.ABS. Def0000
+S sys_render_draw_screen Ref0000
+S sys_render_clear_buffer Ref0000
+A _CODE size 0 flags 0 addr 0

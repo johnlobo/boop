@@ -1,0 +1,10 @@
+XL2
+H 1 areas 7 global symbols
+S man_match_player1 Ref0000
+S man_match_player2 Ref0000
+S man_match_update Ref0000
+S man_match_draw_hud Ref0000
+S .__.ABS. Def0000
+S man_match_num_players Ref0000
+S man_match_init Ref0000
+A _CODE size 0 flags 0 addr 0

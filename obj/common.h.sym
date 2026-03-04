@@ -1,0 +1,38 @@
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 1.
+Hexadecimal [16-Bits]
+
+Symbol Table
+
+    .__.$$$.=  2710 L   |     .__.ABS.=  0000 G   |     .__.CPU.=  0000 L
+    .__.H$L.=  0000 L   |     BG_GRID_=  0094     |     BG_GRID_=  002C 
+    BG_HEADE=  0014     |     BG_HEADE=  002C     |     BUFFER_S=  000A 
+    FONT_HEI=  0009     |     FONT_WID=  0002     |     SCORE_NU=  0004 
+    S_BASKET=  004A     |     S_BASKET=  0012     |     S_BIG_NU=  000D 
+    S_BIG_NU=  0003     |     S_CATTY_=  0011     |     S_CATTY_=  0005 
+    S_CAT_H =  0011     |     S_CAT_W =  0005     |     S_SMALL_=  0005 
+    S_SMALL_=  0002     |     ZERO_KEY=  00FF     |     _bg_grid   **** GX
+    _bg_head   **** GX  |     _cpct_ke   **** GX  |     _g_palet   **** GX
+    _s_baske   **** GX  |     _s_big_n   **** GX  |     _s_big_n   **** GX
+    _s_big_n   **** GX  |     _s_big_n   **** GX  |     _s_big_n   **** GX
+    _s_big_n   **** GX  |     _s_big_n   **** GX  |     _s_big_n   **** GX
+    _s_big_n   **** GX  |     _s_big_n   **** GX  |     _s_cat_0   **** GX
+    _s_cat_1   **** GX  |     _s_catty   **** GX  |     _s_catty   **** GX
+    _s_font_   **** GX  |     _s_small   **** GX  |     _s_small   **** GX
+    _s_small   **** GX  |     _s_small   **** GX  |     _s_small   **** GX
+    _s_small   **** GX  |     _s_small   **** GX  |     _s_small   **** GX
+    _s_small   **** GX  |     _s_small   **** GX  |     cpct_dis   **** GX
+    cpct_dra   **** GX  |     cpct_dra   **** GX  |     cpct_dra   **** GX
+    cpct_get   **** GX  |     cpct_get   **** GX  |     cpct_get   **** GX
+    cpct_isA   **** GX  |     cpct_isK   **** GX  |     cpct_pen   **** GX
+    cpct_px2   **** GX  |     cpct_sca   **** GX  |     cpct_set   **** GX
+    cpct_set   **** GX  |     cpct_set   **** GX  |     cpct_set   **** GX
+    cpct_set   **** GX  |     cpct_wai   **** GX  |     cpct_wai   **** GX
+    cpct_wai   **** GX  |     sys_rend   **** GX  |     transpar   **** GX
+
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 2.
+Hexadecimal [16-Bits]
+
+Area Table
+
+   0 _CODE      size    0   flags    0
+
