@@ -3,9 +3,9 @@
 -b _CODE = 0x4000
 -b _DATA = 0x0000
 -u
--k /mnt/c/Sources/retro/cpctelera/cpctelera/tools/sdcc-3.6.8-r9946/bin/../share/sdcc/lib/z80
--k /mnt/c/Sources/retro/cpctelera/cpctelera/tools/sdcc-3.6.8-r9946/share/sdcc/lib/z80
--l /mnt/c/Sources/retro/cpctelera/cpctelera/cpctelera.lib
+-k /config/workspace/cpctelera/cpctelera/tools/sdcc-3.6.8-r9946/bin/../share/sdcc/lib/z80
+-k /config/workspace/cpctelera/cpctelera/tools/sdcc-3.6.8-r9946/share/sdcc/lib/z80
+-l /config/workspace/cpctelera/cpctelera/cpctelera.lib
 -l z80
 obj/assets/bg/grid.rel
 obj/assets/bg/header.rel
@@ -18,12 +18,6 @@ obj/assets/sprites/font_chars_0.rel
 obj/assets/sprites/g_palette0.rel
 obj/common.h.rel
 obj/main.rel
-obj/man/game.h.rel
-obj/man/game.rel
-obj/man/match.h.rel
-obj/man/match.rel
-obj/man/menu.h.rel
-obj/man/menu.rel
 obj/sys/input.h.rel
 obj/sys/input.rel
 obj/sys/messages.h.rel
@@ -36,5 +30,13 @@ obj/sys/text.h.rel
 obj/sys/text.rel
 obj/sys/util.h.rel
 obj/sys/util.rel
+obj/man/game.h.rel
+obj/man/game.rel
+obj/man/help.h.rel
+obj/man/help.rel
+obj/man/match.h.rel
+obj/man/match.rel
+obj/man/menu.h.rel
+obj/man/menu.rel
 
 -e

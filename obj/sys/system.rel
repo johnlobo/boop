@@ -1,5 +1,5 @@
 XL2
-H 2 areas 3A global symbols
+H 2 areas 3B global symbols
 M system_system
 S cpct_setInterruptHandler_asm Ref0000
 S _s_big_numbers_03 Ref0000
@@ -16,6 +16,7 @@ S _s_big_numbers_08 Ref0000
 S cpct_setPALColour_asm Ref0000
 S _s_big_numbers_09 Ref0000
 S cpct_drawSprite_asm Ref0000
+S sys_render_draw_grid Ref0000
 S sys_render_init Ref0000
 S _cpct_keyboardStatusBuffer Ref0000
 S cpct_pens2pixelPatternPairM0_asm Ref0000
@@ -78,7 +79,7 @@ R 00 00 00 00 02 02 00 00
 T 21 00
 R 00 00 00 00
 T 21 00 3A 00 00 3C 32 00 00 CD 00 00 21
-R 00 00 00 00 00 03 01 00 00 07 01 00 02 0A 23 00
+R 00 00 00 00 00 03 01 00 00 07 01 00 02 0A 24 00
 T 2C 00 32 00 CD 00 00 C9
 R 00 00 00 00 00 02 00 00 02 05 00 00
 T 32 00
@@ -108,6 +109,6 @@ R 00 00 00 00 00 04 01 00 00 07 00 00 02 0A 00 00
 T 67 00
 R 00 00 00 00
 T 67 00 CD 00 00 21 13 00 CD 00 00 76 76 CD
-R 00 00 00 00 02 03 2E 00 00 06 00 00 02 09 28 00
+R 00 00 00 00 02 03 2F 00 00 06 00 00 02 09 29 00
 T 73 00 00 00 CD 00 00 C9
-R 00 00 00 00 02 02 28 00 02 05 00 00
+R 00 00 00 00 02 02 29 00 02 05 00 00

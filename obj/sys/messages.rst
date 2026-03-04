@@ -5393,71 +5393,72 @@ Hexadecimal [16-Bits]
                              20 .globl sys_render_init
                              21 .globl sys_render_clear_buffer
                              22 .globl sys_render_draw_screen
-                             23 
-                             24 ;;===============================================================================
-                             25 ;; PUBLIC CONSTANTS
-                             26 ;;===============================================================================
-                             27 
-                             28 ;;===============================================================================
-                             29 ;; MACRO
-                             30 ;;===============================================================================
-                             31 .mdelete ld_de_backbuffer
-                             32 .macro ld_de_backbuffer
-                             33    ld   a, (sys_render_back_buffer)          ;; DE = Pointer to start of the screen
-                             34    ld   d, a
-                             35    ld   e, #00
-                             36 .endm
-                             37 
-                             38 .mdelete ld_de_frontbuffer
-                             39 .macro ld_de_frontbuffer
-                             40    ld   a, (sys_render_front_buffer)         ;; DE = Pointer to start of the screen
-                             41    ld   d, a
-                             42    ld   e, #00
-                             43 .endm
-                             44 
-                             45 .mdelete m_screenPtr_backbuffer
-                             46 .macro m_screenPtr_backbuffer X, Y
-                             47    push hl
-                             48    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
-                             49    ld a, (sys_render_back_buffer)
-                             50    ld h, a
-                             51    ld l, #0         
-                             52    add hl, de
-                             53    ex de, hl
-                             54    pop hl
+                             23 .globl sys_render_draw_grid
+                             24 
+                             25 ;;===============================================================================
+                             26 ;; PUBLIC CONSTANTS
+                             27 ;;===============================================================================
+                             28 
+                             29 ;;===============================================================================
+                             30 ;; MACRO
+                             31 ;;===============================================================================
+                             32 .mdelete ld_de_backbuffer
+                             33 .macro ld_de_backbuffer
+                             34    ld   a, (sys_render_back_buffer)          ;; DE = Pointer to start of the screen
+                             35    ld   d, a
+                             36    ld   e, #00
+                             37 .endm
+                             38 
+                             39 .mdelete ld_de_frontbuffer
+                             40 .macro ld_de_frontbuffer
+                             41    ld   a, (sys_render_front_buffer)         ;; DE = Pointer to start of the screen
+                             42    ld   d, a
+                             43    ld   e, #00
+                             44 .endm
+                             45 
+                             46 .mdelete m_screenPtr_backbuffer
+                             47 .macro m_screenPtr_backbuffer X, Y
+                             48    push hl
+                             49    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
+                             50    ld a, (sys_render_back_buffer)
+                             51    ld h, a
+                             52    ld l, #0         
+                             53    add hl, de
+                             54    ex de, hl
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 104.
 Hexadecimal [16-Bits]
 
 
 
-                             55 .endm
-                             56 
-                             57 .mdelete m_screenPtr_frontbuffer
-                             58 .macro m_screenPtr_frontbuffer X, Y
-                             59    push hl
-                             60    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
-                             61    ld a, (sys_render_front_buffer)
-                             62    ld h, a
-                             63    ld l, #0         
-                             64    add hl, de
-                             65    ex de, hl
-                             66    pop hl
-                             67 .endm
-                             68 
+                             55    pop hl
+                             56 .endm
+                             57 
+                             58 .mdelete m_screenPtr_frontbuffer
+                             59 .macro m_screenPtr_frontbuffer X, Y
+                             60    push hl
+                             61    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
+                             62    ld a, (sys_render_front_buffer)
+                             63    ld h, a
+                             64    ld l, #0         
+                             65    add hl, de
+                             66    ex de, hl
+                             67    pop hl
+                             68 .endm
                              69 
-                             70 .mdelete m_draw_blank_small_number
-                             71 .macro m_draw_blank_small_number BACKGROUND
-                             72    push de
-                             73    push hl
-                             74    ld c, #4
-                             75    ld b, #5
-                             76    ;;ld a, #0                                ;; Patern of solid box
-                             77    ;;ld a, #0x33                             ;; Patern of solid box blue (12)
-                             78    ld a, #BACKGROUND                         ;; Patern of solid box blue (12)
-                             79    call cpct_drawSolidBox_asm
-                             80    pop hl
-                             81    pop de
-                             82 .endm
+                             70 
+                             71 .mdelete m_draw_blank_small_number
+                             72 .macro m_draw_blank_small_number BACKGROUND
+                             73    push de
+                             74    push hl
+                             75    ld c, #4
+                             76    ld b, #5
+                             77    ;;ld a, #0                                ;; Patern of solid box
+                             78    ;;ld a, #0x33                             ;; Patern of solid box blue (12)
+                             79    ld a, #BACKGROUND                         ;; Patern of solid box blue (12)
+                             80    call cpct_drawSolidBox_asm
+                             81    pop hl
+                             82    pop de
+                             83 .endm
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 105.
 Hexadecimal [16-Bits]
 
@@ -5474,17 +5475,17 @@ Hexadecimal [16-Bits]
                              33 ;;
                              34 .area _DATA
                              35 
-   81A3                      36 _window_data::
-   81A3 00 00                37 _window_address: .dw #00
-   81A5 00                   38 _window_x: .db #00
-   81A6 00                   39 _window_y: .db #00
-   81A7 00                   40 _window_w: .db #00
-   81A8 00                   41 _window_h: .db #00
-   81A9 00 00                42 _window_message: .dw #0000
-   81AB 01                   43 _window_wait_for_key: .db #01
-   81AC 00                   44 _window_background_color: .db #00
+   81E8                      36 _window_data::
+   81E8 00 00                37 _window_address: .dw #00
+   81EA 00                   38 _window_x: .db #00
+   81EB 00                   39 _window_y: .db #00
+   81EC 00                   40 _window_w: .db #00
+   81ED 00                   41 _window_h: .db #00
+   81EE 00 00                42 _window_message: .dw #0000
+   81F0 01                   43 _window_wait_for_key: .db #01
+   81F1 00                   44 _window_background_color: .db #00
                              45 
-   81AD 50 52 45 53 53 20    46 _press_any_key_string: .asciz "PRESS ANY KEY"
+   81F2 50 52 45 53 53 20    46 _press_any_key_string: .asciz "PRESS ANY KEY"
         41 4E 59 20 4B 45
         59 00
                              47 
@@ -5524,53 +5525,53 @@ Hexadecimal [16-Bits]
 
 
                              78 
-   6C95                      79 sys_messages_load_window_data::
-   6C95 FD 21 A3 81   [14]   80     ld iy, #_window_data
-   6C99 08            [ 4]   81     ex af, af'                      ;;
-   6C9A FD 77 09      [19]   82     ld w_b_color(iy), a             ;; bring background color froam a'
-   6C9D 08            [ 4]   83     ex af, af'                      ;;
-   6C9E FD 75 06      [19]   84     ld w_message(iy), l
-   6CA1 FD 74 07      [19]   85     ld w_message+1(iy), h
+   6934                      79 sys_messages_load_window_data::
+   6934 FD 21 E8 81   [14]   80     ld iy, #_window_data
+   6938 08            [ 4]   81     ex af, af'                      ;;
+   6939 FD 77 09      [19]   82     ld w_b_color(iy), a             ;; bring background color froam a'
+   693C 08            [ 4]   83     ex af, af'                      ;;
+   693D FD 75 06      [19]   84     ld w_message(iy), l
+   6940 FD 74 07      [19]   85     ld w_message+1(iy), h
                              86     ;;ld w_w(iy), c
-   6CA4 FD 70 05      [19]   87     ld w_h(iy), b
+   6943 FD 70 05      [19]   87     ld w_h(iy), b
                              88     ;;ld w_x(iy), e             
-   6CA7 FD 72 03      [19]   89     ld w_y(iy), d
-   6CAA FD 77 08      [19]   90     ld w_wait_for_key(iy), a  
-   6CAD FD 66 07      [19]   91     ld h, w_message+1(iy)           ;; calculate length of the string
-   6CB0 FD 6E 06      [19]   92     ld l, w_message(iy)             ;;
-   6CB3 CD 4D 7B      [17]   93     call sys_text_str_length        ;;
-   6CB6 CB 27         [ 8]   94     sla a                           ;; multiply string length by 2 to obtain bytes
-   6CB8 3C            [ 4]   95     inc a                           ;;
-   6CB9 3C            [ 4]   96     inc a                           ;; add three of bytes as padding
+   6946 FD 72 03      [19]   89     ld w_y(iy), d
+   6949 FD 77 08      [19]   90     ld w_wait_for_key(iy), a  
+   694C FD 66 07      [19]   91     ld h, w_message+1(iy)           ;; calculate length of the string
+   694F FD 6E 06      [19]   92     ld l, w_message(iy)             ;;
+   6952 CD EC 77      [17]   93     call sys_text_str_length        ;;
+   6955 CB 27         [ 8]   94     sla a                           ;; multiply string length by 2 to obtain bytes
+   6957 3C            [ 4]   95     inc a                           ;;
+   6958 3C            [ 4]   96     inc a                           ;; add three of bytes as padding
                              97 
-   6CBA FE 1E         [ 7]   98     cp #MINIMUM_WINDOW_WIDTH        ;; compare calculated width with minimun width
-   6CBC F2 C1 6C      [10]   99     jp p, width_ok                  ;;
-   6CBF 3E 1E         [ 7]  100     ld a, #MINIMUM_WINDOW_WIDTH     ;;
+   6959 FE 1E         [ 7]   98     cp #MINIMUM_WINDOW_WIDTH        ;; compare calculated width with minimun width
+   695B F2 60 69      [10]   99     jp p, width_ok                  ;;
+   695E 3E 1E         [ 7]  100     ld a, #MINIMUM_WINDOW_WIDTH     ;;
                             101     
-   6CC1                     102 width_ok:
-   6CC1 FD 77 04      [19]  103     ld w_w(iy), a                   ;; store this information as total width
-   6CC4 FD 34 04      [23]  104     inc w_w(iy)                     ;;
-   6CC7 FD 34 04      [23]  105     inc w_w(iy)                     ;;
-   6CCA FD 34 04      [23]  106     inc w_w(iy)                     ;; width a little bit wider
+   6960                     102 width_ok:
+   6960 FD 77 04      [19]  103     ld w_w(iy), a                   ;; store this information as total width
+   6963 FD 34 04      [23]  104     inc w_w(iy)                     ;;
+   6966 FD 34 04      [23]  105     inc w_w(iy)                     ;;
+   6969 FD 34 04      [23]  106     inc w_w(iy)                     ;; width a little bit wider
                             107     
-   6CCD 47            [ 4]  108     ld b, a                         ;; move string bytes to b
-   6CCE 3E 50         [ 7]  109     ld a, #80                       ;; move screen width to a
-   6CD0 90            [ 4]  110     sub b                           ;; substract string length
-   6CD1 CB 2F         [ 8]  111     sra a                           ;; divide a to obtain x
-   6CD3 FD 77 02      [19]  112     ld w_x(iy), a
-   6CD6 FD 35 02      [23]  113     dec w_x(iy)                     ;; x adjust
+   696C 47            [ 4]  108     ld b, a                         ;; move string bytes to b
+   696D 3E 50         [ 7]  109     ld a, #80                       ;; move screen width to a
+   696F 90            [ 4]  110     sub b                           ;; substract string length
+   6970 CB 2F         [ 8]  111     sra a                           ;; divide a to obtain x
+   6972 FD 77 02      [19]  112     ld w_x(iy), a
+   6975 FD 35 02      [23]  113     dec w_x(iy)                     ;; x adjust
                             114     
-   6CD9 FD 4E 02      [19]  115     ld c, w_x(iy)                   ;; c = x
-   6CDC FD 46 03      [19]  116     ld b, w_y(iy)                   ;; b = y
+   6978 FD 4E 02      [19]  115     ld c, w_x(iy)                   ;; c = x
+   697B FD 46 03      [19]  116     ld b, w_y(iy)                   ;; b = y
                             117     
-   6CDF 11 00 C0      [10]  118     ld de, #CPCT_VMEM_START_ASM   ;; DE = Pointer to start of the screen
+   697E 11 00 C0      [10]  118     ld de, #CPCT_VMEM_START_ASM   ;; DE = Pointer to start of the screen
                             119     
                             120     ;;ld_de_frontbuffer                ;; Calculate video memory location and return it in HL
-   6CE2 CD 90 80      [17]  121     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
+   6981 CD 57 81      [17]  121     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
                             122     
-   6CE5 FD 75 00      [19]  123     ld w_address(iy), l             ;; keep address in memory
-   6CE8 FD 74 01      [19]  124     ld w_address+1(iy), h           ;;
-   6CEB C9            [10]  125     ret
+   6984 FD 75 00      [19]  123     ld w_address(iy), l             ;; keep address in memory
+   6987 FD 74 01      [19]  124     ld w_address+1(iy), h           ;;
+   698A C9            [10]  125     ret
                             126 
                             127 ;;-----------------------------------------------------------------
                             128 ;;
@@ -5587,46 +5588,46 @@ Hexadecimal [16-Bits]
                             134 ;;  Modified: af, hl, de, bc
                             135 ;;
                             136 
-   6CEC                     137 sys_messages_draw_window::
+   698B                     137 sys_messages_draw_window::
                             138 
                             139     ;; Draw Back window
-   6CEC FD 5E 00      [19]  140     ld e, w_address(iy)                 ;; keep background information in message_buffer
-   6CEF FD 56 01      [19]  141     ld d, w_address+1(iy)               ;; 
-   6CF2 FD 4E 04      [19]  142     ld c, w_w(iy)
-   6CF5 FD 46 05      [19]  143     ld b, w_h(iy)
+   698B FD 5E 00      [19]  140     ld e, w_address(iy)                 ;; keep background information in message_buffer
+   698E FD 56 01      [19]  141     ld d, w_address+1(iy)               ;; 
+   6991 FD 4E 04      [19]  142     ld c, w_w(iy)
+   6994 FD 46 05      [19]  143     ld b, w_h(iy)
                             144     
-   6CF8 3E FF         [ 7]  145     ld a,#0xff                          ;; Patern of solid box
-   6CFA CD B7 7F      [17]  146     call cpct_drawSolidBox_asm
+   6997 3E FF         [ 7]  145     ld a,#0xff                          ;; Patern of solid box
+   6999 CD 7E 80      [17]  146     call cpct_drawSolidBox_asm
                             147 
                             148     ;; Draw Front Window
                             149     
                             150     ;;ld_de_backbuffer              ;; Calculate video memory location and return it in HL
                             151     ;;ld_de_frontbuffer              ;; Calculate video memory location and return it in HL
-   6CFD 11 00 C0      [10]  152     ld de, #CPCT_VMEM_START_ASM   ;; DE = Pointer to start of the screen
+   699C 11 00 C0      [10]  152     ld de, #CPCT_VMEM_START_ASM   ;; DE = Pointer to start of the screen
                             153     
-   6D00 FD 4E 02      [19]  154     ld c, w_x(iy)                   ;;
-   6D03 0C            [ 4]  155     inc c                           ;; C = x coordinate + 1
-   6D04 FD 46 03      [19]  156     ld b, w_y(iy)                   ;;
-   6D07 04            [ 4]  157     inc b                           ;; B = y coordinate + 2
-   6D08 04            [ 4]  158     inc b                           ;;
-   6D09 CD 90 80      [17]  159     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
-   6D0C EB            [ 4]  160     ex de, hl                       ;; move screen address to de
+   699F FD 4E 02      [19]  154     ld c, w_x(iy)                   ;;
+   69A2 0C            [ 4]  155     inc c                           ;; C = x coordinate + 1
+   69A3 FD 46 03      [19]  156     ld b, w_y(iy)                   ;;
+   69A6 04            [ 4]  157     inc b                           ;; B = y coordinate + 2
+   69A7 04            [ 4]  158     inc b                           ;;
+   69A8 CD 57 81      [17]  159     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
+   69AB EB            [ 4]  160     ex de, hl                       ;; move screen address to de
                             161     
-   6D0D FD 4E 04      [19]  162     ld c, w_w(iy)                   ;;
-   6D10 0D            [ 4]  163     dec c                           ;; C = w - 2
-   6D11 0D            [ 4]  164     dec c                           ;;   
+   69AC FD 4E 04      [19]  162     ld c, w_w(iy)                   ;;
+   69AF 0D            [ 4]  163     dec c                           ;; C = w - 2
+   69B0 0D            [ 4]  164     dec c                           ;;   
                             165     
-   6D12 FD 46 05      [19]  166     ld b, w_h(iy)                   ;;
-   6D15 05            [ 4]  167     dec b                           ;; B = h - 4
-   6D16 05            [ 4]  168     dec b                           ;;
-   6D17 05            [ 4]  169     dec b                           ;;
-   6D18 05            [ 4]  170     dec b                           ;;
+   69B1 FD 46 05      [19]  166     ld b, w_h(iy)                   ;;
+   69B4 05            [ 4]  167     dec b                           ;; B = h - 4
+   69B5 05            [ 4]  168     dec b                           ;;
+   69B6 05            [ 4]  169     dec b                           ;;
+   69B7 05            [ 4]  170     dec b                           ;;
                             171     
                             172     ;;ld a, #0x00                     ;; Patern of solid box
-   6D19 FD 7E 09      [19]  173     ld a, w_b_color(iy)               ;; Patern for solid box  
-   6D1C CD B7 7F      [17]  174     call cpct_drawSolidBox_asm
+   69B8 FD 7E 09      [19]  173     ld a, w_b_color(iy)               ;; Patern for solid box  
+   69BB CD 7E 80      [17]  174     call cpct_drawSolidBox_asm
                             175 
-   6D1F C9            [10]  176     ret
+   69BE C9            [10]  176     ret
                             177 
                             178 
                             179 
@@ -5647,14 +5648,14 @@ Hexadecimal [16-Bits]
                             189 ;;  Output:
                             190 ;;  Modified: af, hl, de, bc
                             191 ;;
-   6D20                     192 sys_messages_restore_message_background::
-   6D20 FD 5E 00      [19]  193     ld e, w_address(iy)                 ;; keep background information in message_buffer
-   6D23 FD 56 01      [19]  194     ld d, w_address+1(iy)               ;;
-   6D26 21 13 6E      [10]  195     ld hl, #message_buffer              ;;
-   6D29 FD 4E 04      [19]  196     ld c, w_w(iy)                       ;;
-   6D2C FD 46 05      [19]  197     ld b, w_h(iy)                       ;;
-   6D2F CD 3F 7E      [17]  198     call cpct_drawSprite_asm            ;;
-   6D32 C9            [10]  199     ret
+   69BF                     192 sys_messages_restore_message_background::
+   69BF FD 5E 00      [19]  193     ld e, w_address(iy)                 ;; keep background information in message_buffer
+   69C2 FD 56 01      [19]  194     ld d, w_address+1(iy)               ;;
+   69C5 21 B2 6A      [10]  195     ld hl, #message_buffer              ;;
+   69C8 FD 4E 04      [19]  196     ld c, w_w(iy)                       ;;
+   69CB FD 46 05      [19]  197     ld b, w_h(iy)                       ;;
+   69CE CD 06 7F      [17]  198     call cpct_drawSprite_asm            ;;
+   69D1 C9            [10]  199     ret
                             200 
                             201 
                             202 ;;-----------------------------------------------------------------
@@ -5671,113 +5672,113 @@ Hexadecimal [16-Bits]
                             213 ;;  Modified: af, hl, de, bc
                             214 ;;
                             215 
-   6D33                     216 sys_messages_show::
+   69D2                     216 sys_messages_show::
                             217 
-   6D33 CD 95 6C      [17]  218     call sys_messages_load_window_data
+   69D2 CD 34 69      [17]  218     call sys_messages_load_window_data
                             219 
-   6D36 FD 6E 00      [19]  220     ld l, w_address(iy)                 ;; restore background information from message_buffer
-   6D39 FD 66 01      [19]  221     ld h, w_address+1(iy)               ;;
-   6D3C 11 13 6E      [10]  222     ld de, #message_buffer              ;;
-   6D3F FD 4E 04      [19]  223     ld c, w_w(iy)                       ;;
-   6D42 FD 46 05      [19]  224     ld b, w_h(iy)                       ;;
-   6D45 CD F4 7D      [17]  225     call cpct_getScreenToSprite_asm     ;;
+   69D5 FD 6E 00      [19]  220     ld l, w_address(iy)                 ;; restore background information from message_buffer
+   69D8 FD 66 01      [19]  221     ld h, w_address+1(iy)               ;;
+   69DB 11 B2 6A      [10]  222     ld de, #message_buffer              ;;
+   69DE FD 4E 04      [19]  223     ld c, w_w(iy)                       ;;
+   69E1 FD 46 05      [19]  224     ld b, w_h(iy)                       ;;
+   69E4 CD BB 7E      [17]  225     call cpct_getScreenToSprite_asm     ;;
                             226 
                             227 
-   6D48 CD EC 6C      [17]  228     call sys_messages_draw_window
+   69E7 CD 8B 69      [17]  228     call sys_messages_draw_window
                             229 
                             230     ;; Draw message
                             231     
-   6D4B 11 00 C0      [10]  232     ld de, #CPCT_VMEM_START_ASM   ;; DE = Pointer to start of the screen
+   69EA 11 00 C0      [10]  232     ld de, #CPCT_VMEM_START_ASM   ;; DE = Pointer to start of the screen
                             233     ;;ld_de_backbuffer                ;; Calculate video memory location and return it in HL
                             234     ;;ld_de_frontbuffer                ;; Calculate video memory location and return it in HL
                             235     
-   6D4E FD 4E 02      [19]  236     ld c, w_x(iy)                   ;;
-   6D51 0C            [ 4]  237     inc c                           ;; 
-   6D52 0C            [ 4]  238     inc c                           ;; C = x + 1
-   6D53 0C            [ 4]  239     inc c                           ;; 
+   69ED FD 4E 02      [19]  236     ld c, w_x(iy)                   ;;
+   69F0 0C            [ 4]  237     inc c                           ;; 
+   69F1 0C            [ 4]  238     inc c                           ;; C = x + 1
+   69F2 0C            [ 4]  239     inc c                           ;; 
                             240     
-   6D54 FD 46 03      [19]  241     ld b, w_y(iy)                   ;;
+   69F3 FD 46 03      [19]  241     ld b, w_y(iy)                   ;;
                             242 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 109.
 Hexadecimal [16-Bits]
 
 
 
-   6D57 FD 7E 08      [19]  243     ld a, w_wait_for_key(iy)        ;; check if we have to show the message press any key
-   6D5A FE 01         [ 7]  244     cp #1                           ;;
-   6D5C 20 04         [12]  245     jr nz, no_wait4key               ;; 
-   6D5E 3E 0A         [ 7]  246     ld a, #10                       ;; B = y + 10
-   6D60 18 02         [12]  247     jr y_coord
-   6D62                     248 no_wait4key:
-   6D62 3E 0F         [ 7]  249     ld a, #15                       ;; B = y + 15
-   6D64                     250 y_coord:
-   6D64 80            [ 4]  251     add b                           ;;
-   6D65 47            [ 4]  252     ld b, a                         ;;
+   69F6 FD 7E 08      [19]  243     ld a, w_wait_for_key(iy)        ;; check if we have to show the message press any key
+   69F9 FE 01         [ 7]  244     cp #1                           ;;
+   69FB 20 04         [12]  245     jr nz, no_wait4key               ;; 
+   69FD 3E 0A         [ 7]  246     ld a, #10                       ;; B = y + 10
+   69FF 18 02         [12]  247     jr y_coord
+   6A01                     248 no_wait4key:
+   6A01 3E 0F         [ 7]  249     ld a, #15                       ;; B = y + 15
+   6A03                     250 y_coord:
+   6A03 80            [ 4]  251     add b                           ;;
+   6A04 47            [ 4]  252     ld b, a                         ;;
                             253     
-   6D66 CD 90 80      [17]  254     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
-   6D69 EB            [ 4]  255     ex de, hl                       ;; move screen address to de
+   6A05 CD 57 81      [17]  254     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
+   6A08 EB            [ 4]  255     ex de, hl                       ;; move screen address to de
                             256 
-   6D6A 0E 00         [ 7]  257     ld c, #0
-   6D6C FD 66 07      [19]  258     ld h, w_message+1(iy)
-   6D6F FD 6E 06      [19]  259     ld l, w_message(iy)
-   6D72 CD 16 7C      [17]  260     call sys_text_draw_string
+   6A09 0E 00         [ 7]  257     ld c, #0
+   6A0B FD 66 07      [19]  258     ld h, w_message+1(iy)
+   6A0E FD 6E 06      [19]  259     ld l, w_message(iy)
+   6A11 CD B5 78      [17]  260     call sys_text_draw_string
                             261 
                             262     ;; Draw Press Any Key
-   6D75 FD 7E 08      [19]  263     ld a, w_wait_for_key(iy)        ;; check if we have to wait for a key
-   6D78 FE 01         [ 7]  264     cp #1                           ;;
-   6D7A 28 10         [12]  265     jr  z, wait_for_key             ;;
+   6A14 FD 7E 08      [19]  263     ld a, w_wait_for_key(iy)        ;; check if we have to wait for a key
+   6A17 FE 01         [ 7]  264     cp #1                           ;;
+   6A19 28 10         [12]  265     jr  z, wait_for_key             ;;
                             266 
-   6D7C FD 7E 08      [19]  267     ld a, w_wait_for_key(iy)        ;; check if we have to wait for a key
-   6D7F FE 02         [ 7]  268     cp #2                           ;;
-   6D81 20 08         [12]  269     jr  nz, _sms_exit               ;;
+   6A1B FD 7E 08      [19]  267     ld a, w_wait_for_key(iy)        ;; check if we have to wait for a key
+   6A1E FE 02         [ 7]  268     cp #2                           ;;
+   6A20 20 08         [12]  269     jr  nz, _sms_exit               ;;
                             270 
-   6D83                     271 _sms_wait_delay:
-   6D83 06 32         [ 7]  272     ld b, #50
-   6D85 CD 4D 7D      [17]  273     call sys_util_delay
-   6D88 CD 20 6D      [17]  274     call sys_messages_restore_message_background
+   6A22                     271 _sms_wait_delay:
+   6A22 06 32         [ 7]  272     ld b, #50
+   6A24 CD EC 79      [17]  273     call sys_util_delay
+   6A27 CD BF 69      [17]  274     call sys_messages_restore_message_background
                             275 
-   6D8B                     276 _sms_exit:
-   6D8B C9            [10]  277     ret
+   6A2A                     276 _sms_exit:
+   6A2A C9            [10]  277     ret
                             278 
-   6D8C                     279 wait_for_key:
-   6D8C 11 00 C0      [10]  280     ld de, #CPCT_VMEM_START_ASM   ;; DE = Pointer to start of the screen
+   6A2B                     279 wait_for_key:
+   6A2B 11 00 C0      [10]  280     ld de, #CPCT_VMEM_START_ASM   ;; DE = Pointer to start of the screen
                             281     
                             282     ;;ld_de_backbuffer              ;; Calculate video memory location and return it in HL
                             283     ;;ld_de_frontbuffer              ;; Calculate video memory location and return it in HL
                             284     
                             285     
-   6D8F FD 7E 04      [19]  286     ld a, w_w(iy)                   ;;
-   6D92 0E 1A         [ 7]  287     ld c, #26                       ;;
-   6D94 91            [ 4]  288     sub c                           ;;
-   6D95 CB 2F         [ 8]  289     sra a                           ;; c = x + ((w- length(str))/2)
-   6D97 FD 4E 02      [19]  290     ld c, w_x(iy)                   ;;
-   6D9A 81            [ 4]  291     add c                           ;;
-   6D9B 4F            [ 4]  292     ld c, a                         ;;
+   6A2E FD 7E 04      [19]  286     ld a, w_w(iy)                   ;;
+   6A31 0E 1A         [ 7]  287     ld c, #26                       ;;
+   6A33 91            [ 4]  288     sub c                           ;;
+   6A34 CB 2F         [ 8]  289     sra a                           ;; c = x + ((w- length(str))/2)
+   6A36 FD 4E 02      [19]  290     ld c, w_x(iy)                   ;;
+   6A39 81            [ 4]  291     add c                           ;;
+   6A3A 4F            [ 4]  292     ld c, a                         ;;
                             293 
-   6D9C FD 46 03      [19]  294     ld b, w_y(iy)                   ;;
-   6D9F 3E 1A         [ 7]  295     ld a, #26                       ;; B = y + 10
-   6DA1 80            [ 4]  296     add b                           ;;
-   6DA2 47            [ 4]  297     ld b, a                         ;;
+   6A3B FD 46 03      [19]  294     ld b, w_y(iy)                   ;;
+   6A3E 3E 1A         [ 7]  295     ld a, #26                       ;; B = y + 10
+   6A40 80            [ 4]  296     add b                           ;;
+   6A41 47            [ 4]  297     ld b, a                         ;;
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 110.
 Hexadecimal [16-Bits]
 
 
 
                             298     
-   6DA3 CD 90 80      [17]  299     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
-   6DA6 EB            [ 4]  300     ex de, hl                       ;; move screen address to de
-   6DA7 0E 00         [ 7]  301     ld c, #0
-   6DA9 21 AD 81      [10]  302     ld hl, #_press_any_key_string
-   6DAC CD 16 7C      [17]  303     call sys_text_draw_string
+   6A42 CD 57 81      [17]  299     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
+   6A45 EB            [ 4]  300     ex de, hl                       ;; move screen address to de
+   6A46 0E 00         [ 7]  301     ld c, #0
+   6A48 21 F2 81      [10]  302     ld hl, #_press_any_key_string
+   6A4B CD B5 78      [17]  303     call sys_text_draw_string
                             304 
-   6DAF CD 22 6C      [17]  305     call sys_input_wait4anykey
-   6DB2 E5            [11]  306     push hl                         ;; store number of loops waited
+   6A4E CD C1 68      [17]  305     call sys_input_wait4anykey
+   6A51 E5            [11]  306     push hl                         ;; store number of loops waited
                             307 
-   6DB3 CD 20 6D      [17]  308     call sys_messages_restore_message_background
+   6A52 CD BF 69      [17]  308     call sys_messages_restore_message_background
                             309 
-   6DB6 E1            [10]  310     pop hl                          ;; return number of loops waited
+   6A55 E1            [10]  310     pop hl                          ;; return number of loops waited
                             311 
-   6DB7 C9            [10]  312     ret
+   6A56 C9            [10]  312     ret
                             313 
                             314 ;;-----------------------------------------------------------------
                             315 ;;
@@ -5794,19 +5795,19 @@ Hexadecimal [16-Bits]
                             326 ;;
                             327 ;; Implementation partly copied form cpctelera drawSolidBox
                             328 ;;
-   6DB8                     329 sys_messages_draw_box::
-   6DB8 F5            [11]  330     push af
-   6DB9 7D            [ 4]  331     ld a, l                             ;;
-   6DBA B7            [ 4]  332     or a                                ;; Check if box is empty
-   6DBB 28 09         [12]  333     jr z, smdb_empty                    ;;
+   6A57                     329 sys_messages_draw_box::
+   6A57 F5            [11]  330     push af
+   6A58 7D            [ 4]  331     ld a, l                             ;;
+   6A59 B7            [ 4]  332     or a                                ;; Check if box is empty
+   6A5A 28 09         [12]  333     jr z, smdb_empty                    ;;
                             334 
                             335     ;; Draw Back window
    0128                     336     cpctm_push de, bc
                      0002     1    .narg v
                      0001     2    .if v
-   6DBD D5            [11]    3    push de
+   6A5C D5            [11]    3    push de
                      0001     4    .if v-1
-   6DBE C5            [11]    5    push bc
+   6A5D C5            [11]    5    push bc
                      0000     6    .if v-2
                               7    push 
                               8    .if v-3
@@ -5831,14 +5832,14 @@ Hexadecimal [16-Bits]
                              22    .endif
                      0001    23    .else
                              24    .mexit
-   6DBF 3E 00         [ 7]  337     ld a,#0x00                          ;; Patern of solid box
-   6DC1 CD B7 7F      [17]  338     call cpct_drawSolidBox_asm          ;;
+   6A5E 3E 00         [ 7]  337     ld a,#0x00                          ;; Patern of solid box
+   6A60 CD 7E 80      [17]  338     call cpct_drawSolidBox_asm          ;;
    012F                     339     cpctm_pop bc, de
                      0002     1    .narg v
                      0001     2    .if v
-   6DC4 C1            [10]    3    pop bc
+   6A63 C1            [10]    3    pop bc
                      0001     4    .if v-1
-   6DC5 D1            [10]    5    pop de
+   6A64 D1            [10]    5    pop de
                      0000     6    .if v-2
                               7    pop 
                               8    .if v-3
@@ -5859,89 +5860,89 @@ Hexadecimal [16-Bits]
                      0001    23    .else
                              24    .mexit
                             340 
-   6DC6                     341 smdb_empty:
-   6DC6 F1            [10]  342     pop af
-   6DC7 32 E8 6D      [13]  343     ld (#draw_border+1), a
-   6DCA 32 F1 6D      [13]  344     ld (#draw_border2+1), a
-   6DCD 32 F5 6D      [13]  345     ld (#draw_line+1), a
-   6DD0 79            [ 4]  346     ld a, c
-   6DD1 32 11 6E      [13]  347     ld (width), a
-   6DD4 62            [ 4]  348  	ld h, d
-   6DD5 6B            [ 4]  349 	ld l, e	
-   6DD6 04            [ 4]  350     inc b                   ;; increment height in one 
-   6DD7 18 1B         [12]  351 	jr draw_line
+   6A65                     341 smdb_empty:
+   6A65 F1            [10]  342     pop af
+   6A66 32 87 6A      [13]  343     ld (#draw_border+1), a
+   6A69 32 90 6A      [13]  344     ld (#draw_border2+1), a
+   6A6C 32 94 6A      [13]  345     ld (#draw_line+1), a
+   6A6F 79            [ 4]  346     ld a, c
+   6A70 32 B0 6A      [13]  347     ld (width), a
+   6A73 62            [ 4]  348  	ld h, d
+   6A74 6B            [ 4]  349 	ld l, e	
+   6A75 04            [ 4]  350     inc b                   ;; increment height in one 
+   6A76 18 1B         [12]  351 	jr draw_line
                             352 
-   6DD9                     353 next_line:
-   6DD9 78            [ 4]  354 	ld a, b
-   6DDA 3D            [ 4]  355 	dec a
-   6DDB B7            [ 4]  356 	or a
-   6DDC C8            [11]  357 	ret z
+   6A78                     353 next_line:
+   6A78 78            [ 4]  354 	ld a, b
+   6A79 3D            [ 4]  355 	dec a
+   6A7A B7            [ 4]  356 	or a
+   6A7B C8            [11]  357 	ret z
                             358 
-   6DDD 47            [ 4]  359 	ld b, a
+   6A7C 47            [ 4]  359 	ld b, a
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 112.
 Hexadecimal [16-Bits]
 
 
 
-   6DDE 3A 11 6E      [13]  360 	ld a, (width)
-   6DE1 4F            [ 4]  361 	ld c,a
+   6A7D 3A B0 6A      [13]  360 	ld a, (width)
+   6A80 4F            [ 4]  361 	ld c,a
                             362 
-   6DE2 78            [ 4]  363 	ld a, b
-   6DE3 FE 01         [ 7]  364 	cp #1
-   6DE5 28 0D         [12]  365 	jr z, draw_line		;; Si estoy en la ultima linea salto a line
-   6DE7                     366 draw_border:
-   6DE7 36 FF         [10]  367 	ld (hl), #0xff
-   6DE9 79            [ 4]  368     ld a, c
-   6DEA 3D            [ 4]  369     dec a
+   6A81 78            [ 4]  363 	ld a, b
+   6A82 FE 01         [ 7]  364 	cp #1
+   6A84 28 0D         [12]  365 	jr z, draw_line		;; Si estoy en la ultima linea salto a line
+   6A86                     366 draw_border:
+   6A86 36 FF         [10]  367 	ld (hl), #0xff
+   6A88 79            [ 4]  368     ld a, c
+   6A89 3D            [ 4]  369     dec a
    0156                     370     add_hl_a
    0156                       1    add_REGPAIR_a  h, l
                               1    ;; First Perform RH = E + A
-   6DEB 85            [ 4]    2    add l    ;; [1] A' = RL + A 
-   6DEC 6F            [ 4]    3    ld  l, a ;; [1] RL' = A' = RL + A. It might generate Carry that must be added to RH
+   6A8A 85            [ 4]    2    add l    ;; [1] A' = RL + A 
+   6A8B 6F            [ 4]    3    ld  l, a ;; [1] RL' = A' = RL + A. It might generate Carry that must be added to RH
                               4    
                               5    ;; Then Perform RH = RH + Carry 
-   6DED 8C            [ 4]    6    adc h    ;; [1] A'' = A' + RH + Carry = RL + A + RH + Carry
-   6DEE 95            [ 4]    7    sub l    ;; [1] Remove RL'. A''' = A'' - RL' = RL + A + RH + Carry - (RL + A) = RH + Carry
-   6DEF 67            [ 4]    8    ld  h, a ;; [1] Save into RH (RH' = A''' = RH + Carry)
-   6DF0                     371 draw_border2:
-   6DF0 36 FF         [10]  372 	ld (hl), #0xff
-   6DF2 18 08         [12]  373 	jr down_line
+   6A8C 8C            [ 4]    6    adc h    ;; [1] A'' = A' + RH + Carry = RL + A + RH + Carry
+   6A8D 95            [ 4]    7    sub l    ;; [1] Remove RL'. A''' = A'' - RL' = RL + A + RH + Carry - (RL + A) = RH + Carry
+   6A8E 67            [ 4]    8    ld  h, a ;; [1] Save into RH (RH' = A''' = RH + Carry)
+   6A8F                     371 draw_border2:
+   6A8F 36 FF         [10]  372 	ld (hl), #0xff
+   6A91 18 08         [12]  373 	jr down_line
                             374 
-   6DF4                     375 draw_line:
-   6DF4 36 FF         [10]  376 	ld (hl), #0xff
-   6DF6 23            [ 6]  377 	inc hl
+   6A93                     375 draw_line:
+   6A93 36 FF         [10]  376 	ld (hl), #0xff
+   6A95 23            [ 6]  377 	inc hl
                             378 	;;djnz draw_line
-   6DF7 0D            [ 4]  379     dec c
-   6DF8 79            [ 4]  380     ld a, c
-   6DF9 B7            [ 4]  381     or a
-   6DFA 20 F8         [12]  382     jr nz, draw_line
+   6A96 0D            [ 4]  379     dec c
+   6A97 79            [ 4]  380     ld a, c
+   6A98 B7            [ 4]  381     or a
+   6A99 20 F8         [12]  382     jr nz, draw_line
                             383 
-   6DFC                     384 down_line:
-   6DFC 3E 08         [ 7]  385 	ld a, #8          	    ;; [2] / HL = DE = DE + 0x800
-   6DFE 82            [ 4]  386 	add d
-   6DFF 67            [ 4]  387     ld h, a           	    ;; [1] | Adding 0x800 makes HL point to the start of
-   6E00 57            [ 4]  388 	ld d, a
-   6E01 6B            [ 4]  389 	ld l, e
+   6A9B                     384 down_line:
+   6A9B 3E 08         [ 7]  385 	ld a, #8          	    ;; [2] / HL = DE = DE + 0x800
+   6A9D 82            [ 4]  386 	add d
+   6A9E 67            [ 4]  387     ld h, a           	    ;; [1] | Adding 0x800 makes HL point to the start of
+   6A9F 57            [ 4]  388 	ld d, a
+   6AA0 6B            [ 4]  389 	ld l, e
                             390 	
-   6E02 E6 38         [ 7]  391 	and   #0x38        	    ;; [2] leave out only bits 13,12 and 11 from new memory address (00xxx000 00000000)
-   6E04 C2 D9 6D      [10]  392     jp    nz, next_line    	;; [3] If any bit from {13,12,11} is not 0, we are still inside 
+   6AA1 E6 38         [ 7]  391 	and   #0x38        	    ;; [2] leave out only bits 13,12 and 11 from new memory address (00xxx000 00000000)
+   6AA3 C2 78 6A      [10]  392     jp    nz, next_line    	;; [3] If any bit from {13,12,11} is not 0, we are still inside 
                             393                         	;; ... video memory boundaries, so proceed with next line
                             394                             ;; Every 8 lines, we cross the 16K video memory boundaries and have to
                             395                             ;; reposition destination pointer. That means our next line is 16K-0x50 bytes back
                             396                             ;; which is the same as advancing 48K+0x50 = 0xC050 bytes, as memory is 64K 
                             397                             ;; and our 16bit pointers cycle over it
-   6E07 21 50 C0      [10]  398     ld    hl, #0xC050       ;; [3] We advance destination pointer to next line
-   6E0A 19            [11]  399     add   hl, de            ;; [3] HL = DE + 0xC050
-   6E0B 54            [ 4]  400     ld     d, h             ;; [1] / DE = HL
-   6E0C 5D            [ 4]  401     ld     e, l             ;; [1] \
-   6E0D C3 D9 6D      [10]  402     jp   next_line         	;; [3] Continue copying
+   6AA6 21 50 C0      [10]  398     ld    hl, #0xC050       ;; [3] We advance destination pointer to next line
+   6AA9 19            [11]  399     add   hl, de            ;; [3] HL = DE + 0xC050
+   6AAA 54            [ 4]  400     ld     d, h             ;; [1] / DE = HL
+   6AAB 5D            [ 4]  401     ld     e, l             ;; [1] \
+   6AAC C3 78 6A      [10]  402     jp   next_line         	;; [3] Continue copying
                             403 
-   6E10 C9            [10]  404     ret
-   6E11 00                  405 width: .db #0
+   6AAF C9            [10]  404     ret
+   6AB0 00                  405 width: .db #0
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 113.
 Hexadecimal [16-Bits]
 
 
 
-   6E12 00                  406 height: .db #0
-   6E13                     407 message_buffer: .ds 3000
+   6AB1 00                  406 height: .db #0
+   6AB2                     407 message_buffer: .ds 3000

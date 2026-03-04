@@ -5321,15 +5321,15 @@ Hexadecimal [16-Bits]
                              42 ;;
                              43 ;; Code taken form Miss Input 
                              44 ;;====================================================
-   79CB                      45 sys_render_clear_buffer::
-   79CB 21 00 C0      [10]   46     ld hl, #CPCT_VMEM_START_ASM
-   79CE 54            [ 4]   47     ld d, h
-   79CF 5D            [ 4]   48     ld e, l
-   79D0 13            [ 6]   49     inc de
-   79D1 01 FF 3F      [10]   50     ld bc, #0x4000-1
+   766A                      45 sys_render_clear_buffer::
+   766A 21 00 C0      [10]   46     ld hl, #CPCT_VMEM_START_ASM
+   766D 54            [ 4]   47     ld d, h
+   766E 5D            [ 4]   48     ld e, l
+   766F 13            [ 6]   49     inc de
+   7670 01 FF 3F      [10]   50     ld bc, #0x4000-1
                              51 
-   79D4 ED B0         [21]   52     ldir
-   79D6 C9            [10]   53 ret
+   7673 ED B0         [21]   52     ldir
+   7675 C9            [10]   53 ret
                              54 
                              55 ;;-----------------------------------------------------------------
                              56 ;;
@@ -5340,36 +5340,36 @@ Hexadecimal [16-Bits]
                              61 ;;  Output: 
                              62 ;;  Modified: AF, BC, DE, HL
                              63 ;;
-   79D7                      64 sys_render_init::
-   79D7 0E 00         [ 7]   65     ld c,#0                                 ;; Set video mode
-   79D9 CD 78 7F      [17]   66     call cpct_setVideoMode_asm              ;;
+   7676                      64 sys_render_init::
+   7676 0E 00         [ 7]   65     ld c,#0                                 ;; Set video mode
+   7678 CD 3F 80      [17]   66     call cpct_setVideoMode_asm              ;;
                              67     
                              68     ;; Palette: pen → colour (firmware index)
                              69     ;;  0=Black(0)        1=White(13)       2=Bright Blue(2)   3=Red(3)
                              70     ;;  4=Bright Red(6)   5=Orange(15)      6=Pastel Green(24) 7=Yellow(12)
                              71     ;;  8=Pink(16)        9=Green(9)       10=Cyan(10)        11=Pastel Blue(14)
                              72     ;; 12=Bright Cyan(11) 13=Bright Green(20) 14=Blue(1)      15=Bright White(26)
-   79DC 21 A0 68      [10]   73     ld hl, #_g_palette0                     ;; Set palette
-   79DF 11 10 00      [10]   74     ld de, #16                              ;;
+   767B 21 A0 68      [10]   73     ld hl, #_g_palette0                     ;; Set palette
+   767E 11 10 00      [10]   74     ld de, #16                              ;;
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 102.
 Hexadecimal [16-Bits]
 
 
 
-   79E2 CD 16 7E      [17]   75     call cpct_setPalette_asm                ;;
+   7681 CD DD 7E      [17]   75     call cpct_setPalette_asm                ;;
                              76     ;;cpctm_setBorder_asm HW_BLACK            ;; Set Border
    001A                      77     cpctm_setBorder_asm HW_WHITE            ;; Set Border
                               1    .radix h
    001A                       2    cpctm_setBorder_raw_asm \HW_WHITE ;; [28] Macro that does the job, but requires a number value to be passed
                               1    .globl cpct_setPALColour_asm
-   79E5 21 10 00      [10]    2    ld   hl, #0x010         ;; [3]  H=Hardware value of desired colour, L=Border INK (16)
-   79E8 CD 35 7E      [17]    3    call cpct_setPALColour_asm  ;; [25] Set Palette colour of the border
+   7684 21 10 00      [10]    2    ld   hl, #0x010         ;; [3]  H=Hardware value of desired colour, L=Border INK (16)
+   7687 CD FC 7E      [17]    3    call cpct_setPALColour_asm  ;; [25] Set Palette colour of the border
                               3    .radix d
                              78 
                              79     ;;call sys_render_clear_back_buffer
-   79EB CD CB 79      [17]   80     call sys_render_clear_buffer
+   768A CD 6A 76      [17]   80     call sys_render_clear_buffer
                              81 
-   79EE C9            [10]   82     ret
+   768D C9            [10]   82     ret
                              83 
                              84 ;;-----------------------------------------------------------------
                              85 ;;
@@ -5380,77 +5380,77 @@ Hexadecimal [16-Bits]
                              90 ;;  Output: 
                              91 ;;  Modified: AF, BC, DE, HL
                              92 ;;
-   79EF                      93 sys_render_draw_screen::
+   768E                      93 sys_render_draw_screen::
                              94 
    0024                      95     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 18, 7  ;; Get pointer to video memory for drawing the screen (36x10 tiles)
-   79EF 11 12 F8      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (7 / 8) + 2048 * (7 & 7) + 18   ;; [3] REG16 = screenPtr
-   79F2 0E 2C         [ 7]   96     ld c, #BG_HEADER_W
-   79F4 06 14         [ 7]   97     ld b, #BG_HEADER_H
-   79F6 21 70 59      [10]   98     ld hl, #_bg_header
-   79F9 CD 3F 7E      [17]   99     call cpct_drawSprite_asm
+   768E 11 12 F8      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (7 / 8) + 2048 * (7 & 7) + 18   ;; [3] REG16 = screenPtr
+   7691 0E 2C         [ 7]   96     ld c, #BG_HEADER_W
+   7693 06 14         [ 7]   97     ld b, #BG_HEADER_H
+   7695 21 70 59      [10]   98     ld hl, #_bg_header
+   7698 CD 06 7F      [17]   99     call cpct_drawSprite_asm
                             100 
    0031                     101     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 0, 50  ;; left basket
-   79FC 11 E0 D1      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (50 / 8) + 2048 * (50 & 7) + 0   ;; [3] REG16 = screenPtr
-   79FF 0E 12         [ 7]  102     ld c, #S_BASKET_W
-   7A01 06 4A         [ 7]  103     ld b, #S_BASKET_H
-   7A03 21 E0 5C      [10]  104     ld hl, #_s_basket
-   7A06 CD 3F 7E      [17]  105     call cpct_drawSprite_asm
+   769B 11 E0 D1      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (50 / 8) + 2048 * (50 & 7) + 0   ;; [3] REG16 = screenPtr
+   769E 0E 12         [ 7]  102     ld c, #S_BASKET_W
+   76A0 06 4A         [ 7]  103     ld b, #S_BASKET_H
+   76A2 21 E0 5C      [10]  104     ld hl, #_s_basket
+   76A5 CD 06 7F      [17]  105     call cpct_drawSprite_asm
                             106 
    003E                     107     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 62, 50  ;; right basket
-   7A09 11 1E D2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (50 / 8) + 2048 * (50 & 7) + 62   ;; [3] REG16 = screenPtr
-   7A0C 0E 12         [ 7]  108     ld c, #S_BASKET_W
-   7A0E 06 4A         [ 7]  109     ld b, #S_BASKET_H
-   7A10 21 E0 5C      [10]  110     ld hl, #_s_basket
-   7A13 CD 3F 7E      [17]  111     call cpct_drawSprite_asm
+   76A8 11 1E D2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (50 / 8) + 2048 * (50 & 7) + 62   ;; [3] REG16 = screenPtr
+   76AB 0E 12         [ 7]  108     ld c, #S_BASKET_W
+   76AD 06 4A         [ 7]  109     ld b, #S_BASKET_H
+   76AF 21 E0 5C      [10]  110     ld hl, #_s_basket
+   76B2 CD 06 7F      [17]  111     call cpct_drawSprite_asm
                             112 
    004B                     113     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 4, 68  ;; P1 cat
-   7A16 11 84 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 4   ;; [3] REG16 = screenPtr
-   7A19 01 44 64      [10]  114     ld bc, #_s_cat_0
+   76B5 11 84 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 4   ;; [3] REG16 = screenPtr
+   76B8 01 44 64      [10]  114     ld bc, #_s_cat_0
    0051                     115     ld__ixl S_CAT_W
-   7A1C DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
+   76BB DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
    0054                     116     ld__ixh S_CAT_H
-   7A1F DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
-   7A22 21 00 01      [10]  117     ld hl, #transparency_table
+   76BE DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
+   76C1 21 00 01      [10]  117     ld hl, #transparency_table
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 103.
 Hexadecimal [16-Bits]
 
 
 
-   7A25 CD AF 80      [17]  118     call cpct_drawSpriteMaskedAlignedTable_asm
+   76C4 CD 76 81      [17]  118     call cpct_drawSpriteMaskedAlignedTable_asm
                             119 
    005D                     120     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 9, 68  ;; P1 catty
-   7A28 11 89 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 9   ;; [3] REG16 = screenPtr
+   76C7 11 89 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 9   ;; [3] REG16 = screenPtr
    0060                     121     ld__ixl S_CATTY_W
-   7A2B DD 2E 05              1    .db #0xDD, #0x2E, S_CATTY_W  ;; Opcode for ld ixl, Value
+   76CA DD 2E 05              1    .db #0xDD, #0x2E, S_CATTY_W  ;; Opcode for ld ixl, Value
    0063                     122     ld__ixh S_CATTY_H
-   7A2E DD 26 11              1    .db #0xDD, #0x26, S_CATTY_H  ;; Opcode for ld ixh, Value
-   7A31 01 9A 63      [10]  123     ld bc, #_s_catty_0
-   7A34 21 00 01      [10]  124     ld hl, #transparency_table
-   7A37 CD AF 80      [17]  125     call cpct_drawSpriteMaskedAlignedTable_asm
+   76CD DD 26 11              1    .db #0xDD, #0x26, S_CATTY_H  ;; Opcode for ld ixh, Value
+   76D0 01 9A 63      [10]  123     ld bc, #_s_catty_0
+   76D3 21 00 01      [10]  124     ld hl, #transparency_table
+   76D6 CD 76 81      [17]  125     call cpct_drawSpriteMaskedAlignedTable_asm
                             126 
    006F                     127     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 66, 68  ;; P2 cat
-   7A3A 11 C2 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 66   ;; [3] REG16 = screenPtr
-   7A3D 01 99 64      [10]  128     ld bc, #_s_cat_1
+   76D9 11 C2 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 66   ;; [3] REG16 = screenPtr
+   76DC 01 99 64      [10]  128     ld bc, #_s_cat_1
    0075                     129     ld__ixl S_CAT_W
-   7A40 DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
+   76DF DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
    0078                     130     ld__ixh S_CAT_H
-   7A43 DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
-   7A46 21 00 01      [10]  131     ld hl, #transparency_table
-   7A49 CD AF 80      [17]  132     call cpct_drawSpriteMaskedAlignedTable_asm
+   76E2 DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
+   76E5 21 00 01      [10]  131     ld hl, #transparency_table
+   76E8 CD 76 81      [17]  132     call cpct_drawSpriteMaskedAlignedTable_asm
                             133 
    0081                     134     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 71, 68  ;; P2 catty
-   7A4C 11 C7 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 71   ;; [3] REG16 = screenPtr
+   76EB 11 C7 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 71   ;; [3] REG16 = screenPtr
    0084                     135     ld__ixl S_CATTY_W
-   7A4F DD 2E 05              1    .db #0xDD, #0x2E, S_CATTY_W  ;; Opcode for ld ixl, Value
+   76EE DD 2E 05              1    .db #0xDD, #0x2E, S_CATTY_W  ;; Opcode for ld ixl, Value
    0087                     136     ld__ixh S_CATTY_H
-   7A52 DD 26 11              1    .db #0xDD, #0x26, S_CATTY_H  ;; Opcode for ld ixh, Value
-   7A55 01 EF 63      [10]  137     ld bc, #_s_catty_1
-   7A58 21 00 01      [10]  138     ld hl, #transparency_table
-   7A5B CD AF 80      [17]  139     call cpct_drawSpriteMaskedAlignedTable_asm
+   76F1 DD 26 11              1    .db #0xDD, #0x26, S_CATTY_H  ;; Opcode for ld ixh, Value
+   76F4 01 EF 63      [10]  137     ld bc, #_s_catty_1
+   76F7 21 00 01      [10]  138     ld hl, #transparency_table
+   76FA CD 76 81      [17]  139     call cpct_drawSpriteMaskedAlignedTable_asm
                             140 
-   7A5E CD 62 7A      [17]  141     call sys_render_draw_grid
+   76FD CD 01 77      [17]  141     call sys_render_draw_grid
                             142 
-   7A61 C9            [10]  143     ret
+   7700 C9            [10]  143     ret
                             144 
                             145 ;;-----------------------------------------------------------------
                             146 ;;
@@ -5461,15 +5461,15 @@ Hexadecimal [16-Bits]
                             151 ;;  Output:
                             152 ;;  Modified: AF, BC, DE, HL
                             153 ;;
-   7A62                     154 sys_render_draw_grid::
+   7701                     154 sys_render_draw_grid::
    0097                     155     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 18, 32  ;; grid
-   7A62 11 52 C1      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (32 / 8) + 2048 * (32 & 7) + 18   ;; [3] REG16 = screenPtr
-   7A65 0E 2C         [ 7]  156     ld c, #BG_GRID_W
-   7A67 06 94         [ 7]  157     ld b, #BG_GRID_H
-   7A69 21 00 40      [10]  158     ld hl, #_bg_grid
-   7A6C CD 3F 7E      [17]  159     call cpct_drawSprite_asm
+   7701 11 52 C1      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (32 / 8) + 2048 * (32 & 7) + 18   ;; [3] REG16 = screenPtr
+   7704 0E 2C         [ 7]  156     ld c, #BG_GRID_W
+   7706 06 94         [ 7]  157     ld b, #BG_GRID_H
+   7708 21 00 40      [10]  158     ld hl, #_bg_grid
+   770B CD 06 7F      [17]  159     call cpct_drawSprite_asm
                             160 
-   7A6F C9            [10]  161     ret
+   770E C9            [10]  161     ret
                             162 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 104.
 Hexadecimal [16-Bits]
@@ -5572,15 +5572,15 @@ Hexadecimal [16-Bits]
                             251 ;; Thanks to all of them for their help and support.
                             252 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                             253 
-   7A70                     254 sys_render_drawSpriteMaskedAlignedColorizeM0_asm:: ;; Assembly entry point
+   770F                     254 sys_render_drawSpriteMaskedAlignedColorizeM0_asm:: ;; Assembly entry point
                             255 
                             256    ;; GET Parameters from the stack 
-   7A70 DD 22 C6 7A   [20]  257    ld (dms_restore_ix + 2), ix      ;; [6] Save IX to restore it before returning
+   770F DD 22 65 77   [20]  257    ld (dms_restore_ix + 2), ix      ;; [6] Save IX to restore it before returning
                             258 ;;   pop   hl                       ;; [3] HL = Return Address
                             259 
                             260 
-   7A74 F5            [11]  261    push  af                         ;; [4] Save AF (Source Sprite Pointer) in Stack
-   7A75 DD 22 9B 7A   [20]  262    ld   (aligned_mask_table), ix    ;; [6] Set Aligned Mask Table pointer in placeholder
+   7713 F5            [11]  261    push  af                         ;; [4] Save AF (Source Sprite Pointer) in Stack
+   7714 DD 22 3A 77   [20]  262    ld   (aligned_mask_table), ix    ;; [6] Set Aligned Mask Table pointer in placeholder
                             263 
                             264    ;; Compute E = (FindPat ^ InsrPat). This will be used at the end of the routine
                             265    ;; to insert InsrPat in the byte by XORing again, as the final operation will
@@ -5588,57 +5588,57 @@ Hexadecimal [16-Bits]
                             267    ;; FindPat). This final operation will then be (1) XOR against FindPat (Zeroing bits,
                             268    ;; because they are equal) and (2) XOR againts InsrPat (Inserting InsrPat bits, 
                             269    ;; because its an XOR against zeros). That way, we will perform 2 operations on 1.
-   7A79 7D            [ 4]  270    ld    a, l      ;; [1] / IYL = (InsrPat ^ FindPat)
-   7A7A AC            [ 4]  271    xor   h         ;; [1] |
+   7718 7D            [ 4]  270    ld    a, l      ;; [1] / IYL = (InsrPat ^ FindPat)
+   7719 AC            [ 4]  271    xor   h         ;; [1] |
    00B0                     272    ld__iyl_a       ;; [2] \ 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 106.
 Hexadecimal [16-Bits]
 
 
 
-   7A7B FD 6F                 1    .dw #0x6FFD  ;; Opcode for ld iyl, a
+   771A FD 6F                 1    .dw #0x6FFD  ;; Opcode for ld iyl, a
                             273 
-   7A7D 7C            [ 4]  274    ld    a, h      ;; [1] / IXL = H (FindPat) Save for later use
+   771C 7C            [ 4]  274    ld    a, h      ;; [1] / IXL = H (FindPat) Save for later use
    00B3                     275    ld__ixl_a       ;; [2] \
-   7A7E DD 6F                 1    .dw #0x6FDD  ;; Opcode for ld ixl, a
+   771D DD 6F                 1    .dw #0x6FDD  ;; Opcode for ld ixl, a
                             276 
    00B5                     277    ld__iyh_c       ;; [2] IYH = C (Sprite Width) Save for later use
-   7A80 FD 61                 1    .dw #0x61FD  ;; Opcode for ld iyh, c
-   7A82 E1            [10]  278    pop   hl        ;; [3] HL = Recover from Stack (Source Sprite Pointer)
+   771F FD 61                 1    .dw #0x61FD  ;; Opcode for ld iyh, c
+   7721 E1            [10]  278    pop   hl        ;; [3] HL = Recover from Stack (Source Sprite Pointer)
                             279 
                             280    ;; Loop for all the bytes of the Sprite then Modify pixels of each byte using Patterns
-   7A83                     281 height_loop:
-   7A83 D5            [11]  282    push  de        ;; [4] Save DE for later use (jump to next screen line)       
+   7722                     281 height_loop:
+   7722 D5            [11]  282    push  de        ;; [4] Save DE for later use (jump to next screen line)       
                             283 
-   7A84                     284 width_loop:
+   7723                     284 width_loop:
                             285    ;; First, perfom an XOR between the FindPat and the SpriteByte to modify
                             286    ;; This XOR will convert to zero all bits of pixels coinciding with FindPat
                             287    ;; But will left at least a bit with a 1 in the others (not coinciding with FindPat)
    00B9                     288    ld__a_ixl       ;; [2] / *HL = SpriteByte, IXL = FindPat
-   7A84 DD 7D                 1    .dw #0x7DDD  ;; Opcode for ld a, ixl
-   7A86 AE            [ 7]  289    xor  (hl)       ;; [2] | A = D = (SpriteByte ^ FindPat)
+   7723 DD 7D                 1    .dw #0x7DDD  ;; Opcode for ld a, ixl
+   7725 AE            [ 7]  289    xor  (hl)       ;; [2] | A = D = (SpriteByte ^ FindPat)
    00BC                     290    ld__ixh_a       ;; [2] \   => SelectedPixels=00, OtherPixels!=00 
-   7A87 DD 67                 1    .dw #0x67DD  ;; Opcode for ld ixh, a
+   7726 DD 67                 1    .dw #0x67DD  ;; Opcode for ld ixh, a
                             291    
                             292    ;; Now we want to create a MASK byte with 0's in all the bits corresponding to
                             293    ;; selected pixels (coinciding with FindPat) and 1's in all other bits. To do this,
                             294    ;; as each pixels has 2 bits, we just need to OR both of them. Pixels selected have
                             295    ;; both of them equal to 0, and non-selected have at least a 1. We rotate the
                             296    ;; byte to align both pair of bits in each pixel, then we or them together.
-   7A89 0F            [ 4]  297    rrca            ;; [1] / E     = [  A  1  B  2  C  3  D  4 ]
-   7A8A 0F            [ 4]  298    rrca            ;; [1] | A     = [  D  4  A  1  B  2  C  3 ]
+   7728 0F            [ 4]  297    rrca            ;; [1] / E     = [  A  1  B  2  C  3  D  4 ]
+   7729 0F            [ 4]  298    rrca            ;; [1] | A     = [  D  4  A  1  B  2  C  3 ]
    00C0                     299    or__ixh         ;; [2] \ A|IXH = [ AD 14 AB 12 BC 23 CD 34 ]
-   7A8B DD B4                 1    .dw #0xB4DD  ;; Opcode for or ixh
+   772A DD B4                 1    .dw #0xB4DD  ;; Opcode for or ixh
    00C2                     300    ld__ixh_a       ;; [2] IXH = A
-   7A8D DD 67                 1    .dw #0x67DD  ;; Opcode for ld ixh, a
-   7A8F 0F            [ 4]  301    rrca            ;; [1] /   
-   7A90 0F            [ 4]  302    rrca            ;; [1] |  
-   7A91 0F            [ 4]  303    rrca            ;; [1] | D     = [   AD   14   AB   12   BC   23   CD   34 ]
-   7A92 0F            [ 4]  304    rrca            ;; [1] | A     = [   BC   23   CD   34   AD   14   AB   12 ]
+   772C DD 67                 1    .dw #0x67DD  ;; Opcode for ld ixh, a
+   772E 0F            [ 4]  301    rrca            ;; [1] /   
+   772F 0F            [ 4]  302    rrca            ;; [1] |  
+   7730 0F            [ 4]  303    rrca            ;; [1] | D     = [   AD   14   AB   12   BC   23   CD   34 ]
+   7731 0F            [ 4]  304    rrca            ;; [1] | A     = [   BC   23   CD   34   AD   14   AB   12 ]
    00C8                     305    or__ixh         ;; [2] \ A|IXH = [ ABCD 1234 ABCD 1234 ABCD 1234 ABCD 1234 ]
-   7A93 DD B4                 1    .dw #0xB4DD  ;; Opcode for or ixh
+   7732 DD B4                 1    .dw #0xB4DD  ;; Opcode for or ixh
                             306    ;; We revert the MASK (producing ~MASK), making selected pixels be 11, and Others 00
-   7A95 2F            [ 4]  307    cpl             ;; [1] A = ~MASK (SelectedPixels==11, OtherPixels==00)
+   7734 2F            [ 4]  307    cpl             ;; [1] A = ~MASK (SelectedPixels==11, OtherPixels==00)
                             308 
                             309    ;; Now we are ready to insert InsrPath. First we multiply (AND) our negated mask (~MASK)
                             310    ;; with E=(InsrPath ^ FindPat). This does the effect of Masquerading (InsrPat ^ FindPat), 
@@ -5650,55 +5650,55 @@ Hexadecimal [16-Bits]
                             316    ;; and InsrPat inserted, but only on the bits of the SelectedPixels (as others are 0's 
                             317    ;; after Masquerading).
    00CB                     318    and__iyl        ;; [2] A = ~MASK & (InsrPat ^ FindPat)
-   7A96 FD A5                 1    .dw #0xA5FD  ;; Opcode for and iyl
+   7735 FD A5                 1    .dw #0xA5FD  ;; Opcode for and iyl
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 107.
 Hexadecimal [16-Bits]
 
 
 
-   7A98 AE            [ 7]  319    xor  (hl)       ;; [2] A = (~MASK & (InsrPat ^ FindPat)) ^ SpriteByte
+   7737 AE            [ 7]  319    xor  (hl)       ;; [2] A = (~MASK & (InsrPat ^ FindPat)) ^ SpriteByte
                             320    
-   7A99 E5            [11]  321    push  hl        ;; [4] Save HL during the mask computation
+   7738 E5            [11]  321    push  hl        ;; [4] Save HL during the mask computation
                      00D0   322 aligned_mask_table = .+1 
-   7A9A 21 00 00      [10]  323   ld     hl, #0000 ;; [3] HL = Aligned mask table for transparencies (placeholder)
+   7739 21 00 00      [10]  323   ld     hl, #0000 ;; [3] HL = Aligned mask table for transparencies (placeholder)
                             324    
-   7A9D 6F            [ 4]  325    ld    l, a      ;; [1] Access mask table element (table must be 256-byte aligned)
-   7A9E 1A            [ 7]  326    ld    a, (de)   ;; [2] Get the value of the byte of the screen where we are going to draw
-   7A9F A6            [ 7]  327    and  (hl)       ;; [2] Erase background part that is to be overwritten (Mask step 1)
-   7AA0 B5            [ 4]  328    or    l         ;; [1] Add up background and sprite information in one byte (Mask step 2)
+   773C 6F            [ 4]  325    ld    l, a      ;; [1] Access mask table element (table must be 256-byte aligned)
+   773D 1A            [ 7]  326    ld    a, (de)   ;; [2] Get the value of the byte of the screen where we are going to draw
+   773E A6            [ 7]  327    and  (hl)       ;; [2] Erase background part that is to be overwritten (Mask step 1)
+   773F B5            [ 4]  328    or    l         ;; [1] Add up background and sprite information in one byte (Mask step 2)
                             329    
-   7AA1 E1            [10]  330    pop  hl         ;; [3] Restore HL (sprite)
+   7740 E1            [10]  330    pop  hl         ;; [3] Restore HL (sprite)
                             331    
-   7AA2 12            [ 7]  332    ld  (de), a     ;; [2] Save modified background + sprite data information into memory
-   7AA3 23            [ 6]  333    inc   hl        ;; [2] ++HL point to next byte in the sprite
-   7AA4 13            [ 6]  334    inc   de        ;; [2] ++DE point to next byte in the screen
+   7741 12            [ 7]  332    ld  (de), a     ;; [2] Save modified background + sprite data information into memory
+   7742 23            [ 6]  333    inc   hl        ;; [2] ++HL point to next byte in the sprite
+   7743 13            [ 6]  334    inc   de        ;; [2] ++DE point to next byte in the screen
                             335    
-   7AA5 0D            [ 4]  336    dec   c         ;; [1] --C holds sprite width, we decrease it to count pixels in this line.
-   7AA6 C2 84 7A      [10]  337    jp    nz, width_loop   ;; [2/3] While not 0, we are still painting this sprite line 
+   7744 0D            [ 4]  336    dec   c         ;; [1] --C holds sprite width, we decrease it to count pixels in this line.
+   7745 C2 23 77      [10]  337    jp    nz, width_loop   ;; [2/3] While not 0, we are still painting this sprite line 
                             338    
-   7AA9 D1            [10]  339    pop   de        ;; [3] Restore DE start line (DestMem)   
-   7AAA 05            [ 4]  340    dec   b         ;; [1] --B holds sprite height. We decrease it to count another pixel line finished
-   7AAB CA C4 7A      [10]  341    jp    z, end_sprite_colourize ;; [2/3] If 0, we have finished the last sprite line.
+   7748 D1            [10]  339    pop   de        ;; [3] Restore DE start line (DestMem)   
+   7749 05            [ 4]  340    dec   b         ;; [1] --B holds sprite height. We decrease it to count another pixel line finished
+   774A CA 63 77      [10]  341    jp    z, end_sprite_colourize ;; [2/3] If 0, we have finished the last sprite line.
                             342    
    00E3                     343    ld__c_iyh       ;; [2] C = IYH (Sprite Width)
-   7AAE FD 4C                 1    .dw #0x4CFD  ;; Opcode for ld c, iyh
-   7AB0 7A            [ 4]  344    ld    a, d      ;; [1] Start of next pixel line normally is 0x0800 bytes away.
-   7AB1 C6 08         [ 7]  345    add   #0x08     ;; [2] so we add it to DE (just by adding 0x08 to D)
-   7AB3 57            [ 4]  346    ld    d, a      ;; [1]
-   7AB4 E6 38         [ 7]  347    and   #0x38     ;; [2] We check if we have crossed memory boundary (every 8 pixel lines)
-   7AB6 C2 83 7A      [10]  348    jp    nz, height_loop  ;; [2/3] .. by checking the 4 bits that identify present memory line. 
+   774D FD 4C                 1    .dw #0x4CFD  ;; Opcode for ld c, iyh
+   774F 7A            [ 4]  344    ld    a, d      ;; [1] Start of next pixel line normally is 0x0800 bytes away.
+   7750 C6 08         [ 7]  345    add   #0x08     ;; [2] so we add it to DE (just by adding 0x08 to D)
+   7752 57            [ 4]  346    ld    d, a      ;; [1]
+   7753 E6 38         [ 7]  347    and   #0x38     ;; [2] We check if we have crossed memory boundary (every 8 pixel lines)
+   7755 C2 22 77      [10]  348    jp    nz, height_loop  ;; [2/3] .. by checking the 4 bits that identify present memory line. 
                             349 
-   7AB9 7B            [ 4]  350    ld    a, e      ;; [1] If 0, we have crossed boundaries then DE = DE + 0xC050h
-   7ABA C6 50         [ 7]  351    add   #0x50     ;; [2] -- Relocate DE pointer to the start of the next pixel line:
-   7ABC 5F            [ 4]  352    ld    e, a      ;; [1] -- DE is moved forward 3 memory banks plus 50 bytes (4000h * 3) 
-   7ABD 7A            [ 4]  353    ld    a, d      ;; [1] -- which effectively is the same as moving it 1 bank backwards and then
-   7ABE CE C0         [ 7]  354    adc   #0xC0     ;; [2] -- 50 bytes forwards (which is what we want to move it to the next pixel line)
-   7AC0 57            [ 4]  355    ld    d, a      ;; [1] -- Calculations are made with 8 bit maths as it is faster than other alternatives here
-   7AC1 C3 83 7A      [10]  356    jp    height_loop      ;; [3] Jump to continue with next pixel line 
+   7758 7B            [ 4]  350    ld    a, e      ;; [1] If 0, we have crossed boundaries then DE = DE + 0xC050h
+   7759 C6 50         [ 7]  351    add   #0x50     ;; [2] -- Relocate DE pointer to the start of the next pixel line:
+   775B 5F            [ 4]  352    ld    e, a      ;; [1] -- DE is moved forward 3 memory banks plus 50 bytes (4000h * 3) 
+   775C 7A            [ 4]  353    ld    a, d      ;; [1] -- which effectively is the same as moving it 1 bank backwards and then
+   775D CE C0         [ 7]  354    adc   #0xC0     ;; [2] -- 50 bytes forwards (which is what we want to move it to the next pixel line)
+   775F 57            [ 4]  355    ld    d, a      ;; [1] -- Calculations are made with 8 bit maths as it is faster than other alternatives here
+   7760 C3 22 77      [10]  356    jp    height_loop      ;; [3] Jump to continue with next pixel line 
                             357 
-   7AC4                     358 end_sprite_colourize:
+   7763                     358 end_sprite_colourize:
                             359                    ;; return in binding
                             360 
-   7AC4                     361 dms_restore_ix:
-   7AC4 DD 21 00 00   [14]  362    ld   ix, #0000               ;; [4] Restore IX before returning
-   7AC8 C9            [10]  363    ret                          ;; [3] Return to caller
+   7763                     361 dms_restore_ix:
+   7763 DD 21 00 00   [14]  362    ld   ix, #0000               ;; [4] Restore IX before returning
+   7767 C9            [10]  363    ret                          ;; [3] Return to caller

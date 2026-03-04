@@ -98,14 +98,14 @@ Symbol Table
   0 str_cmp_   003B R   |   0 str_copy=  001E R   |   0 str_leng   0015 R
   0 str_leng   000D R   |     string_b   **** GX  |     sys_rend   **** GX
     sys_rend   **** GX  |     sys_rend   **** GX  |     sys_rend   **** GX
-  0 sys_text   0040 GR  |   0 sys_text   013A GR  |   0 sys_text   0167 GR
-  0 sys_text   00D4 GR  |   0 sys_text   0123 GR  |   0 sys_text   0000 GR
-  0 sys_text   0026 GR  |   0 sys_text   0017 GR  |   0 sys_text   000B GR
-    sys_utiL   **** GX  |     sys_util   **** GX  |     sys_util   **** GX
+    sys_rend   **** GX  |   0 sys_text   0040 GR  |   0 sys_text   013A GR
+  0 sys_text   0167 GR  |   0 sys_text   00D4 GR  |   0 sys_text   0123 GR
+  0 sys_text   0000 GR  |   0 sys_text   0026 GR  |   0 sys_text   0017 GR
+  0 sys_text   000B GR  |     sys_utiL   **** GX  |     sys_util   **** GX
     sys_util   **** GX  |     sys_util   **** GX  |     sys_util   **** GX
     sys_util   **** GX  |     sys_util   **** GX  |     sys_util   **** GX
     sys_util   **** GX  |     sys_util   **** GX  |     sys_util   **** GX
-    transpar   **** GX  |     v       =  0003 
+    sys_util   **** GX  |     transpar   **** GX  |     v       =  0003 
 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 3.
 Hexadecimal [16-Bits]

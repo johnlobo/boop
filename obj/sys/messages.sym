@@ -98,18 +98,18 @@ Symbol Table
   0 sys_mess   0123 GR  |   0 sys_mess   0057 GR  |   0 sys_mess   0000 GR
   0 sys_mess   008B GR  |   0 sys_mess   009E GR  |     sys_rend   **** GX
     sys_rend   **** GX  |     sys_rend   **** GX  |     sys_rend   **** GX
+    sys_rend   **** GX  |     sys_text   **** GX  |     sys_text   **** GX
     sys_text   **** GX  |     sys_text   **** GX  |     sys_text   **** GX
     sys_text   **** GX  |     sys_text   **** GX  |     sys_text   **** GX
-    sys_text   **** GX  |     sys_text   **** GX  |     sys_utiL   **** GX
+    sys_utiL   **** GX  |     sys_util   **** GX  |     sys_util   **** GX
     sys_util   **** GX  |     sys_util   **** GX  |     sys_util   **** GX
     sys_util   **** GX  |     sys_util   **** GX  |     sys_util   **** GX
     sys_util   **** GX  |     sys_util   **** GX  |     sys_util   **** GX
-    sys_util   **** GX  |     sys_util   **** GX  |     transpar   **** GX
-    v       =  0002     |     w_addres=  0000     |     w_b_colo=  0009 
-    w_h     =  0005     |     w_messag=  0006     |     w_w     =  0004 
-    w_wait_f=  0008     |     w_x     =  0002     |     w_y     =  0003 
-  0 wait_for   00F7 R   |   0 width      017C R   |   0 width_ok   002C R
-  0 y_coord    00CF R
+    transpar   **** GX  |     v       =  0002     |     w_addres=  0000 
+    w_b_colo=  0009     |     w_h     =  0005     |     w_messag=  0006 
+    w_w     =  0004     |     w_wait_f=  0008     |     w_x     =  0002 
+    w_y     =  0003     |   0 wait_for   00F7 R   |   0 width      017C R
+  0 width_ok   002C R   |   0 y_coord    00CF R
 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 3.
 Hexadecimal [16-Bits]

@@ -5393,71 +5393,72 @@ Hexadecimal [16-Bits]
                              20 .globl sys_render_init
                              21 .globl sys_render_clear_buffer
                              22 .globl sys_render_draw_screen
-                             23 
-                             24 ;;===============================================================================
-                             25 ;; PUBLIC CONSTANTS
-                             26 ;;===============================================================================
-                             27 
-                             28 ;;===============================================================================
-                             29 ;; MACRO
-                             30 ;;===============================================================================
-                             31 .mdelete ld_de_backbuffer
-                             32 .macro ld_de_backbuffer
-                             33    ld   a, (sys_render_back_buffer)          ;; DE = Pointer to start of the screen
-                             34    ld   d, a
-                             35    ld   e, #00
-                             36 .endm
-                             37 
-                             38 .mdelete ld_de_frontbuffer
-                             39 .macro ld_de_frontbuffer
-                             40    ld   a, (sys_render_front_buffer)         ;; DE = Pointer to start of the screen
-                             41    ld   d, a
-                             42    ld   e, #00
-                             43 .endm
-                             44 
-                             45 .mdelete m_screenPtr_backbuffer
-                             46 .macro m_screenPtr_backbuffer X, Y
-                             47    push hl
-                             48    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
-                             49    ld a, (sys_render_back_buffer)
-                             50    ld h, a
-                             51    ld l, #0         
-                             52    add hl, de
-                             53    ex de, hl
-                             54    pop hl
+                             23 .globl sys_render_draw_grid
+                             24 
+                             25 ;;===============================================================================
+                             26 ;; PUBLIC CONSTANTS
+                             27 ;;===============================================================================
+                             28 
+                             29 ;;===============================================================================
+                             30 ;; MACRO
+                             31 ;;===============================================================================
+                             32 .mdelete ld_de_backbuffer
+                             33 .macro ld_de_backbuffer
+                             34    ld   a, (sys_render_back_buffer)          ;; DE = Pointer to start of the screen
+                             35    ld   d, a
+                             36    ld   e, #00
+                             37 .endm
+                             38 
+                             39 .mdelete ld_de_frontbuffer
+                             40 .macro ld_de_frontbuffer
+                             41    ld   a, (sys_render_front_buffer)         ;; DE = Pointer to start of the screen
+                             42    ld   d, a
+                             43    ld   e, #00
+                             44 .endm
+                             45 
+                             46 .mdelete m_screenPtr_backbuffer
+                             47 .macro m_screenPtr_backbuffer X, Y
+                             48    push hl
+                             49    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
+                             50    ld a, (sys_render_back_buffer)
+                             51    ld h, a
+                             52    ld l, #0         
+                             53    add hl, de
+                             54    ex de, hl
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 104.
 Hexadecimal [16-Bits]
 
 
 
-                             55 .endm
-                             56 
-                             57 .mdelete m_screenPtr_frontbuffer
-                             58 .macro m_screenPtr_frontbuffer X, Y
-                             59    push hl
-                             60    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
-                             61    ld a, (sys_render_front_buffer)
-                             62    ld h, a
-                             63    ld l, #0         
-                             64    add hl, de
-                             65    ex de, hl
-                             66    pop hl
-                             67 .endm
-                             68 
+                             55    pop hl
+                             56 .endm
+                             57 
+                             58 .mdelete m_screenPtr_frontbuffer
+                             59 .macro m_screenPtr_frontbuffer X, Y
+                             60    push hl
+                             61    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
+                             62    ld a, (sys_render_front_buffer)
+                             63    ld h, a
+                             64    ld l, #0         
+                             65    add hl, de
+                             66    ex de, hl
+                             67    pop hl
+                             68 .endm
                              69 
-                             70 .mdelete m_draw_blank_small_number
-                             71 .macro m_draw_blank_small_number BACKGROUND
-                             72    push de
-                             73    push hl
-                             74    ld c, #4
-                             75    ld b, #5
-                             76    ;;ld a, #0                                ;; Patern of solid box
-                             77    ;;ld a, #0x33                             ;; Patern of solid box blue (12)
-                             78    ld a, #BACKGROUND                         ;; Patern of solid box blue (12)
-                             79    call cpct_drawSolidBox_asm
-                             80    pop hl
-                             81    pop de
-                             82 .endm
+                             70 
+                             71 .mdelete m_draw_blank_small_number
+                             72 .macro m_draw_blank_small_number BACKGROUND
+                             73    push de
+                             74    push hl
+                             75    ld c, #4
+                             76    ld b, #5
+                             77    ;;ld a, #0                                ;; Patern of solid box
+                             78    ;;ld a, #0x33                             ;; Patern of solid box blue (12)
+                             79    ld a, #BACKGROUND                         ;; Patern of solid box blue (12)
+                             80    call cpct_drawSolidBox_asm
+                             81    pop hl
+                             82    pop de
+                             83 .endm
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 105.
 Hexadecimal [16-Bits]
 

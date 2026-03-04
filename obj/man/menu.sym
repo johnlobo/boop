@@ -66,44 +66,46 @@ Symbol Table
     S_CATTY_=  0011     |     S_CATTY_=  0005     |     S_CAT_H =  0011 
     S_CAT_W =  0005     |     S_SMALL_=  0005     |     S_SMALL_=  0002 
     ZERO_KEY=  00FF     |     _bg_grid   **** GX  |     _bg_head   **** GX
-    _cpct_ke   **** GX  |   0 _draw_op   001A R   |   0 _draw_op   0018 R
-  0 _draw_op   0037 R   |   0 _draw_op   0035 R   |     _g_palet   **** GX
-  1 _menu_ke   0019 R   |   1 _menu_op   0000 R   |   1 _menu_op   000B R
-  0 _mmu_che   0071 R   |   0 _mmu_che   0086 R   |   0 _mmu_che   005C R
-  0 _mmu_don   009A R   |   0 _mmu_set   0095 R   |     _s_baske   **** GX
+    _cpct_ke   **** GX  |   0 _draw_op   0012 R   |   0 _draw_op   0010 R
+  0 _draw_op   0028 R   |   0 _draw_op   0026 R   |   0 _draw_op   003E R
+  0 _draw_op   003C R   |     _g_palet   **** GX  |   1 _menu_ke   001E R
+  1 _menu_op   0000 R   |   1 _menu_op   000B R   |   1 _menu_op   0017 R
+  0 _mmu_che   007E R   |   0 _mmu_che   0099 R   |   0 _mmu_che   0063 R
+  0 _mmu_don   00AD R   |   0 _mmu_dow   0091 R   |   0 _mmu_dow   0090 R
+  0 _mmu_set   00A8 R   |   0 _mmu_up_   0076 R   |   0 _mmu_up_   0074 R
+    _s_baske   **** GX  |     _s_big_n   **** GX  |     _s_big_n   **** GX
     _s_big_n   **** GX  |     _s_big_n   **** GX  |     _s_big_n   **** GX
     _s_big_n   **** GX  |     _s_big_n   **** GX  |     _s_big_n   **** GX
-    _s_big_n   **** GX  |     _s_big_n   **** GX  |     _s_big_n   **** GX
-    _s_big_n   **** GX  |     _s_cat_0   **** GX  |     _s_cat_1   **** GX
-    _s_catty   **** GX  |     _s_catty   **** GX  |     _s_font_   **** GX
+    _s_big_n   **** GX  |     _s_big_n   **** GX  |     _s_cat_0   **** GX
+    _s_cat_1   **** GX  |     _s_catty   **** GX  |     _s_catty   **** GX
+    _s_font_   **** GX  |     _s_small   **** GX  |     _s_small   **** GX
     _s_small   **** GX  |     _s_small   **** GX  |     _s_small   **** GX
     _s_small   **** GX  |     _s_small   **** GX  |     _s_small   **** GX
-    _s_small   **** GX  |     _s_small   **** GX  |     _s_small   **** GX
-    _s_small   **** GX  |     aux_txt    **** GX  |     cpct_dis   **** GX
-    cpct_dra   **** GX  |     cpct_dra   **** GX  |     cpct_dra   **** GX
-    cpct_get   **** GX  |     cpct_get   **** GX  |     cpct_get   **** GX
-    cpct_isA   **** GX  |     cpct_isK   **** GX  |     cpct_pag=  0000 
-    cpct_pag=  0010     |     cpct_pag=  0020     |     cpct_pag=  0030 
-    cpct_pen   **** GX  |     cpct_px2   **** GX  |     cpct_sca   **** GX
+    _s_small   **** GX  |     _s_small   **** GX  |     aux_txt    **** GX
+    cpct_dis   **** GX  |     cpct_dra   **** GX  |     cpct_dra   **** GX
+    cpct_dra   **** GX  |     cpct_get   **** GX  |     cpct_get   **** GX
+    cpct_get   **** GX  |     cpct_isA   **** GX  |     cpct_isK   **** GX
+    cpct_pag=  0000     |     cpct_pag=  0010     |     cpct_pag=  0020 
+    cpct_pag=  0030     |     cpct_pen   **** GX  |     cpct_px2   **** GX
+    cpct_sca   **** GX  |     cpct_set   **** GX  |     cpct_set   **** GX
     cpct_set   **** GX  |     cpct_set   **** GX  |     cpct_set   **** GX
-    cpct_set   **** GX  |     cpct_set   **** GX  |     cpct_wai   **** GX
-    cpct_wai   **** GX  |     cpct_wai   **** GX  |     firmware=  0038 
-  1 man_menu   0018 GR  |   0 man_menu   0000 GR  |   0 man_menu   003B GR
-  1 man_menu   0017 GR  |   0 man_menu   004C GR  |     opc_DI  =  00F3 
-    opc_EI  =  00FB     |     opc_JR  =  0018     |     opc_LD_D=  0016 
+    cpct_wai   **** GX  |     cpct_wai   **** GX  |     cpct_wai   **** GX
+    firmware=  0038     |   1 man_menu   001D GR  |   0 man_menu   0000 GR
+  0 man_menu   0042 GR  |   1 man_menu   001C GR  |   0 man_menu   0053 GR
+    opc_DI  =  00F3     |     opc_EI  =  00FB     |     opc_JR  =  0018 
+    opc_LD_D=  0016     |     sys_inpu   **** GX  |     sys_inpu   **** GX
     sys_inpu   **** GX  |     sys_inpu   **** GX  |     sys_inpu   **** GX
-    sys_inpu   **** GX  |     sys_inpu   **** GX  |     sys_inpu   **** GX
+    sys_inpu   **** GX  |     sys_rend   **** GX  |     sys_rend   **** GX
     sys_rend   **** GX  |     sys_rend   **** GX  |     sys_rend   **** GX
-    sys_rend   **** GX  |     sys_text   **** GX  |     sys_text   **** GX
     sys_text   **** GX  |     sys_text   **** GX  |     sys_text   **** GX
     sys_text   **** GX  |     sys_text   **** GX  |     sys_text   **** GX
-    transpar   **** GX
+    sys_text   **** GX  |     sys_text   **** GX  |     transpar   **** GX
 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 3.
 Hexadecimal [16-Bits]
 
 Area Table
 
-   0 _CODE      size   9B   flags    0
-   1 _DATA      size   1A   flags    0
+   0 _CODE      size   AE   flags    0
+   1 _DATA      size   1F   flags    0
 

@@ -89,7 +89,8 @@ Symbol Table
   1 nInterru   0000 GR  |     opc_DI  =  00F3     |     opc_EI  =  00FB 
     opc_JR  =  0018     |     opc_LD_D=  0016     |   0 set_int_   0000 R
     sys_rend   **** GX  |     sys_rend   **** GX  |     sys_rend   **** GX
-    sys_rend   **** GX  |   0 sys_syst   0067 GR  |     transpar   **** GX
+    sys_rend   **** GX  |     sys_rend   **** GX  |   0 sys_syst   0067 GR
+    transpar   **** GX
 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 3.
 Hexadecimal [16-Bits]

@@ -5259,71 +5259,72 @@ Hexadecimal [16-Bits]
                              20 .globl sys_render_init
                              21 .globl sys_render_clear_buffer
                              22 .globl sys_render_draw_screen
-                             23 
-                             24 ;;===============================================================================
-                             25 ;; PUBLIC CONSTANTS
-                             26 ;;===============================================================================
-                             27 
-                             28 ;;===============================================================================
-                             29 ;; MACRO
-                             30 ;;===============================================================================
-                             31 .mdelete ld_de_backbuffer
-                             32 .macro ld_de_backbuffer
-                             33    ld   a, (sys_render_back_buffer)          ;; DE = Pointer to start of the screen
-                             34    ld   d, a
-                             35    ld   e, #00
-                             36 .endm
-                             37 
-                             38 .mdelete ld_de_frontbuffer
-                             39 .macro ld_de_frontbuffer
-                             40    ld   a, (sys_render_front_buffer)         ;; DE = Pointer to start of the screen
-                             41    ld   d, a
-                             42    ld   e, #00
-                             43 .endm
-                             44 
-                             45 .mdelete m_screenPtr_backbuffer
-                             46 .macro m_screenPtr_backbuffer X, Y
-                             47    push hl
-                             48    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
-                             49    ld a, (sys_render_back_buffer)
-                             50    ld h, a
-                             51    ld l, #0         
-                             52    add hl, de
-                             53    ex de, hl
-                             54    pop hl
+                             23 .globl sys_render_draw_grid
+                             24 
+                             25 ;;===============================================================================
+                             26 ;; PUBLIC CONSTANTS
+                             27 ;;===============================================================================
+                             28 
+                             29 ;;===============================================================================
+                             30 ;; MACRO
+                             31 ;;===============================================================================
+                             32 .mdelete ld_de_backbuffer
+                             33 .macro ld_de_backbuffer
+                             34    ld   a, (sys_render_back_buffer)          ;; DE = Pointer to start of the screen
+                             35    ld   d, a
+                             36    ld   e, #00
+                             37 .endm
+                             38 
+                             39 .mdelete ld_de_frontbuffer
+                             40 .macro ld_de_frontbuffer
+                             41    ld   a, (sys_render_front_buffer)         ;; DE = Pointer to start of the screen
+                             42    ld   d, a
+                             43    ld   e, #00
+                             44 .endm
+                             45 
+                             46 .mdelete m_screenPtr_backbuffer
+                             47 .macro m_screenPtr_backbuffer X, Y
+                             48    push hl
+                             49    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
+                             50    ld a, (sys_render_back_buffer)
+                             51    ld h, a
+                             52    ld l, #0         
+                             53    add hl, de
+                             54    ex de, hl
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 101.
 Hexadecimal [16-Bits]
 
 
 
-                             55 .endm
-                             56 
-                             57 .mdelete m_screenPtr_frontbuffer
-                             58 .macro m_screenPtr_frontbuffer X, Y
-                             59    push hl
-                             60    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
-                             61    ld a, (sys_render_front_buffer)
-                             62    ld h, a
-                             63    ld l, #0         
-                             64    add hl, de
-                             65    ex de, hl
-                             66    pop hl
-                             67 .endm
-                             68 
+                             55    pop hl
+                             56 .endm
+                             57 
+                             58 .mdelete m_screenPtr_frontbuffer
+                             59 .macro m_screenPtr_frontbuffer X, Y
+                             60    push hl
+                             61    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
+                             62    ld a, (sys_render_front_buffer)
+                             63    ld h, a
+                             64    ld l, #0         
+                             65    add hl, de
+                             66    ex de, hl
+                             67    pop hl
+                             68 .endm
                              69 
-                             70 .mdelete m_draw_blank_small_number
-                             71 .macro m_draw_blank_small_number BACKGROUND
-                             72    push de
-                             73    push hl
-                             74    ld c, #4
-                             75    ld b, #5
-                             76    ;;ld a, #0                                ;; Patern of solid box
-                             77    ;;ld a, #0x33                             ;; Patern of solid box blue (12)
-                             78    ld a, #BACKGROUND                         ;; Patern of solid box blue (12)
-                             79    call cpct_drawSolidBox_asm
-                             80    pop hl
-                             81    pop de
-                             82 .endm
+                             70 
+                             71 .mdelete m_draw_blank_small_number
+                             72 .macro m_draw_blank_small_number BACKGROUND
+                             73    push de
+                             74    push hl
+                             75    ld c, #4
+                             76    ld b, #5
+                             77    ;;ld a, #0                                ;; Patern of solid box
+                             78    ;;ld a, #0x33                             ;; Patern of solid box blue (12)
+                             79    ld a, #BACKGROUND                         ;; Patern of solid box blue (12)
+                             80    call cpct_drawSolidBox_asm
+                             81    pop hl
+                             82    pop de
+                             83 .endm
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 102.
 Hexadecimal [16-Bits]
 
@@ -5421,148 +5422,175 @@ Hexadecimal [16-Bits]
         41 59 45 52 00
    000B 54 57 4F 20 50 4C    32 _menu_opt2_string:  .asciz "TWO PLAYERS"
         41 59 45 52 53 00
-                             33 
-   0017 00                   34 man_menu_selected::  .db 0      ;; 0 = ONE PLAYER, 1 = TWO PLAYERS
-   0018 00                   35 man_menu_confirmed:: .db 0      ;; 0 = not confirmed, 1 = ONE PLAYER, 2 = TWO PLAYERS
-                             36 
-   0019 00                   37 _menu_key_debounce: .db 0       ;; 1 if a key was held last frame
-                             38 
-                             39 ;;
-                             40 ;; Start of _CODE area
-                             41 ;;
-                             42 .area _CODE
-                             43 
-                             44 ;;-----------------------------------------------------------------
-                             45 ;;
-                             46 ;; man_menu_draw
-                             47 ;;
-                             48 ;;  Draws both menu options. Selected option in yellow, other in white.
-                             49 ;;  Input:
-                             50 ;;  Output:
-                             51 ;;  Modified: AF, BC, DE, HL
-                             52 ;;
-   0000                      53 man_menu_draw::
-                             54    ;; Draw option 1: ONE PLAYER  (x=31 bytes, y=90 px)
-   0000 11 00 C0      [10]   55    ld de, #CPCT_VMEM_START_ASM
-   0003 0E 1F         [ 7]   56    ld c, #31
-   0005 06 5A         [ 7]   57    ld b, #90
-   0007 CD 00 00      [17]   58    call cpct_getScreenPtr_asm
-   000A EB            [ 4]   59    ex de, hl
-   000B 21 00 00      [10]   60    ld hl, #_menu_opt1_string
-   000E 3A 17 00      [13]   61    ld a, (man_menu_selected)
-   0011 B7            [ 4]   62    or a
-   0012 20 04         [12]   63    jr nz, _draw_opt1_white
-   0014 0E 01         [ 7]   64    ld c, #1                          ;; Bright Yellow = selected
-   0016 18 02         [12]   65    jr _draw_opt1
-   0018                      66 _draw_opt1_white:
-   0018 0E 00         [ 7]   67    ld c, #0                          ;; Bright White = unselected
-   001A                      68 _draw_opt1:
-   001A CD 00 00      [17]   69    call sys_text_draw_string
-                             70 
-                             71    ;; Draw option 2: TWO PLAYERS  (x=30 bytes, y=110 px)
-   001D 11 00 C0      [10]   72    ld de, #CPCT_VMEM_START_ASM
-   0020 0E 1E         [ 7]   73    ld c, #30
-   0022 06 6E         [ 7]   74    ld b, #110
-   0024 CD 00 00      [17]   75    call cpct_getScreenPtr_asm
+   0017 48 45 4C 50 00       33 _menu_opt3_string:  .asciz "HELP"
+                             34 
+   001C 00                   35 man_menu_selected::  .db 0      ;; 0 = ONE PLAYER, 1 = TWO PLAYERS, 2 = HELP
+   001D 00                   36 man_menu_confirmed:: .db 0      ;; 0 = not confirmed, 1 = ONE PLAYER, 2 = TWO PLAYERS, 3 = HELP
+                             37 
+   001E 00                   38 _menu_key_debounce: .db 0       ;; 1 if a key was held last frame
+                             39 
+                             40 ;;
+                             41 ;; Start of _CODE area
+                             42 ;;
+                             43 .area _CODE
+                             44 
+                             45 ;;-----------------------------------------------------------------
+                             46 ;;
+                             47 ;; man_menu_draw
+                             48 ;;
+                             49 ;;  Draws both menu options. Selected option in yellow, other in white.
+                             50 ;;  Input:
+                             51 ;;  Output:
+                             52 ;;  Modified: AF, BC, DE, HL
+                             53 ;;
+   0000                      54 man_menu_draw::
+                             55    ;; Draw option 1: ONE PLAYER  (x=31 bytes, y=90 px)
+   0000                      56    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 31, 90  ;; Get pointer to video memory for drawing the first option of the menu
+   0000 11 8F D3      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (90 / 8) + 2048 * (90 & 7) + 31   ;; [3] REG16 = screenPtr
+   0003 21 00 00      [10]   57    ld hl, #_menu_opt1_string
+   0006 3A 1C 00      [13]   58    ld a, (man_menu_selected)
+   0009 B7            [ 4]   59    or a
+   000A 20 04         [12]   60    jr nz, _draw_opt1_white
+   000C 0E 01         [ 7]   61    ld c, #1                          ;; Bright Yellow = selected
+   000E 18 02         [12]   62    jr _draw_opt1
+   0010                      63 _draw_opt1_white:
+   0010 0E 00         [ 7]   64    ld c, #0                          ;; Bright White = unselected
+   0012                      65 _draw_opt1:
+   0012 CD 00 00      [17]   66    call sys_text_draw_string
+                             67 
+                             68    ;; Draw option 2: TWO PLAYERS  (x=30 bytes, y=110 px)
+   0015                      69    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 30, 110  ;; Get pointer to video memory for drawing the second option of the menu
+   0015 11 2E F4      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (110 / 8) + 2048 * (110 & 7) + 30   ;; [3] REG16 = screenPtr
+   0018 21 0B 00      [10]   70    ld hl, #_menu_opt2_string
+   001B 3A 1C 00      [13]   71    ld a, (man_menu_selected)
+   001E FE 01         [ 7]   72    cp #1
+   0020 20 04         [12]   73    jr nz, _draw_opt2_white
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 105.
 Hexadecimal [16-Bits]
 
 
 
-   0027 EB            [ 4]   76    ex de, hl
-   0028 21 0B 00      [10]   77    ld hl, #_menu_opt2_string
-   002B 3A 17 00      [13]   78    ld a, (man_menu_selected)
-   002E B7            [ 4]   79    or a
-   002F 28 04         [12]   80    jr z, _draw_opt2_white
-   0031 0E 01         [ 7]   81    ld c, #1                          ;; Bright Yellow = selected
-   0033 18 02         [12]   82    jr _draw_opt2
-   0035                      83 _draw_opt2_white:
-   0035 0E 00         [ 7]   84    ld c, #0                          ;; Bright White = unselected
-   0037                      85 _draw_opt2:
-   0037 CD 00 00      [17]   86    call sys_text_draw_string
-                             87 
-   003A C9            [10]   88    ret
-                             89 
-                             90 ;;-----------------------------------------------------------------
-                             91 ;;
-                             92 ;; man_menu_init
-                             93 ;;
-                             94 ;;  Initializes and draws the main menu
-                             95 ;;  Input:
-                             96 ;;  Output:
-                             97 ;;  Modified: AF, BC, DE, HL
+   0022 0E 01         [ 7]   74    ld c, #1                          ;; Bright Yellow = selected
+   0024 18 02         [12]   75    jr _draw_opt2
+   0026                      76 _draw_opt2_white:
+   0026 0E 00         [ 7]   77    ld c, #0                          ;; Bright White = unselected
+   0028                      78 _draw_opt2:
+   0028 CD 00 00      [17]   79    call sys_text_draw_string
+                             80 
+                             81    ;; Draw option 3: HELP  (x=34 bytes, y=130 px)
+   002B                      82    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 34, 130  ;; Get pointer to video memory for drawing the third option of the menu
+   002B 11 22 D5      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (130 / 8) + 2048 * (130 & 7) + 34   ;; [3] REG16 = screenPtr
+   002E 21 17 00      [10]   83    ld hl, #_menu_opt3_string
+   0031 3A 1C 00      [13]   84    ld a, (man_menu_selected)
+   0034 FE 02         [ 7]   85    cp #2
+   0036 20 04         [12]   86    jr nz, _draw_opt3_white
+   0038 0E 01         [ 7]   87    ld c, #1                          ;; Bright Yellow = selected
+   003A 18 02         [12]   88    jr _draw_opt3
+   003C                      89 _draw_opt3_white:
+   003C 0E 00         [ 7]   90    ld c, #0                          ;; Bright White = unselected
+   003E                      91 _draw_opt3:
+   003E CD 00 00      [17]   92    call sys_text_draw_string
+                             93 
+                             94 
+   0041 C9            [10]   95    ret
+                             96 
+                             97 ;;-----------------------------------------------------------------
                              98 ;;
-   003B                      99 man_menu_init::
-   003B AF            [ 4]  100    xor a
-   003C 32 17 00      [13]  101    ld (man_menu_selected), a
-   003F 32 18 00      [13]  102    ld (man_menu_confirmed), a
-   0042 32 19 00      [13]  103    ld (_menu_key_debounce), a
-                            104 
-   0045 CD 00 00      [17]  105    call sys_render_clear_buffer
-   0048 CD 00 00      [17]  106    call man_menu_draw
-                            107 
-   004B C9            [10]  108    ret
-                            109 
-                            110 ;;-----------------------------------------------------------------
-                            111 ;;
-                            112 ;; man_menu_update
-                            113 ;;
-                            114 ;;  Updates the main menu each frame: cursor navigation and confirm.
-                            115 ;;  Input:
-                            116 ;;  Output:
-                            117 ;;  Modified: AF, BC, DE, HL
+                             99 ;; man_menu_init
+                            100 ;;
+                            101 ;;  Initializes and draws the main menu
+                            102 ;;  Input:
+                            103 ;;  Output:
+                            104 ;;  Modified: AF, BC, DE, HL
+                            105 ;;
+   0042                     106 man_menu_init::
+   0042 AF            [ 4]  107    xor a
+   0043 32 1C 00      [13]  108    ld (man_menu_selected), a
+   0046 32 1D 00      [13]  109    ld (man_menu_confirmed), a
+   0049 32 1E 00      [13]  110    ld (_menu_key_debounce), a
+                            111 
+   004C CD 00 00      [17]  112    call sys_render_clear_buffer
+   004F CD 00 00      [17]  113    call man_menu_draw
+                            114 
+   0052 C9            [10]  115    ret
+                            116 
+                            117 ;;-----------------------------------------------------------------
                             118 ;;
-   004C                     119 man_menu_update::
-                            120    ;; Debounce: if a key was held last frame, wait for full release
-   004C 3A 19 00      [13]  121    ld a, (_menu_key_debounce)
-   004F B7            [ 4]  122    or a
-   0050 28 0A         [12]  123    jr z, _mmu_check_keys
-   0052 CD 00 00      [17]  124    call cpct_isAnyKeyPressed_asm
-   0055 B7            [ 4]  125    or a
-   0056 C0            [11]  126    ret nz                            ;; still held, do nothing this frame
-   0057 AF            [ 4]  127    xor a
-   0058 32 19 00      [13]  128    ld (_menu_key_debounce), a
-   005B C9            [10]  129    ret
-                            130 
+                            119 ;; man_menu_update
+                            120 ;;
+                            121 ;;  Updates the main menu each frame: cursor navigation and confirm.
+                            122 ;;  Input:
+                            123 ;;  Output:
+                            124 ;;  Modified: AF, BC, DE, HL
+                            125 ;;
+   0053                     126 man_menu_update::
+                            127    ;; Debounce: if a key was held last frame, wait for full release
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 106.
 Hexadecimal [16-Bits]
 
 
 
-   005C                     131 _mmu_check_keys:
-                            132    ;; Cursor Up: move selection up (toggle between 0 and 1)
-   005C 21 00 01      [10]  133    ld hl, #Key_CursorUp
-   005F CD 00 00      [17]  134    call cpct_isKeyPressed_asm
-   0062 28 0D         [12]  135    jr z, _mmu_check_down
-   0064 3A 17 00      [13]  136    ld a, (man_menu_selected)
-   0067 EE 01         [ 7]  137    xor #1
-   0069 32 17 00      [13]  138    ld (man_menu_selected), a
-   006C CD 00 00      [17]  139    call man_menu_draw
-   006F 18 24         [12]  140    jr _mmu_set_debounce
-                            141 
-   0071                     142 _mmu_check_down:
-                            143    ;; Cursor Down: move selection down (toggle between 0 and 1)
-   0071 21 00 04      [10]  144    ld hl, #Key_CursorDown
-   0074 CD 00 00      [17]  145    call cpct_isKeyPressed_asm
-   0077 28 0D         [12]  146    jr z, _mmu_check_enter
-   0079 3A 17 00      [13]  147    ld a, (man_menu_selected)
-   007C EE 01         [ 7]  148    xor #1
-   007E 32 17 00      [13]  149    ld (man_menu_selected), a
-   0081 CD 00 00      [17]  150    call man_menu_draw
-   0084 18 0F         [12]  151    jr _mmu_set_debounce
-                            152 
-   0086                     153 _mmu_check_enter:
-                            154    ;; Enter: confirm current selection
-   0086 21 02 04      [10]  155    ld hl, #Key_Return
-   0089 CD 00 00      [17]  156    call cpct_isKeyPressed_asm
-   008C 28 0C         [12]  157    jr z, _mmu_done
-   008E 3A 17 00      [13]  158    ld a, (man_menu_selected)
-   0091 3C            [ 4]  159    inc a                             ;; 1 = ONE PLAYER, 2 = TWO PLAYERS
-   0092 32 18 00      [13]  160    ld (man_menu_confirmed), a
-                            161 
-   0095                     162 _mmu_set_debounce:
-   0095 3E 01         [ 7]  163    ld a, #1
-   0097 32 19 00      [13]  164    ld (_menu_key_debounce), a
-                            165 
-   009A                     166 _mmu_done:
-   009A C9            [10]  167    ret
+   0053 3A 1E 00      [13]  128    ld a, (_menu_key_debounce)
+   0056 B7            [ 4]  129    or a
+   0057 28 0A         [12]  130    jr z, _mmu_check_keys
+   0059 CD 00 00      [17]  131    call cpct_isAnyKeyPressed_asm
+   005C B7            [ 4]  132    or a
+   005D C0            [11]  133    ret nz                            ;; still held, do nothing this frame
+   005E AF            [ 4]  134    xor a
+   005F 32 1E 00      [13]  135    ld (_menu_key_debounce), a
+   0062 C9            [10]  136    ret
+                            137 
+   0063                     138 _mmu_check_keys:
+                            139    ;; Cursor Up: move selection up, wrapping 0 -> 2
+   0063 21 00 01      [10]  140    ld hl, #Key_CursorUp
+   0066 CD 00 00      [17]  141    call cpct_isKeyPressed_asm
+   0069 28 13         [12]  142    jr z, _mmu_check_down
+   006B 3A 1C 00      [13]  143    ld a, (man_menu_selected)
+   006E B7            [ 4]  144    or a
+   006F 28 03         [12]  145    jr z, _mmu_up_wrap
+   0071 3D            [ 4]  146    dec a
+   0072 18 02         [12]  147    jr _mmu_up_done
+   0074                     148 _mmu_up_wrap:
+   0074 3E 02         [ 7]  149    ld a, #2
+   0076                     150 _mmu_up_done:
+   0076 32 1C 00      [13]  151    ld (man_menu_selected), a
+   0079 CD 00 00      [17]  152    call man_menu_draw
+   007C 18 2A         [12]  153    jr _mmu_set_debounce
+                            154 
+   007E                     155 _mmu_check_down:
+                            156    ;; Cursor Down: move selection down, wrapping 2 -> 0
+   007E 21 00 04      [10]  157    ld hl, #Key_CursorDown
+   0081 CD 00 00      [17]  158    call cpct_isKeyPressed_asm
+   0084 28 13         [12]  159    jr z, _mmu_check_enter
+   0086 3A 1C 00      [13]  160    ld a, (man_menu_selected)
+   0089 FE 02         [ 7]  161    cp #2
+   008B 28 03         [12]  162    jr z, _mmu_down_wrap
+   008D 3C            [ 4]  163    inc a
+   008E 18 01         [12]  164    jr _mmu_down_done
+   0090                     165 _mmu_down_wrap:
+   0090 AF            [ 4]  166    xor a
+   0091                     167 _mmu_down_done:
+   0091 32 1C 00      [13]  168    ld (man_menu_selected), a
+   0094 CD 00 00      [17]  169    call man_menu_draw
+   0097 18 0F         [12]  170    jr _mmu_set_debounce
+                            171 
+   0099                     172 _mmu_check_enter:
+                            173    ;; Enter: confirm current selection
+   0099 21 02 04      [10]  174    ld hl, #Key_Return
+   009C CD 00 00      [17]  175    call cpct_isKeyPressed_asm
+   009F 28 0C         [12]  176    jr z, _mmu_done
+   00A1 3A 1C 00      [13]  177    ld a, (man_menu_selected)
+   00A4 3C            [ 4]  178    inc a                             ;; 1 = ONE PLAYER, 2 = TWO PLAYERS
+   00A5 32 1D 00      [13]  179    ld (man_menu_confirmed), a
+                            180 
+   00A8                     181 _mmu_set_debounce:
+   00A8 3E 01         [ 7]  182    ld a, #1
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 107.
+Hexadecimal [16-Bits]
+
+
+
+   00AA 32 1E 00      [13]  183    ld (_menu_key_debounce), a
+                            184 
+   00AD                     185 _mmu_done:
+   00AD C9            [10]  186    ret
