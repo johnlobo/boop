@@ -30,9 +30,10 @@
 
 _menu_opt1_string:  .asciz "ONE PLAYER"
 _menu_opt2_string:  .asciz "TWO PLAYERS"
+_menu_opt3_string:  .asciz "HELP"
 
-man_menu_selected::  .db 0      ;; 0 = ONE PLAYER, 1 = TWO PLAYERS
-man_menu_confirmed:: .db 0      ;; 0 = not confirmed, 1 = ONE PLAYER, 2 = TWO PLAYERS
+man_menu_selected::  .db 0      ;; 0 = ONE PLAYER, 1 = TWO PLAYERS, 2 = HELP
+man_menu_confirmed:: .db 0      ;; 0 = not confirmed, 1 = ONE PLAYER, 2 = TWO PLAYERS, 3 = HELP
 
 _menu_key_debounce: .db 0       ;; 1 if a key was held last frame
 
@@ -52,11 +53,7 @@ _menu_key_debounce: .db 0       ;; 1 if a key was held last frame
 ;;
 man_menu_draw::
    ;; Draw option 1: ONE PLAYER  (x=31 bytes, y=90 px)
-   ld de, #CPCT_VMEM_START_ASM
-   ld c, #31
-   ld b, #90
-   call cpct_getScreenPtr_asm
-   ex de, hl
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 31, 90  ;; Get pointer to video memory for drawing the first option of the menu
    ld hl, #_menu_opt1_string
    ld a, (man_menu_selected)
    or a
@@ -69,21 +66,31 @@ _draw_opt1:
    call sys_text_draw_string
 
    ;; Draw option 2: TWO PLAYERS  (x=30 bytes, y=110 px)
-   ld de, #CPCT_VMEM_START_ASM
-   ld c, #30
-   ld b, #110
-   call cpct_getScreenPtr_asm
-   ex de, hl
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 30, 110  ;; Get pointer to video memory for drawing the second option of the menu
    ld hl, #_menu_opt2_string
    ld a, (man_menu_selected)
-   or a
-   jr z, _draw_opt2_white
+   cp #1
+   jr nz, _draw_opt2_white
    ld c, #1                          ;; Bright Yellow = selected
    jr _draw_opt2
 _draw_opt2_white:
    ld c, #0                          ;; Bright White = unselected
 _draw_opt2:
    call sys_text_draw_string
+
+   ;; Draw option 3: HELP  (x=34 bytes, y=130 px)
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 34, 130  ;; Get pointer to video memory for drawing the third option of the menu
+   ld hl, #_menu_opt3_string
+   ld a, (man_menu_selected)
+   cp #2
+   jr nz, _draw_opt3_white
+   ld c, #1                          ;; Bright Yellow = selected
+   jr _draw_opt3
+_draw_opt3_white:
+   ld c, #0                          ;; Bright White = unselected
+_draw_opt3:
+   call sys_text_draw_string
+
 
    ret
 
@@ -129,23 +136,35 @@ man_menu_update::
    ret
 
 _mmu_check_keys:
-   ;; Cursor Up: move selection up (toggle between 0 and 1)
+   ;; Cursor Up: move selection up, wrapping 0 -> 2
    ld hl, #Key_CursorUp
    call cpct_isKeyPressed_asm
    jr z, _mmu_check_down
    ld a, (man_menu_selected)
-   xor #1
+   or a
+   jr z, _mmu_up_wrap
+   dec a
+   jr _mmu_up_done
+_mmu_up_wrap:
+   ld a, #2
+_mmu_up_done:
    ld (man_menu_selected), a
    call man_menu_draw
    jr _mmu_set_debounce
 
 _mmu_check_down:
-   ;; Cursor Down: move selection down (toggle between 0 and 1)
+   ;; Cursor Down: move selection down, wrapping 2 -> 0
    ld hl, #Key_CursorDown
    call cpct_isKeyPressed_asm
    jr z, _mmu_check_enter
    ld a, (man_menu_selected)
-   xor #1
+   cp #2
+   jr z, _mmu_down_wrap
+   inc a
+   jr _mmu_down_done
+_mmu_down_wrap:
+   xor a
+_mmu_down_done:
    ld (man_menu_selected), a
    call man_menu_draw
    jr _mmu_set_debounce

@@ -17,6 +17,7 @@
 .include "man/game.h.s"
 .include "man/menu.h.s"
 .include "man/match.h.s"
+.include "man/help.h.s"
 .include "cpctelera.h.s"
 .include "../common.h.s"
 .include "sys/render.h.s"
@@ -30,6 +31,7 @@
 ;;
 GAME_STATE_MENU    = 0
 GAME_STATE_PLAYING = 1
+GAME_STATE_HELP    = 2
 
 ;;
 ;; Start of _DATA area
@@ -37,7 +39,7 @@ GAME_STATE_PLAYING = 1
 .area _DATA
 
 _game_state:         .db 0
-_game_loaded_string: .asciz " GAME LOADED - V.002"
+_game_loaded_string: .asciz " GAME LOADED - V.003"
 
 ;;
 ;; Start of _CODE area
@@ -90,7 +92,9 @@ sys_game_update::
    ld a, (_game_state)
    or a
    jr z, _sgu_menu
-   jr _sgu_playing
+   cp #GAME_STATE_PLAYING
+   jr z, _sgu_playing
+   jr _sgu_help
 
 _sgu_menu:
    call man_menu_update
@@ -100,12 +104,35 @@ _sgu_menu:
    or a
    ret z                               ;; not confirmed yet, stay in menu
 
+   ;; confirmed=3 means HELP was selected
+   cp #3
+   jr z, _sgu_goto_help
+
    ;; Transition to playing: init match (reads selection, resets players, draws screen)
    ld a, #GAME_STATE_PLAYING
    ld (_game_state), a
    call man_match_init
    ret
 
+_sgu_goto_help:
+   ld a, #GAME_STATE_HELP
+   ld (_game_state), a
+   call man_help_init
+   ret
+
 _sgu_playing:
    call man_match_update
+   ret
+
+_sgu_help:
+   call man_help_update
+
+   ;; Return to menu when done
+   ld a, (man_help_done)
+   or a
+   ret z                               ;; not done yet, stay on help screen
+
+   xor a
+   ld (_game_state), a
+   call man_menu_init
    ret
