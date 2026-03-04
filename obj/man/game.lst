@@ -167,10 +167,10 @@ Hexadecimal [16-Bits]
                      0006    74 GRID_ROWS            = 6
                              75 
                              76 ;;------------------------------------------------------------------------------
-                             77 ;; Cursor color: pen 1 (bright yellow) encoded for Mode 0 solid-box
-                             78 ;;   Both pixels = pen 1 → byte bits [7..0] = 0000 0011 = 0x03
+                             77 ;; Cursor color: pen 7 (yellow) encoded for Mode 0 solid-box
+                             78 ;;   Both pixels = pen 7 → byte bits [7..0] = 0011 1111 = 0x3F
                              79 ;;------------------------------------------------------------------------------
-                     0003    80 CURSOR_COLOR         = 0x03
+                     003F    80 CURSOR_COLOR         = 0x3F
                              81 
                              82 ;;------------------------------------------------------------------------------
                              83 ;; Global variables

@@ -5255,7 +5255,7 @@ Hexadecimal [16-Bits]
                              27 .area _DATA
                              28 
                              29 
-   81B8 20 20 20 20 20 20    30 string_buffer:: .asciz "          "
+   81D0 20 20 20 20 20 20    30 string_buffer:: .asciz "          "
         20 20 20 20 00
                              31 ;; Registros
                      0001    32 H_CHARACTERS = 01
@@ -5286,39 +5286,39 @@ Hexadecimal [16-Bits]
                              57 ;; Credits:
                              58 ;;  Z80Heaven (http://z80-heaven.wikidot.com/advanced-math#toc9)
                              59 
-   7CC9                      60 sys_util_h_times_e::
-   7CC9 16 00         [ 7]   61   ld d,#0
-   7CCB 6A            [ 4]   62   ld l,d
-   7CCC CB 24         [ 8]   63   sla h 
-   7CCE 30 01         [12]   64   jr nc,.+3 
-   7CD0 6B            [ 4]   65   ld l,e
-   7CD1 29            [11]   66   add hl,hl 
-   7CD2 30 01         [12]   67   jr nc,.+3 
-   7CD4 19            [11]   68   add hl,de
-   7CD5 29            [11]   69   add hl,hl 
-   7CD6 30 01         [12]   70   jr nc,.+3 
-   7CD8 19            [11]   71   add hl,de
-   7CD9 29            [11]   72   add hl,hl 
-   7CDA 30 01         [12]   73   jr nc,.+3 
-   7CDC 19            [11]   74   add hl,de
+   7CE1                      60 sys_util_h_times_e::
+   7CE1 16 00         [ 7]   61   ld d,#0
+   7CE3 6A            [ 4]   62   ld l,d
+   7CE4 CB 24         [ 8]   63   sla h 
+   7CE6 30 01         [12]   64   jr nc,.+3 
+   7CE8 6B            [ 4]   65   ld l,e
+   7CE9 29            [11]   66   add hl,hl 
+   7CEA 30 01         [12]   67   jr nc,.+3 
+   7CEC 19            [11]   68   add hl,de
+   7CED 29            [11]   69   add hl,hl 
+   7CEE 30 01         [12]   70   jr nc,.+3 
+   7CF0 19            [11]   71   add hl,de
+   7CF1 29            [11]   72   add hl,hl 
+   7CF2 30 01         [12]   73   jr nc,.+3 
+   7CF4 19            [11]   74   add hl,de
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 101.
 Hexadecimal [16-Bits]
 
 
 
-   7CDD 29            [11]   75   add hl,hl 
-   7CDE 30 01         [12]   76   jr nc,.+3 
-   7CE0 19            [11]   77   add hl,de
-   7CE1 29            [11]   78   add hl,hl 
-   7CE2 30 01         [12]   79   jr nc,.+3 
-   7CE4 19            [11]   80   add hl,de
-   7CE5 29            [11]   81   add hl,hl 
-   7CE6 30 01         [12]   82   jr nc,.+3 
-   7CE8 19            [11]   83   add hl,de
-   7CE9 29            [11]   84   add hl,hl 
-   7CEA D0            [11]   85   ret nc 
-   7CEB 19            [11]   86   add hl,de
-   7CEC C9            [10]   87   ret
+   7CF5 29            [11]   75   add hl,hl 
+   7CF6 30 01         [12]   76   jr nc,.+3 
+   7CF8 19            [11]   77   add hl,de
+   7CF9 29            [11]   78   add hl,hl 
+   7CFA 30 01         [12]   79   jr nc,.+3 
+   7CFC 19            [11]   80   add hl,de
+   7CFD 29            [11]   81   add hl,hl 
+   7CFE 30 01         [12]   82   jr nc,.+3 
+   7D00 19            [11]   83   add hl,de
+   7D01 29            [11]   84   add hl,hl 
+   7D02 D0            [11]   85   ret nc 
+   7D03 19            [11]   86   add hl,de
+   7D04 C9            [10]   87   ret
                              88 
                              89 ;;-----------------------------------------------------------------;; 
                              90 ;;  sys_util_h_times_e
@@ -5333,17 +5333,17 @@ Hexadecimal [16-Bits]
                              99 ;;     DE is not changed
                             100 ;;     HL is the quotient
                             101 ;;
-   7CED                     102 sys_util_hl_div_c::
-   7CED 06 10         [ 7]  103        ld b,#16
-   7CEF AF            [ 4]  104        xor a
-   7CF0 29            [11]  105          add hl,hl
-   7CF1 17            [ 4]  106          rla
-   7CF2 B9            [ 4]  107          cp c
-   7CF3 38 02         [12]  108          jr c,.+4
-   7CF5 2C            [ 4]  109            inc l
-   7CF6 91            [ 4]  110            sub c
-   7CF7 10 F7         [13]  111          djnz .-7
-   7CF9 C9            [10]  112        ret
+   7D05                     102 sys_util_hl_div_c::
+   7D05 06 10         [ 7]  103        ld b,#16
+   7D07 AF            [ 4]  104        xor a
+   7D08 29            [11]  105          add hl,hl
+   7D09 17            [ 4]  106          rla
+   7D0A B9            [ 4]  107          cp c
+   7D0B 38 02         [12]  108          jr c,.+4
+   7D0D 2C            [ 4]  109            inc l
+   7D0E 91            [ 4]  110            sub c
+   7D0F 10 F7         [13]  111          djnz .-7
+   7D11 C9            [10]  112        ret
                             113 
                             114 ;;-----------------------------------------------------------------
                             115 ;;
@@ -5358,7 +5358,7 @@ Hexadecimal [16-Bits]
                             124 ;;
                             125 ;;  Chibi Akumas BCD code (https://www.chibiakumas.com/z80/advanced.php#LessonA1)
                             126 ;;
-   7CFA                     127 sys_util_BCD_GetEnd::
+   7D12                     127 sys_util_BCD_GetEnd::
                             128 ;Some of our commands need to start from the most significant byte
                             129 ;This will shift HL and DE along b bytes
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 102.
@@ -5366,16 +5366,16 @@ Hexadecimal [16-Bits]
 
 
 
-   7CFA C5            [11]  130 	push bc
-   7CFB 48            [ 4]  131 	ld c,b	;We want to add BC, but we need to add one less than the number of bytes
-   7CFC 0D            [ 4]  132 	dec c
-   7CFD 06 00         [ 7]  133 	ld b,#0
-   7CFF 09            [11]  134 	add hl,bc
-   7D00 EB            [ 4]  135 	ex de, hl	;We've done HL, but we also want to do DE
-   7D01 09            [11]  136 	add hl,bc
-   7D02 EB            [ 4]  137 	ex de, hl
-   7D03 C1            [10]  138 	pop bc
-   7D04 C9            [10]  139 	ret
+   7D12 C5            [11]  130 	push bc
+   7D13 48            [ 4]  131 	ld c,b	;We want to add BC, but we need to add one less than the number of bytes
+   7D14 0D            [ 4]  132 	dec c
+   7D15 06 00         [ 7]  133 	ld b,#0
+   7D17 09            [11]  134 	add hl,bc
+   7D18 EB            [ 4]  135 	ex de, hl	;We've done HL, but we also want to do DE
+   7D19 09            [11]  136 	add hl,bc
+   7D1A EB            [ 4]  137 	ex de, hl
+   7D1B C1            [10]  138 	pop bc
+   7D1C C9            [10]  139 	ret
                             140 
                             141 ;;-----------------------------------------------------------------
                             142 ;;
@@ -5389,17 +5389,17 @@ Hexadecimal [16-Bits]
                             150 ;;
                             151 ;;  Chibi Akumas BCD code (https://www.chibiakumas.com/z80/advanced.php#LessonA1)
                             152 ;;
-   7D05                     153 sys_util_BCD_Add::
-   7D05 B7            [ 4]  154     or a
-   7D06                     155 BCD_Add_Again:
-   7D06 1A            [ 7]  156     ld a, (de)
-   7D07 8E            [ 7]  157     adc (hl)
-   7D08 27            [ 4]  158     daa
-   7D09 12            [ 7]  159     ld (de), a
-   7D0A 13            [ 6]  160     inc de
-   7D0B 23            [ 6]  161     inc hl
-   7D0C 10 F8         [13]  162     djnz BCD_Add_Again
-   7D0E C9            [10]  163     ret
+   7D1D                     153 sys_util_BCD_Add::
+   7D1D B7            [ 4]  154     or a
+   7D1E                     155 BCD_Add_Again:
+   7D1E 1A            [ 7]  156     ld a, (de)
+   7D1F 8E            [ 7]  157     adc (hl)
+   7D20 27            [ 4]  158     daa
+   7D21 12            [ 7]  159     ld (de), a
+   7D22 13            [ 6]  160     inc de
+   7D23 23            [ 6]  161     inc hl
+   7D24 10 F8         [13]  162     djnz BCD_Add_Again
+   7D26 C9            [10]  163     ret
                             164   
                             165 ;;-----------------------------------------------------------------
                             166 ;;
@@ -5413,24 +5413,24 @@ Hexadecimal [16-Bits]
                             174 ;;
                             175 ;;  Chibi Akumas BCD code (https://www.chibiakumas.com/z80/advanced.php#LessonA1)
                             176 ;;
-   7D0F                     177 sys_util_BCD_Compare::
-   7D0F 06 04         [ 7]  178   ld b, #SCORE_NUM_BYTES
-   7D11 CD FA 7C      [17]  179   call sys_util_BCD_GetEnd
-   7D14                     180 BCD_cp_direct:
-   7D14 1A            [ 7]  181   ld a, (de)
-   7D15 BE            [ 7]  182   cp (hl)
-   7D16 D8            [11]  183   ret c
-   7D17 C0            [11]  184   ret nz
+   7D27                     177 sys_util_BCD_Compare::
+   7D27 06 04         [ 7]  178   ld b, #SCORE_NUM_BYTES
+   7D29 CD 12 7D      [17]  179   call sys_util_BCD_GetEnd
+   7D2C                     180 BCD_cp_direct:
+   7D2C 1A            [ 7]  181   ld a, (de)
+   7D2D BE            [ 7]  182   cp (hl)
+   7D2E D8            [11]  183   ret c
+   7D2F C0            [11]  184   ret nz
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 103.
 Hexadecimal [16-Bits]
 
 
 
-   7D18 1B            [ 6]  185   dec de
-   7D19 2B            [ 6]  186   dec hl
-   7D1A 10 F8         [13]  187   djnz BCD_cp_direct
-   7D1C B7            [ 4]  188   or a                    ;; Clear carry
-   7D1D C9            [10]  189   ret
+   7D30 1B            [ 6]  185   dec de
+   7D31 2B            [ 6]  186   dec hl
+   7D32 10 F8         [13]  187   djnz BCD_cp_direct
+   7D34 B7            [ 4]  188   or a                    ;; Clear carry
+   7D35 C9            [10]  189   ret
                             190 
                             191 ;;-----------------------------------------------------------------
                             192 ;;
@@ -5441,22 +5441,22 @@ Hexadecimal [16-Bits]
                             197 ;;  Output: a: random number
                             198 ;;  Destroyed: af, bc,de, hl
                             199 
-   7D1E                     200 sys_util_get_random_number::
-   7D1E 3C            [ 4]  201   inc a                               ;; Increment a to make the modulus calculation work
-   7D1F 32 29 7D      [13]  202   ld (#random_max_number), a
-   7D22 CD 42 80      [17]  203   call cpct_getRandom_mxor_u8_asm
-   7D25 7D            [ 4]  204   ld a, l                             ;; Calculates a pseudo modulus of max number
-   7D26 26 00         [ 7]  205   ld h,#0                             ;; Load hl with the random number
+   7D36                     200 sys_util_get_random_number::
+   7D36 3C            [ 4]  201   inc a                               ;; Increment a to make the modulus calculation work
+   7D37 32 41 7D      [13]  202   ld (#random_max_number), a
+   7D3A CD 5A 80      [17]  203   call cpct_getRandom_mxor_u8_asm
+   7D3D 7D            [ 4]  204   ld a, l                             ;; Calculates a pseudo modulus of max number
+   7D3E 26 00         [ 7]  205   ld h,#0                             ;; Load hl with the random number
                      0060   206 random_max_number = .+1
-   7D28 0E 00         [ 7]  207   ld c, #0                            ;; Load c with the max number
-   7D2A 06 00         [ 7]  208   ld b, #0
-   7D2C                     209 _random_mod_loop:
-   7D2C B7            [ 4]  210   or a                                ;; reset carry
-   7D2D ED 42         [15]  211   sbc hl,bc                           ;; hl = hl - bc
-   7D2F F2 2C 7D      [10]  212   jp p, _random_mod_loop              ;; Jump back if hl > 0
-   7D32 09            [11]  213   add hl,bc                           ;; Adds max number to hl back to get back to positive values
-   7D33 7D            [ 4]  214   ld a,l                              ;; loads the normalized random number in a
-   7D34 C9            [10]  215 ret
+   7D40 0E 00         [ 7]  207   ld c, #0                            ;; Load c with the max number
+   7D42 06 00         [ 7]  208   ld b, #0
+   7D44                     209 _random_mod_loop:
+   7D44 B7            [ 4]  210   or a                                ;; reset carry
+   7D45 ED 42         [15]  211   sbc hl,bc                           ;; hl = hl - bc
+   7D47 F2 44 7D      [10]  212   jp p, _random_mod_loop              ;; Jump back if hl > 0
+   7D4A 09            [11]  213   add hl,bc                           ;; Adds max number to hl back to get back to positive values
+   7D4B 7D            [ 4]  214   ld a,l                              ;; loads the normalized random number in a
+   7D4C C9            [10]  215 ret
                             216 
                             217 ;;-----------------------------------------------------------------
                             218 ;;
@@ -5467,12 +5467,12 @@ Hexadecimal [16-Bits]
                             223 ;;  Output: 
                             224 ;;  Destroyed: af, bc
                             225 ;;
-   7D35                     226 sys_util_delay::
-   7D35 C5            [11]  227   push bc
-   7D36 CD 8A 80      [17]  228   call cpct_waitVSYNCStart_asm
-   7D39 C1            [10]  229   pop bc
-   7D3A 10 F9         [13]  230   djnz sys_util_delay
-   7D3C C9            [10]  231   ret
+   7D4D                     226 sys_util_delay::
+   7D4D C5            [11]  227   push bc
+   7D4E CD A2 80      [17]  228   call cpct_waitVSYNCStart_asm
+   7D51 C1            [10]  229   pop bc
+   7D52 10 F9         [13]  230   djnz sys_util_delay
+   7D54 C9            [10]  231   ret
                             232 
                             233 ;;-----------------------------------------------------------------
                             234 ;;
@@ -5488,15 +5488,15 @@ Hexadecimal [16-Bits]
 
                             240 ;;  Destroyed: 
                             241 ;;
-   7D3D                     242 CRTC_V_auto:
-   7D3D 01 06 BC      [10]  243 	ld bc, #0xBC00 + V_LINES
-   7D40 ED 49         [12]  244 	out (c), c
-   7D42 21 00 BD      [10]  245 	ld hl, #0xBD00
-   7D45 19            [11]  246 	add hl, de
-   7D46 44            [ 4]  247 	ld b, h
-   7D47 4D            [ 4]  248 	ld c, l
-   7D48 ED 49         [12]  249 	out (c), c
-   7D4A C9            [10]  250 	ret
+   7D55                     242 CRTC_V_auto:
+   7D55 01 06 BC      [10]  243 	ld bc, #0xBC00 + V_LINES
+   7D58 ED 49         [12]  244 	out (c), c
+   7D5A 21 00 BD      [10]  245 	ld hl, #0xBD00
+   7D5D 19            [11]  246 	add hl, de
+   7D5E 44            [ 4]  247 	ld b, h
+   7D5F 4D            [ 4]  248 	ld c, l
+   7D60 ED 49         [12]  249 	out (c), c
+   7D62 C9            [10]  250 	ret
                             251 
                             252 ;;-----------------------------------------------------------------
                             253 ;;
@@ -5507,15 +5507,15 @@ Hexadecimal [16-Bits]
                             258 ;;  Output: 
                             259 ;;  Destroyed: 
                             260 ;;
-   7D4B                     261 CRTC_H_auto:
-   7D4B 01 02 BC      [10]  262 	ld bc, #0xBC00 + H_ADJUST
-   7D4E ED 49         [12]  263 	out (c), c
-   7D50 21 00 BD      [10]  264 	ld hl, #0xBD00
-   7D53 19            [11]  265 	add hl, de
-   7D54 44            [ 4]  266 	ld b, h
-   7D55 4D            [ 4]  267 	ld c, l
-   7D56 ED 49         [12]  268 	out (c), c
-   7D58 C9            [10]  269 	ret
+   7D63                     261 CRTC_H_auto:
+   7D63 01 02 BC      [10]  262 	ld bc, #0xBC00 + H_ADJUST
+   7D66 ED 49         [12]  263 	out (c), c
+   7D68 21 00 BD      [10]  264 	ld hl, #0xBD00
+   7D6B 19            [11]  265 	add hl, de
+   7D6C 44            [ 4]  266 	ld b, h
+   7D6D 4D            [ 4]  267 	ld c, l
+   7D6E ED 49         [12]  268 	out (c), c
+   7D70 C9            [10]  269 	ret
                             270 
                             271 ;;-----------------------------------------------------------------
                             272 ;;
@@ -5526,16 +5526,16 @@ Hexadecimal [16-Bits]
                             277 ;;  Output: 
                             278 ;;  Destroyed: 
                             279 ;;
-   7D59                     280 sys_util_fadeOut::
-   7D59 11 19 00      [10]  281 	ld de, #25
-   7D5C                     282 height_out:
-   7D5C 3E 0C         [ 7]  283     ld a, #12
-   7D5E CD 9C 7D      [17]  284 	call crt_delay
-   7D61 CD 3D 7D      [17]  285 	call CRTC_V_auto
-   7D64 1D            [ 4]  286 	dec e
-   7D65 C2 5C 7D      [10]  287 	jp nz, height_out
-   7D68 CD 3D 7D      [17]  288 	call CRTC_V_auto
-   7D6B C9            [10]  289 	ret
+   7D71                     280 sys_util_fadeOut::
+   7D71 11 19 00      [10]  281 	ld de, #25
+   7D74                     282 height_out:
+   7D74 3E 0C         [ 7]  283     ld a, #12
+   7D76 CD B4 7D      [17]  284 	call crt_delay
+   7D79 CD 55 7D      [17]  285 	call CRTC_V_auto
+   7D7C 1D            [ 4]  286 	dec e
+   7D7D C2 74 7D      [10]  287 	jp nz, height_out
+   7D80 CD 55 7D      [17]  288 	call CRTC_V_auto
+   7D83 C9            [10]  289 	ret
                             290 
                             291 ;;-----------------------------------------------------------------
                             292 ;;
@@ -5551,17 +5551,17 @@ Hexadecimal [16-Bits]
                             297 ;;  Output: 
                             298 ;;  Destroyed: 
                             299 ;;
-   7D6C                     300 sys_util_fadeIn::
-   7D6C 11 00 00      [10]  301 	ld de, #0
-   7D6F                     302 height_in:
-   7D6F 3E 0C         [ 7]  303     ld a, #12
-   7D71 CD 9C 7D      [17]  304 	call crt_delay 
-   7D74 CD 3D 7D      [17]  305 	call CRTC_V_auto
-   7D77 1C            [ 4]  306 	inc e
-   7D78 7B            [ 4]  307 	ld a, e
-   7D79 FE 1A         [ 7]  308 	cp #26
-   7D7B C2 6F 7D      [10]  309 	jp nz, height_in
-   7D7E C9            [10]  310 	ret
+   7D84                     300 sys_util_fadeIn::
+   7D84 11 00 00      [10]  301 	ld de, #0
+   7D87                     302 height_in:
+   7D87 3E 0C         [ 7]  303     ld a, #12
+   7D89 CD B4 7D      [17]  304 	call crt_delay 
+   7D8C CD 55 7D      [17]  305 	call CRTC_V_auto
+   7D8F 1C            [ 4]  306 	inc e
+   7D90 7B            [ 4]  307 	ld a, e
+   7D91 FE 1A         [ 7]  308 	cp #26
+   7D93 C2 87 7D      [10]  309 	jp nz, height_in
+   7D96 C9            [10]  310 	ret
                             311 
                             312 ;;-----------------------------------------------------------------
                             313 ;;
@@ -5572,18 +5572,18 @@ Hexadecimal [16-Bits]
                             318 ;;  Output: 
                             319 ;;  Destroyed: 
                             320 ;;
-   7D7F                     321 sys_util_temblor::
-   7D7F 11 2F 00      [10]  322 	ld de, #47
-   7D82 CD 4B 7D      [17]  323 	call CRTC_H_auto
-   7D85 11 2D 00      [10]  324 	ld de, #45
-   7D88 3E 09         [ 7]  325     ld a, #9
-   7D8A CD 9C 7D      [17]  326 	call crt_delay
-   7D8D CD 4B 7D      [17]  327 	call CRTC_H_auto
-   7D90 11 2E 00      [10]  328 	ld de, #46
-   7D93 3E 09         [ 7]  329     ld a, #9
-   7D95 CD 9C 7D      [17]  330 	call crt_delay 
-   7D98 CD 4B 7D      [17]  331 	call CRTC_H_auto
-   7D9B C9            [10]  332 	ret
+   7D97                     321 sys_util_temblor::
+   7D97 11 2F 00      [10]  322 	ld de, #47
+   7D9A CD 63 7D      [17]  323 	call CRTC_H_auto
+   7D9D 11 2D 00      [10]  324 	ld de, #45
+   7DA0 3E 09         [ 7]  325     ld a, #9
+   7DA2 CD B4 7D      [17]  326 	call crt_delay
+   7DA5 CD 63 7D      [17]  327 	call CRTC_H_auto
+   7DA8 11 2E 00      [10]  328 	ld de, #46
+   7DAB 3E 09         [ 7]  329     ld a, #9
+   7DAD CD B4 7D      [17]  330 	call crt_delay 
+   7DB0 CD 63 7D      [17]  331 	call CRTC_H_auto
+   7DB3 C9            [10]  332 	ret
                             333 
                             334 ;;-----------------------------------------------------------------
                             335 ;;
@@ -5594,11 +5594,11 @@ Hexadecimal [16-Bits]
                             340 ;;  Output: 
                             341 ;;  Destroyed: 
                             342 ;;
-   7D9C                     343 crt_delay:
-   7D9C 76            [ 4]  344 	halt
-   7D9D 3D            [ 4]  345 	dec a
-   7D9E 20 FC         [12]  346 	jr nz, crt_delay
-   7DA0 C9            [10]  347 	ret
+   7DB4                     343 crt_delay:
+   7DB4 76            [ 4]  344 	halt
+   7DB5 3D            [ 4]  345 	dec a
+   7DB6 20 FC         [12]  346 	jr nz, crt_delay
+   7DB8 C9            [10]  347 	ret
                             348 
                             349 ; Z80 Assembly Routine: Count Set Bits (1s)
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 106.
@@ -5618,21 +5618,21 @@ Hexadecimal [16-Bits]
                             359 ; Affected Registers:
                             360 ;   A, B, C, F (Flags)
                             361 
-   7DA1                     362 sys_util_count_set_bits::
-   7DA1 A8            [ 4]  363     XOR B           ; Initialize '1's counter (register B) to zero.
-   7DA2 0E 08         [ 7]  364     LD C, #8         ; Initialize bit counter (register C) to 8 (for 8 bits).
+   7DB9                     362 sys_util_count_set_bits::
+   7DB9 A8            [ 4]  363     XOR B           ; Initialize '1's counter (register B) to zero.
+   7DBA 0E 08         [ 7]  364     LD C, #8         ; Initialize bit counter (register C) to 8 (for 8 bits).
                             365 
-   7DA4                     366 BIT_LOOP:
-   7DA4 17            [ 4]  367     RLA             ; Rotate Accumulator A left. The Most Significant Bit (MSB)
+   7DBC                     366 BIT_LOOP:
+   7DBC 17            [ 4]  367     RLA             ; Rotate Accumulator A left. The Most Significant Bit (MSB)
                             368                     ; moves into the Carry Flag (CF). The previous CF moves into the Least Significant Bit (LSB).
-   7DA5 30 01         [12]  369     JR NC, NEXT_BIT ; If Carry Flag is CLEAR (the bit was 0), jump to NEXT_BIT.
-   7DA7 04            [ 4]  370     INC B           ; If Carry Flag is SET (the bit was 1), increment the '1's counter.
+   7DBD 30 01         [12]  369     JR NC, NEXT_BIT ; If Carry Flag is CLEAR (the bit was 0), jump to NEXT_BIT.
+   7DBF 04            [ 4]  370     INC B           ; If Carry Flag is SET (the bit was 1), increment the '1's counter.
                             371 
-   7DA8                     372 NEXT_BIT:
-   7DA8 0D            [ 4]  373     DEC C           ; Decrement the bit counter.
-   7DA9 20 F9         [12]  374     JR NZ, BIT_LOOP ; If C is not zero, more bits to check, loop again.
+   7DC0                     372 NEXT_BIT:
+   7DC0 0D            [ 4]  373     DEC C           ; Decrement the bit counter.
+   7DC1 20 F9         [12]  374     JR NZ, BIT_LOOP ; If C is not zero, more bits to check, loop again.
                             375 
-   7DAB C9            [10]  376     RET             ; Return from the routine. The result is in B.
+   7DC3 C9            [10]  376     RET             ; Return from the routine. The result is in B.
                             377 
                             378 ;;-----------------------------------------------------------------
                             379 ;;
@@ -5643,15 +5643,15 @@ Hexadecimal [16-Bits]
                             384 ;;  Output: El registro A con su magnitud reducida en 1
                             385 ;;  Destroyed: 
                             386 ;;
-   7DAC                     387 sys_utiL_reduce_a:
-   7DAC B7            [ 4]  388   or a            ; 1. Actualiza las banderas (S y Z) sin cambiar el valor de A.
-   7DAD C8            [11]  389   ret z           ; 2. Si es CERO (Flag Z=1), no hacemos nada. Saltamos al final.
-   7DAE FA B3 7D      [10]  390   jp M, es_neg    ; 3. Si es NEGATIVO (Flag S=1/Minus), saltamos a sumar.
+   7DC4                     387 sys_utiL_reduce_a:
+   7DC4 B7            [ 4]  388   or a            ; 1. Actualiza las banderas (S y Z) sin cambiar el valor de A.
+   7DC5 C8            [11]  389   ret z           ; 2. Si es CERO (Flag Z=1), no hacemos nada. Saltamos al final.
+   7DC6 FA CB 7D      [10]  390   jp M, es_neg    ; 3. Si es NEGATIVO (Flag S=1/Minus), saltamos a sumar.
                             391 ; --- Caso Positivo ---
-   7DB1 3D            [ 4]  392   dec a           ; Si es positivo (ej: 5), restamos 1 (queda 4).
-   7DB2 C9            [10]  393   ret             ; Retornamos para no ejecutar la parte negativa.
-   7DB3                     394 es_neg:
+   7DC9 3D            [ 4]  392   dec a           ; Si es positivo (ej: 5), restamos 1 (queda 4).
+   7DCA C9            [10]  393   ret             ; Retornamos para no ejecutar la parte negativa.
+   7DCB                     394 es_neg:
                             395 ; --- Caso Negativo ---
-   7DB3 3C            [ 4]  396   inc A           ; Si es negativo (ej: -5), sumamos 1 (queda -4).
+   7DCB 3C            [ 4]  396   inc A           ; Si es negativo (ej: -5), sumamos 1 (queda -4).
                             397                   ; Al sumar 1 a un negativo, reducimos su magnitud.
-   7DB4 C9            [10]  398 	ret
+   7DCC C9            [10]  398 	ret

@@ -8,7 +8,7 @@ Symbol Table
     BG_HEADE=  0014     |     BG_HEADE=  002C     |     BOARD_EM=  0000 
     BOARD_P1=  0001     |     BOARD_P1=  0002     |     BOARD_P2=  0003 
     BOARD_P2=  0004     |     BUFFER_S=  000A     |     CPCT_VME=  C000 
-    CRTC_SEL=  00BC     |     CRTC_SET=  00BD     |     CURSOR_C=  0003 
+    CRTC_SEL=  00BC     |     CRTC_SET=  00BD     |     CURSOR_C=  003F 
     FONT_HEI=  0009     |     FONT_WID=  0002     |     FW_BLACK=  0000 
     FW_BLUE =  0001     |     FW_BRIGH=  0002     |     FW_BRIGH=  0014 
     FW_BRIGH=  0012     |     FW_BRIGH=  0008     |     FW_BRIGH=  0006 

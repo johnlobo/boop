@@ -47,71 +47,72 @@ Hexadecimal [16-Bits]
                              20 .globl sys_render_init
                              21 .globl sys_render_clear_buffer
                              22 .globl sys_render_draw_screen
-                             23 
-                             24 ;;===============================================================================
-                             25 ;; PUBLIC CONSTANTS
-                             26 ;;===============================================================================
-                             27 
-                             28 ;;===============================================================================
-                             29 ;; MACRO
-                             30 ;;===============================================================================
-                             31 .mdelete ld_de_backbuffer
-                             32 .macro ld_de_backbuffer
-                             33    ld   a, (sys_render_back_buffer)          ;; DE = Pointer to start of the screen
-                             34    ld   d, a
-                             35    ld   e, #00
-                             36 .endm
-                             37 
-                             38 .mdelete ld_de_frontbuffer
-                             39 .macro ld_de_frontbuffer
-                             40    ld   a, (sys_render_front_buffer)         ;; DE = Pointer to start of the screen
-                             41    ld   d, a
-                             42    ld   e, #00
-                             43 .endm
-                             44 
-                             45 .mdelete m_screenPtr_backbuffer
-                             46 .macro m_screenPtr_backbuffer X, Y
-                             47    push hl
-                             48    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
-                             49    ld a, (sys_render_back_buffer)
-                             50    ld h, a
-                             51    ld l, #0         
-                             52    add hl, de
-                             53    ex de, hl
-                             54    pop hl
+                             23 .globl sys_render_draw_grid
+                             24 
+                             25 ;;===============================================================================
+                             26 ;; PUBLIC CONSTANTS
+                             27 ;;===============================================================================
+                             28 
+                             29 ;;===============================================================================
+                             30 ;; MACRO
+                             31 ;;===============================================================================
+                             32 .mdelete ld_de_backbuffer
+                             33 .macro ld_de_backbuffer
+                             34    ld   a, (sys_render_back_buffer)          ;; DE = Pointer to start of the screen
+                             35    ld   d, a
+                             36    ld   e, #00
+                             37 .endm
+                             38 
+                             39 .mdelete ld_de_frontbuffer
+                             40 .macro ld_de_frontbuffer
+                             41    ld   a, (sys_render_front_buffer)         ;; DE = Pointer to start of the screen
+                             42    ld   d, a
+                             43    ld   e, #00
+                             44 .endm
+                             45 
+                             46 .mdelete m_screenPtr_backbuffer
+                             47 .macro m_screenPtr_backbuffer X, Y
+                             48    push hl
+                             49    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
+                             50    ld a, (sys_render_back_buffer)
+                             51    ld h, a
+                             52    ld l, #0         
+                             53    add hl, de
+                             54    ex de, hl
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 3.
 Hexadecimal [16-Bits]
 
 
 
-                             55 .endm
-                             56 
-                             57 .mdelete m_screenPtr_frontbuffer
-                             58 .macro m_screenPtr_frontbuffer X, Y
-                             59    push hl
-                             60    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
-                             61    ld a, (sys_render_front_buffer)
-                             62    ld h, a
-                             63    ld l, #0         
-                             64    add hl, de
-                             65    ex de, hl
-                             66    pop hl
-                             67 .endm
-                             68 
+                             55    pop hl
+                             56 .endm
+                             57 
+                             58 .mdelete m_screenPtr_frontbuffer
+                             59 .macro m_screenPtr_frontbuffer X, Y
+                             60    push hl
+                             61    ld de, #(80 * (Y / 8) + 2048 * (Y & 7) + X)
+                             62    ld a, (sys_render_front_buffer)
+                             63    ld h, a
+                             64    ld l, #0         
+                             65    add hl, de
+                             66    ex de, hl
+                             67    pop hl
+                             68 .endm
                              69 
-                             70 .mdelete m_draw_blank_small_number
-                             71 .macro m_draw_blank_small_number BACKGROUND
-                             72    push de
-                             73    push hl
-                             74    ld c, #4
-                             75    ld b, #5
-                             76    ;;ld a, #0                                ;; Patern of solid box
-                             77    ;;ld a, #0x33                             ;; Patern of solid box blue (12)
-                             78    ld a, #BACKGROUND                         ;; Patern of solid box blue (12)
-                             79    call cpct_drawSolidBox_asm
-                             80    pop hl
-                             81    pop de
-                             82 .endm
+                             70 
+                             71 .mdelete m_draw_blank_small_number
+                             72 .macro m_draw_blank_small_number BACKGROUND
+                             73    push de
+                             74    push hl
+                             75    ld c, #4
+                             76    ld b, #5
+                             77    ;;ld a, #0                                ;; Patern of solid box
+                             78    ;;ld a, #0x33                             ;; Patern of solid box blue (12)
+                             79    ld a, #BACKGROUND                         ;; Patern of solid box blue (12)
+                             80    call cpct_drawSolidBox_asm
+                             81    pop hl
+                             82    pop de
+                             83 .endm
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 4.
 Hexadecimal [16-Bits]
 
@@ -5320,15 +5321,15 @@ Hexadecimal [16-Bits]
                              42 ;;
                              43 ;; Code taken form Miss Input 
                              44 ;;====================================================
-   79B7                      45 sys_render_clear_buffer::
-   79B7 21 00 C0      [10]   46     ld hl, #CPCT_VMEM_START_ASM
-   79BA 54            [ 4]   47     ld d, h
-   79BB 5D            [ 4]   48     ld e, l
-   79BC 13            [ 6]   49     inc de
-   79BD 01 FF 3F      [10]   50     ld bc, #0x4000-1
+   79CB                      45 sys_render_clear_buffer::
+   79CB 21 00 C0      [10]   46     ld hl, #CPCT_VMEM_START_ASM
+   79CE 54            [ 4]   47     ld d, h
+   79CF 5D            [ 4]   48     ld e, l
+   79D0 13            [ 6]   49     inc de
+   79D1 01 FF 3F      [10]   50     ld bc, #0x4000-1
                              51 
-   79C0 ED B0         [21]   52     ldir
-   79C2 C9            [10]   53 ret
+   79D4 ED B0         [21]   52     ldir
+   79D6 C9            [10]   53 ret
                              54 
                              55 ;;-----------------------------------------------------------------
                              56 ;;
@@ -5339,36 +5340,36 @@ Hexadecimal [16-Bits]
                              61 ;;  Output: 
                              62 ;;  Modified: AF, BC, DE, HL
                              63 ;;
-   79C3                      64 sys_render_init::
-   79C3 0E 00         [ 7]   65     ld c,#0                                 ;; Set video mode
-   79C5 CD 60 7F      [17]   66     call cpct_setVideoMode_asm              ;;
+   79D7                      64 sys_render_init::
+   79D7 0E 00         [ 7]   65     ld c,#0                                 ;; Set video mode
+   79D9 CD 78 7F      [17]   66     call cpct_setVideoMode_asm              ;;
                              67     
                              68     ;; Palette: pen → colour (firmware index)
                              69     ;;  0=Black(0)        1=White(13)       2=Bright Blue(2)   3=Red(3)
                              70     ;;  4=Bright Red(6)   5=Orange(15)      6=Pastel Green(24) 7=Yellow(12)
                              71     ;;  8=Pink(16)        9=Green(9)       10=Cyan(10)        11=Pastel Blue(14)
                              72     ;; 12=Bright Cyan(11) 13=Bright Green(20) 14=Blue(1)      15=Bright White(26)
-   79C8 21 A0 68      [10]   73     ld hl, #_g_palette0                     ;; Set palette
-   79CB 11 10 00      [10]   74     ld de, #16                              ;;
+   79DC 21 A0 68      [10]   73     ld hl, #_g_palette0                     ;; Set palette
+   79DF 11 10 00      [10]   74     ld de, #16                              ;;
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 102.
 Hexadecimal [16-Bits]
 
 
 
-   79CE CD FE 7D      [17]   75     call cpct_setPalette_asm                ;;
+   79E2 CD 16 7E      [17]   75     call cpct_setPalette_asm                ;;
                              76     ;;cpctm_setBorder_asm HW_BLACK            ;; Set Border
    001A                      77     cpctm_setBorder_asm HW_WHITE            ;; Set Border
                               1    .radix h
    001A                       2    cpctm_setBorder_raw_asm \HW_WHITE ;; [28] Macro that does the job, but requires a number value to be passed
                               1    .globl cpct_setPALColour_asm
-   79D1 21 10 00      [10]    2    ld   hl, #0x010         ;; [3]  H=Hardware value of desired colour, L=Border INK (16)
-   79D4 CD 1D 7E      [17]    3    call cpct_setPALColour_asm  ;; [25] Set Palette colour of the border
+   79E5 21 10 00      [10]    2    ld   hl, #0x010         ;; [3]  H=Hardware value of desired colour, L=Border INK (16)
+   79E8 CD 35 7E      [17]    3    call cpct_setPALColour_asm  ;; [25] Set Palette colour of the border
                               3    .radix d
                              78 
                              79     ;;call sys_render_clear_back_buffer
-   79D7 CD B7 79      [17]   80     call sys_render_clear_buffer
+   79EB CD CB 79      [17]   80     call sys_render_clear_buffer
                              81 
-   79DA C9            [10]   82     ret
+   79EE C9            [10]   82     ret
                              83 
                              84 ;;-----------------------------------------------------------------
                              85 ;;
@@ -5379,311 +5380,325 @@ Hexadecimal [16-Bits]
                              90 ;;  Output: 
                              91 ;;  Modified: AF, BC, DE, HL
                              92 ;;
-   79DB                      93 sys_render_draw_screen::
+   79EF                      93 sys_render_draw_screen::
                              94 
    0024                      95     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 18, 7  ;; Get pointer to video memory for drawing the screen (36x10 tiles)
-   79DB 11 12 F8      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (7 / 8) + 2048 * (7 & 7) + 18   ;; [3] REG16 = screenPtr
-   79DE 0E 2C         [ 7]   96     ld c, #BG_HEADER_W
-   79E0 06 14         [ 7]   97     ld b, #BG_HEADER_H
-   79E2 21 70 59      [10]   98     ld hl, #_bg_header
-   79E5 CD 27 7E      [17]   99     call cpct_drawSprite_asm
+   79EF 11 12 F8      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (7 / 8) + 2048 * (7 & 7) + 18   ;; [3] REG16 = screenPtr
+   79F2 0E 2C         [ 7]   96     ld c, #BG_HEADER_W
+   79F4 06 14         [ 7]   97     ld b, #BG_HEADER_H
+   79F6 21 70 59      [10]   98     ld hl, #_bg_header
+   79F9 CD 3F 7E      [17]   99     call cpct_drawSprite_asm
                             100 
    0031                     101     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 0, 50  ;; left basket
-   79E8 11 E0 D1      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (50 / 8) + 2048 * (50 & 7) + 0   ;; [3] REG16 = screenPtr
-   79EB 0E 12         [ 7]  102     ld c, #S_BASKET_W
-   79ED 06 4A         [ 7]  103     ld b, #S_BASKET_H
-   79EF 21 E0 5C      [10]  104     ld hl, #_s_basket
-   79F2 CD 27 7E      [17]  105     call cpct_drawSprite_asm
+   79FC 11 E0 D1      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (50 / 8) + 2048 * (50 & 7) + 0   ;; [3] REG16 = screenPtr
+   79FF 0E 12         [ 7]  102     ld c, #S_BASKET_W
+   7A01 06 4A         [ 7]  103     ld b, #S_BASKET_H
+   7A03 21 E0 5C      [10]  104     ld hl, #_s_basket
+   7A06 CD 3F 7E      [17]  105     call cpct_drawSprite_asm
                             106 
    003E                     107     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 62, 50  ;; right basket
-   79F5 11 1E D2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (50 / 8) + 2048 * (50 & 7) + 62   ;; [3] REG16 = screenPtr
-   79F8 0E 12         [ 7]  108     ld c, #S_BASKET_W
-   79FA 06 4A         [ 7]  109     ld b, #S_BASKET_H
-   79FC 21 E0 5C      [10]  110     ld hl, #_s_basket
-   79FF CD 27 7E      [17]  111     call cpct_drawSprite_asm
+   7A09 11 1E D2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (50 / 8) + 2048 * (50 & 7) + 62   ;; [3] REG16 = screenPtr
+   7A0C 0E 12         [ 7]  108     ld c, #S_BASKET_W
+   7A0E 06 4A         [ 7]  109     ld b, #S_BASKET_H
+   7A10 21 E0 5C      [10]  110     ld hl, #_s_basket
+   7A13 CD 3F 7E      [17]  111     call cpct_drawSprite_asm
                             112 
    004B                     113     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 4, 68  ;; P1 cat
-   7A02 11 84 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 4   ;; [3] REG16 = screenPtr
-   7A05 01 44 64      [10]  114     ld bc, #_s_cat_0
+   7A16 11 84 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 4   ;; [3] REG16 = screenPtr
+   7A19 01 44 64      [10]  114     ld bc, #_s_cat_0
    0051                     115     ld__ixl S_CAT_W
-   7A08 DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
+   7A1C DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
    0054                     116     ld__ixh S_CAT_H
-   7A0B DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
-   7A0E 21 00 01      [10]  117     ld hl, #transparency_table
+   7A1F DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
+   7A22 21 00 01      [10]  117     ld hl, #transparency_table
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 103.
 Hexadecimal [16-Bits]
 
 
 
-   7A11 CD 97 80      [17]  118     call cpct_drawSpriteMaskedAlignedTable_asm
+   7A25 CD AF 80      [17]  118     call cpct_drawSpriteMaskedAlignedTable_asm
                             119 
    005D                     120     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 9, 68  ;; P1 catty
-   7A14 11 89 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 9   ;; [3] REG16 = screenPtr
+   7A28 11 89 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 9   ;; [3] REG16 = screenPtr
    0060                     121     ld__ixl S_CATTY_W
-   7A17 DD 2E 05              1    .db #0xDD, #0x2E, S_CATTY_W  ;; Opcode for ld ixl, Value
+   7A2B DD 2E 05              1    .db #0xDD, #0x2E, S_CATTY_W  ;; Opcode for ld ixl, Value
    0063                     122     ld__ixh S_CATTY_H
-   7A1A DD 26 11              1    .db #0xDD, #0x26, S_CATTY_H  ;; Opcode for ld ixh, Value
-   7A1D 01 9A 63      [10]  123     ld bc, #_s_catty_0
-   7A20 21 00 01      [10]  124     ld hl, #transparency_table
-   7A23 CD 97 80      [17]  125     call cpct_drawSpriteMaskedAlignedTable_asm
+   7A2E DD 26 11              1    .db #0xDD, #0x26, S_CATTY_H  ;; Opcode for ld ixh, Value
+   7A31 01 9A 63      [10]  123     ld bc, #_s_catty_0
+   7A34 21 00 01      [10]  124     ld hl, #transparency_table
+   7A37 CD AF 80      [17]  125     call cpct_drawSpriteMaskedAlignedTable_asm
                             126 
    006F                     127     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 66, 68  ;; P2 cat
-   7A26 11 C2 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 66   ;; [3] REG16 = screenPtr
-   7A29 01 99 64      [10]  128     ld bc, #_s_cat_1
+   7A3A 11 C2 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 66   ;; [3] REG16 = screenPtr
+   7A3D 01 99 64      [10]  128     ld bc, #_s_cat_1
    0075                     129     ld__ixl S_CAT_W
-   7A2C DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
+   7A40 DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
    0078                     130     ld__ixh S_CAT_H
-   7A2F DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
-   7A32 21 00 01      [10]  131     ld hl, #transparency_table
-   7A35 CD 97 80      [17]  132     call cpct_drawSpriteMaskedAlignedTable_asm
+   7A43 DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
+   7A46 21 00 01      [10]  131     ld hl, #transparency_table
+   7A49 CD AF 80      [17]  132     call cpct_drawSpriteMaskedAlignedTable_asm
                             133 
    0081                     134     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 71, 68  ;; P2 catty
-   7A38 11 C7 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 71   ;; [3] REG16 = screenPtr
+   7A4C 11 C7 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 71   ;; [3] REG16 = screenPtr
    0084                     135     ld__ixl S_CATTY_W
-   7A3B DD 2E 05              1    .db #0xDD, #0x2E, S_CATTY_W  ;; Opcode for ld ixl, Value
+   7A4F DD 2E 05              1    .db #0xDD, #0x2E, S_CATTY_W  ;; Opcode for ld ixl, Value
    0087                     136     ld__ixh S_CATTY_H
-   7A3E DD 26 11              1    .db #0xDD, #0x26, S_CATTY_H  ;; Opcode for ld ixh, Value
-   7A41 01 EF 63      [10]  137     ld bc, #_s_catty_1
-   7A44 21 00 01      [10]  138     ld hl, #transparency_table
-   7A47 CD 97 80      [17]  139     call cpct_drawSpriteMaskedAlignedTable_asm
+   7A52 DD 26 11              1    .db #0xDD, #0x26, S_CATTY_H  ;; Opcode for ld ixh, Value
+   7A55 01 EF 63      [10]  137     ld bc, #_s_catty_1
+   7A58 21 00 01      [10]  138     ld hl, #transparency_table
+   7A5B CD AF 80      [17]  139     call cpct_drawSpriteMaskedAlignedTable_asm
                             140 
-   0093                     141     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 18, 32  ;; grid
-   7A4A 11 52 C1      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (32 / 8) + 2048 * (32 & 7) + 18   ;; [3] REG16 = screenPtr
-   7A4D 0E 2C         [ 7]  142     ld c, #BG_GRID_W
-   7A4F 06 94         [ 7]  143     ld b, #BG_GRID_H
-   7A51 21 00 40      [10]  144     ld hl, #_bg_grid
-   7A54 CD 27 7E      [17]  145     call cpct_drawSprite_asm
-                            146 
-   7A57 C9            [10]  147     ret
-                            148 
-                            149 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                            150 ;;
-                            151 ;; Function: sys_drawSpriteMaskedAlignedColorizeM0
-                            152 ;;
-                            153 ;;    Directly replace a color and draw a sprite to video memory (or to a screen buffer), making use of a 
-                            154 ;; given 256-bytes aligned mask table to create transparencies. 
-                            155 ;;
-                            156 ;; C Definition:
-                            157 ;;    void <drawSpriteMaskedAlignedColorizeM0> (void* *sprite*, void* *memory*, <u8> *width*, <u8> *height*, const void* *pmasktable0*, <u16> *rplcPat*) __z88dk_callee;
-                            158 ;;
-                            159 ;; Input Parameters (8 bytes):
-                            160 ;;  (2B HL) sprite      - Source Sprite Pointer (array of pixel data)
-                            161 ;;  (2B AF) memory      - Destination video memory pointer
-                            162 ;;  (1B C ) height      - Sprite Height in bytes (>0)
+   7A5E CD 62 7A      [17]  141     call sys_render_draw_grid
+                            142 
+   7A61 C9            [10]  143     ret
+                            144 
+                            145 ;;-----------------------------------------------------------------
+                            146 ;;
+                            147 ;; sys_render_draw_grid
+                            148 ;;
+                            149 ;;  Draws only the grid background sprite (leaves header/HUD untouched).
+                            150 ;;  Input:
+                            151 ;;  Output:
+                            152 ;;  Modified: AF, BC, DE, HL
+                            153 ;;
+   7A62                     154 sys_render_draw_grid::
+   0097                     155     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 18, 32  ;; grid
+   7A62 11 52 C1      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (32 / 8) + 2048 * (32 & 7) + 18   ;; [3] REG16 = screenPtr
+   7A65 0E 2C         [ 7]  156     ld c, #BG_GRID_W
+   7A67 06 94         [ 7]  157     ld b, #BG_GRID_H
+   7A69 21 00 40      [10]  158     ld hl, #_bg_grid
+   7A6C CD 3F 7E      [17]  159     call cpct_drawSprite_asm
+                            160 
+   7A6F C9            [10]  161     ret
+                            162 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 104.
 Hexadecimal [16-Bits]
 
 
 
-                            163 ;;  (1B B ) width       - Sprite Width in *bytes* (Beware, *not* in pixels!)
-                            164 ;;  (2B IX) pmasktable0 - Pointer to an Aligned Mask Table for transparencies with palette index 0
-                            165 ;;  (2B DE) rplcPat     - Replace Pattern => 1st byte(D)=Pattern to Find, 2nd byte(E)=Pattern to insert instead
+                            163 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                            164 ;;
+                            165 ;; Function: sys_drawSpriteMaskedAlignedColorizeM0
                             166 ;;
-                            167 ;; Assembly call (Input parameters on registers):
-                            168 ;;    > call drawSpriteMaskedAlignedColorizeM0_asm
+                            167 ;;    Directly replace a color and draw a sprite to video memory (or to a screen buffer), making use of a 
+                            168 ;; given 256-bytes aligned mask table to create transparencies. 
                             169 ;;
-                            170 ;; Parameter Restrictions:
-                            171 ;;  * *sprite* must be an array containing sprite's pixels data in screen pixel format.
-                            172 ;; Sprite must be rectangular and all bytes in the array must be consecutive pixels, 
-                            173 ;; starting from top-left corner and going left-to-right, top-to-bottom down to the
-                            174 ;; bottom-right corner. Total amount of bytes in pixel array should be *width* x *height*.
-                            175 ;;  * *memory* could be any place in memory, inside or outside current video memory. It
-                            176 ;; will be equally treated as video memory (taking into account CPC's video memory 
-                            177 ;; disposition). This lets you copy sprites to software or hardware backbuffers, and
-                            178 ;; not only video memory.
-                            179 ;;  * *width* must be the width of the sprite *in bytes*. Always remember that the width must be 
-                            180 ;; expressed in bytes and *not* in pixels.
-                            181 ;;  The correspondence is mode 0 : 1 byte = 2 pixels
-                            182 ;;  * *height* must be the height of the sprite in bytes, and must be greater than 0. 
-                            183 ;; There is no practical upper limit to this value. Height of a sprite in
-                            184 ;; bytes and pixels is the same value, as bytes only group consecutive pixels in
-                            185 ;; the horizontal space.
-                            186 ;;  * *pmasktable0* must be a pointer to the start of a mask table that will be used 
-                            187 ;; for calculating transparency. This table *must* consider palette index 0 as transparent.
-                            188 ;; The mask table is expected to be 256-sized containing all the possible masks for each 
-                            189 ;; possible byte-sized colour value. Also, the mask is required to be 256-byte aligned, 
-                            190 ;; which means it has to start at a 0x??00 address in memory to fit in a complete 256-byte 
-                            191 ;; memory page. <cpct_transparentMaskTable00M0> is an example table you might want to use.
-                            192 ;;  * *rplcPat* ([0000-FFFF], 16bits, unsigned) should contain 2 8-bit colour pixel 
-                            193 ;; patterns in Mode 1 screen pixel format (see below for an explanation of patterns).
-                            194 ;; Any value is valid, but values different of what you actually want will probably
-                            195 ;; result in estrange colours in the final array/sprite.
-                            196 ;;
-                            197 ;; Known limitations:
-                            198 ;;     * This function does not do any kind of boundary check or clipping. If you 
-                            199 ;; try to draw sprites on the frontier of your video memory or screen buffer 
-                            200 ;; if might potentially overwrite memory locations beyond boundaries. This 
-                            201 ;; could cause your program to behave erratically, hang or crash. Always 
-                            202 ;; take the necessary steps to guarantee that you are drawing inside screen
-                            203 ;; or buffer boundaries.
-                            204 ;;     * As this function receives a byte-pointer to memory, it can only 
-                            205 ;; draw byte-sized and byte-aligned sprites. This means that the box cannot
-                            206 ;; start on non-byte aligned pixels (like odd-pixels, for instance) and 
-                            207 ;; their sizes must be a multiple of a byte (2 in mode 0, 4 in mode 1 and
-                            208 ;; 8 in mode 2).
-                            209 ;;     * This function *will not work from ROM*, as it uses self-modifying code.
-                            210 ;;     * This function requires the CPC firmware to be DISABLED. Otherwise, random crashes might happen due to side effects.
-                            211 ;;
-                            212 ;; Destroyed Register values: 
-                            213 ;;    AF, BC, DE, HL, IX, IY
-                            214 ;;
-                            215 ;; Required memory:
-                            216 ;;     C-bindings - 118 bytes
-                            217 ;;   ASM-bindings - 108 bytes
+                            170 ;; C Definition:
+                            171 ;;    void <drawSpriteMaskedAlignedColorizeM0> (void* *sprite*, void* *memory*, <u8> *width*, <u8> *height*, const void* *pmasktable0*, <u16> *rplcPat*) __z88dk_callee;
+                            172 ;;
+                            173 ;; Input Parameters (8 bytes):
+                            174 ;;  (2B HL) sprite      - Source Sprite Pointer (array of pixel data)
+                            175 ;;  (2B AF) memory      - Destination video memory pointer
+                            176 ;;  (1B C ) height      - Sprite Height in bytes (>0)
+                            177 ;;  (1B B ) width       - Sprite Width in *bytes* (Beware, *not* in pixels!)
+                            178 ;;  (2B IX) pmasktable0 - Pointer to an Aligned Mask Table for transparencies with palette index 0
+                            179 ;;  (2B DE) rplcPat     - Replace Pattern => 1st byte(D)=Pattern to Find, 2nd byte(E)=Pattern to insert instead
+                            180 ;;
+                            181 ;; Assembly call (Input parameters on registers):
+                            182 ;;    > call drawSpriteMaskedAlignedColorizeM0_asm
+                            183 ;;
+                            184 ;; Parameter Restrictions:
+                            185 ;;  * *sprite* must be an array containing sprite's pixels data in screen pixel format.
+                            186 ;; Sprite must be rectangular and all bytes in the array must be consecutive pixels, 
+                            187 ;; starting from top-left corner and going left-to-right, top-to-bottom down to the
+                            188 ;; bottom-right corner. Total amount of bytes in pixel array should be *width* x *height*.
+                            189 ;;  * *memory* could be any place in memory, inside or outside current video memory. It
+                            190 ;; will be equally treated as video memory (taking into account CPC's video memory 
+                            191 ;; disposition). This lets you copy sprites to software or hardware backbuffers, and
+                            192 ;; not only video memory.
+                            193 ;;  * *width* must be the width of the sprite *in bytes*. Always remember that the width must be 
+                            194 ;; expressed in bytes and *not* in pixels.
+                            195 ;;  The correspondence is mode 0 : 1 byte = 2 pixels
+                            196 ;;  * *height* must be the height of the sprite in bytes, and must be greater than 0. 
+                            197 ;; There is no practical upper limit to this value. Height of a sprite in
+                            198 ;; bytes and pixels is the same value, as bytes only group consecutive pixels in
+                            199 ;; the horizontal space.
+                            200 ;;  * *pmasktable0* must be a pointer to the start of a mask table that will be used 
+                            201 ;; for calculating transparency. This table *must* consider palette index 0 as transparent.
+                            202 ;; The mask table is expected to be 256-sized containing all the possible masks for each 
+                            203 ;; possible byte-sized colour value. Also, the mask is required to be 256-byte aligned, 
+                            204 ;; which means it has to start at a 0x??00 address in memory to fit in a complete 256-byte 
+                            205 ;; memory page. <cpct_transparentMaskTable00M0> is an example table you might want to use.
+                            206 ;;  * *rplcPat* ([0000-FFFF], 16bits, unsigned) should contain 2 8-bit colour pixel 
+                            207 ;; patterns in Mode 1 screen pixel format (see below for an explanation of patterns).
+                            208 ;; Any value is valid, but values different of what you actually want will probably
+                            209 ;; result in estrange colours in the final array/sprite.
+                            210 ;;
+                            211 ;; Known limitations:
+                            212 ;;     * This function does not do any kind of boundary check or clipping. If you 
+                            213 ;; try to draw sprites on the frontier of your video memory or screen buffer 
+                            214 ;; if might potentially overwrite memory locations beyond boundaries. This 
+                            215 ;; could cause your program to behave erratically, hang or crash. Always 
+                            216 ;; take the necessary steps to guarantee that you are drawing inside screen
+                            217 ;; or buffer boundaries.
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 105.
 Hexadecimal [16-Bits]
 
 
 
-                            218 ;;
-                            219 ;; Time Measures:
-                            220 ;; (start code)
-                            221 ;;  Case      |   microSecs (us)       |        CPU Cycles
-                            222 ;; ----------------------------------------------------------------
-                            223 ;;            |     29 + (62 + 23W)H   |    116 + (248 + 92W)H
-                            224 ;; ----------------------------------------------------------------
-                            225 ;;  W=2,H=16  |         1757           |        7028
-                            226 ;;  W=4,H=32  |         4957           |       19828
-                            227 ;; ----------------------------------------------------------------
-                            228 ;; Asm saving |         -16            |        -64
-                            229 ;; ----------------------------------------------------------------
-                            230 ;; (end code)
-                            231 ;;    W = *width* in bytes, H = *height* in bytes, HH = [(H-1)/8]
+                            218 ;;     * As this function receives a byte-pointer to memory, it can only 
+                            219 ;; draw byte-sized and byte-aligned sprites. This means that the box cannot
+                            220 ;; start on non-byte aligned pixels (like odd-pixels, for instance) and 
+                            221 ;; their sizes must be a multiple of a byte (2 in mode 0, 4 in mode 1 and
+                            222 ;; 8 in mode 2).
+                            223 ;;     * This function *will not work from ROM*, as it uses self-modifying code.
+                            224 ;;     * This function requires the CPC firmware to be DISABLED. Otherwise, random crashes might happen due to side effects.
+                            225 ;;
+                            226 ;; Destroyed Register values: 
+                            227 ;;    AF, BC, DE, HL, IX, IY
+                            228 ;;
+                            229 ;; Required memory:
+                            230 ;;     C-bindings - 118 bytes
+                            231 ;;   ASM-bindings - 108 bytes
                             232 ;;
-                            233 ;; Credits:
-                            234 ;;    Original routine optimized by @Docent and discussed in CPCWiki :
-                            235 ;; http://www.cpcwiki.eu/forum/programming/cpctelera-colorize-sprite/
-                            236 ;;
-                            237 ;; Thanks to all of them for their help and support.
-                            238 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                            239 
-   7A58                     240 sys_render_drawSpriteMaskedAlignedColorizeM0_asm:: ;; Assembly entry point
-                            241 
-                            242    ;; GET Parameters from the stack 
-   7A58 DD 22 AE 7A   [20]  243    ld (dms_restore_ix + 2), ix      ;; [6] Save IX to restore it before returning
-                            244 ;;   pop   hl                       ;; [3] HL = Return Address
-                            245 
-                            246 
-   7A5C F5            [11]  247    push  af                         ;; [4] Save AF (Source Sprite Pointer) in Stack
-   7A5D DD 22 83 7A   [20]  248    ld   (aligned_mask_table), ix    ;; [6] Set Aligned Mask Table pointer in placeholder
-                            249 
-                            250    ;; Compute E = (FindPat ^ InsrPat). This will be used at the end of the routine
-                            251    ;; to insert InsrPat in the byte by XORing again, as the final operation will
-                            252    ;; be performed only on the bits of the SelectedPixels (those coinciding with
-                            253    ;; FindPat). This final operation will then be (1) XOR against FindPat (Zeroing bits,
-                            254    ;; because they are equal) and (2) XOR againts InsrPat (Inserting InsrPat bits, 
-                            255    ;; because its an XOR against zeros). That way, we will perform 2 operations on 1.
-   7A61 7D            [ 4]  256    ld    a, l      ;; [1] / IYL = (InsrPat ^ FindPat)
-   7A62 AC            [ 4]  257    xor   h         ;; [1] |
-   00AC                     258    ld__iyl_a       ;; [2] \ 
-   7A63 FD 6F                 1    .dw #0x6FFD  ;; Opcode for ld iyl, a
+                            233 ;; Time Measures:
+                            234 ;; (start code)
+                            235 ;;  Case      |   microSecs (us)       |        CPU Cycles
+                            236 ;; ----------------------------------------------------------------
+                            237 ;;            |     29 + (62 + 23W)H   |    116 + (248 + 92W)H
+                            238 ;; ----------------------------------------------------------------
+                            239 ;;  W=2,H=16  |         1757           |        7028
+                            240 ;;  W=4,H=32  |         4957           |       19828
+                            241 ;; ----------------------------------------------------------------
+                            242 ;; Asm saving |         -16            |        -64
+                            243 ;; ----------------------------------------------------------------
+                            244 ;; (end code)
+                            245 ;;    W = *width* in bytes, H = *height* in bytes, HH = [(H-1)/8]
+                            246 ;;
+                            247 ;; Credits:
+                            248 ;;    Original routine optimized by @Docent and discussed in CPCWiki :
+                            249 ;; http://www.cpcwiki.eu/forum/programming/cpctelera-colorize-sprite/
+                            250 ;;
+                            251 ;; Thanks to all of them for their help and support.
+                            252 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                            253 
+   7A70                     254 sys_render_drawSpriteMaskedAlignedColorizeM0_asm:: ;; Assembly entry point
+                            255 
+                            256    ;; GET Parameters from the stack 
+   7A70 DD 22 C6 7A   [20]  257    ld (dms_restore_ix + 2), ix      ;; [6] Save IX to restore it before returning
+                            258 ;;   pop   hl                       ;; [3] HL = Return Address
                             259 
-   7A65 7C            [ 4]  260    ld    a, h      ;; [1] / IXL = H (FindPat) Save for later use
-   00AF                     261    ld__ixl_a       ;; [2] \
-   7A66 DD 6F                 1    .dw #0x6FDD  ;; Opcode for ld ixl, a
-                            262 
-   00B1                     263    ld__iyh_c       ;; [2] IYH = C (Sprite Width) Save for later use
-   7A68 FD 61                 1    .dw #0x61FD  ;; Opcode for ld iyh, c
-   7A6A E1            [10]  264    pop   hl        ;; [3] HL = Recover from Stack (Source Sprite Pointer)
-                            265 
-                            266    ;; Loop for all the bytes of the Sprite then Modify pixels of each byte using Patterns
-   7A6B                     267 height_loop:
-   7A6B D5            [11]  268    push  de        ;; [4] Save DE for later use (jump to next screen line)       
-                            269 
+                            260 
+   7A74 F5            [11]  261    push  af                         ;; [4] Save AF (Source Sprite Pointer) in Stack
+   7A75 DD 22 9B 7A   [20]  262    ld   (aligned_mask_table), ix    ;; [6] Set Aligned Mask Table pointer in placeholder
+                            263 
+                            264    ;; Compute E = (FindPat ^ InsrPat). This will be used at the end of the routine
+                            265    ;; to insert InsrPat in the byte by XORing again, as the final operation will
+                            266    ;; be performed only on the bits of the SelectedPixels (those coinciding with
+                            267    ;; FindPat). This final operation will then be (1) XOR against FindPat (Zeroing bits,
+                            268    ;; because they are equal) and (2) XOR againts InsrPat (Inserting InsrPat bits, 
+                            269    ;; because its an XOR against zeros). That way, we will perform 2 operations on 1.
+   7A79 7D            [ 4]  270    ld    a, l      ;; [1] / IYL = (InsrPat ^ FindPat)
+   7A7A AC            [ 4]  271    xor   h         ;; [1] |
+   00B0                     272    ld__iyl_a       ;; [2] \ 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 106.
 Hexadecimal [16-Bits]
 
 
 
-   7A6C                     270 width_loop:
-                            271    ;; First, perfom an XOR between the FindPat and the SpriteByte to modify
-                            272    ;; This XOR will convert to zero all bits of pixels coinciding with FindPat
-                            273    ;; But will left at least a bit with a 1 in the others (not coinciding with FindPat)
-   00B5                     274    ld__a_ixl       ;; [2] / *HL = SpriteByte, IXL = FindPat
-   7A6C DD 7D                 1    .dw #0x7DDD  ;; Opcode for ld a, ixl
-   7A6E AE            [ 7]  275    xor  (hl)       ;; [2] | A = D = (SpriteByte ^ FindPat)
-   00B8                     276    ld__ixh_a       ;; [2] \   => SelectedPixels=00, OtherPixels!=00 
-   7A6F DD 67                 1    .dw #0x67DD  ;; Opcode for ld ixh, a
-                            277    
-                            278    ;; Now we want to create a MASK byte with 0's in all the bits corresponding to
-                            279    ;; selected pixels (coinciding with FindPat) and 1's in all other bits. To do this,
-                            280    ;; as each pixels has 2 bits, we just need to OR both of them. Pixels selected have
-                            281    ;; both of them equal to 0, and non-selected have at least a 1. We rotate the
-                            282    ;; byte to align both pair of bits in each pixel, then we or them together.
-   7A71 0F            [ 4]  283    rrca            ;; [1] / E     = [  A  1  B  2  C  3  D  4 ]
-   7A72 0F            [ 4]  284    rrca            ;; [1] | A     = [  D  4  A  1  B  2  C  3 ]
-   00BC                     285    or__ixh         ;; [2] \ A|IXH = [ AD 14 AB 12 BC 23 CD 34 ]
-   7A73 DD B4                 1    .dw #0xB4DD  ;; Opcode for or ixh
-   00BE                     286    ld__ixh_a       ;; [2] IXH = A
-   7A75 DD 67                 1    .dw #0x67DD  ;; Opcode for ld ixh, a
-   7A77 0F            [ 4]  287    rrca            ;; [1] /   
-   7A78 0F            [ 4]  288    rrca            ;; [1] |  
-   7A79 0F            [ 4]  289    rrca            ;; [1] | D     = [   AD   14   AB   12   BC   23   CD   34 ]
-   7A7A 0F            [ 4]  290    rrca            ;; [1] | A     = [   BC   23   CD   34   AD   14   AB   12 ]
-   00C4                     291    or__ixh         ;; [2] \ A|IXH = [ ABCD 1234 ABCD 1234 ABCD 1234 ABCD 1234 ]
-   7A7B DD B4                 1    .dw #0xB4DD  ;; Opcode for or ixh
-                            292    ;; We revert the MASK (producing ~MASK), making selected pixels be 11, and Others 00
-   7A7D 2F            [ 4]  293    cpl             ;; [1] A = ~MASK (SelectedPixels==11, OtherPixels==00)
-                            294 
-                            295    ;; Now we are ready to insert InsrPath. First we multiply (AND) our negated mask (~MASK)
-                            296    ;; with E=(InsrPath ^ FindPat). This does the effect of Masquerading (InsrPat ^ FindPat), 
-                            297    ;; leaving 0's on all pixels that do not have to be modified, and leaving the others 
-                            298    ;; untouched. Those others will be XORed with the original SpriteByte, producing 2 
-                            299    ;; operations (SpriteByte ^ FindPat) ^ InsrPat, but only on the bits of SelectedPixels
-                            300    ;; (because of the previous Masquerading operation). Those 2 operations are (1) Zeroing
-                            301    ;; bits, (2) inserting InsrPat (because we XOR against zeros). Result is FindPat removed
-                            302    ;; and InsrPat inserted, but only on the bits of the SelectedPixels (as others are 0's 
-                            303    ;; after Masquerading).
-   00C7                     304    and__iyl        ;; [2] A = ~MASK & (InsrPat ^ FindPat)
-   7A7E FD A5                 1    .dw #0xA5FD  ;; Opcode for and iyl
-   7A80 AE            [ 7]  305    xor  (hl)       ;; [2] A = (~MASK & (InsrPat ^ FindPat)) ^ SpriteByte
-                            306    
-   7A81 E5            [11]  307    push  hl        ;; [4] Save HL during the mask computation
-                     00CC   308 aligned_mask_table = .+1 
-   7A82 21 00 00      [10]  309   ld     hl, #0000 ;; [3] HL = Aligned mask table for transparencies (placeholder)
-                            310    
-   7A85 6F            [ 4]  311    ld    l, a      ;; [1] Access mask table element (table must be 256-byte aligned)
-   7A86 1A            [ 7]  312    ld    a, (de)   ;; [2] Get the value of the byte of the screen where we are going to draw
-   7A87 A6            [ 7]  313    and  (hl)       ;; [2] Erase background part that is to be overwritten (Mask step 1)
-   7A88 B5            [ 4]  314    or    l         ;; [1] Add up background and sprite information in one byte (Mask step 2)
-                            315    
-   7A89 E1            [10]  316    pop  hl         ;; [3] Restore HL (sprite)
-                            317    
-   7A8A 12            [ 7]  318    ld  (de), a     ;; [2] Save modified background + sprite data information into memory
+   7A7B FD 6F                 1    .dw #0x6FFD  ;; Opcode for ld iyl, a
+                            273 
+   7A7D 7C            [ 4]  274    ld    a, h      ;; [1] / IXL = H (FindPat) Save for later use
+   00B3                     275    ld__ixl_a       ;; [2] \
+   7A7E DD 6F                 1    .dw #0x6FDD  ;; Opcode for ld ixl, a
+                            276 
+   00B5                     277    ld__iyh_c       ;; [2] IYH = C (Sprite Width) Save for later use
+   7A80 FD 61                 1    .dw #0x61FD  ;; Opcode for ld iyh, c
+   7A82 E1            [10]  278    pop   hl        ;; [3] HL = Recover from Stack (Source Sprite Pointer)
+                            279 
+                            280    ;; Loop for all the bytes of the Sprite then Modify pixels of each byte using Patterns
+   7A83                     281 height_loop:
+   7A83 D5            [11]  282    push  de        ;; [4] Save DE for later use (jump to next screen line)       
+                            283 
+   7A84                     284 width_loop:
+                            285    ;; First, perfom an XOR between the FindPat and the SpriteByte to modify
+                            286    ;; This XOR will convert to zero all bits of pixels coinciding with FindPat
+                            287    ;; But will left at least a bit with a 1 in the others (not coinciding with FindPat)
+   00B9                     288    ld__a_ixl       ;; [2] / *HL = SpriteByte, IXL = FindPat
+   7A84 DD 7D                 1    .dw #0x7DDD  ;; Opcode for ld a, ixl
+   7A86 AE            [ 7]  289    xor  (hl)       ;; [2] | A = D = (SpriteByte ^ FindPat)
+   00BC                     290    ld__ixh_a       ;; [2] \   => SelectedPixels=00, OtherPixels!=00 
+   7A87 DD 67                 1    .dw #0x67DD  ;; Opcode for ld ixh, a
+                            291    
+                            292    ;; Now we want to create a MASK byte with 0's in all the bits corresponding to
+                            293    ;; selected pixels (coinciding with FindPat) and 1's in all other bits. To do this,
+                            294    ;; as each pixels has 2 bits, we just need to OR both of them. Pixels selected have
+                            295    ;; both of them equal to 0, and non-selected have at least a 1. We rotate the
+                            296    ;; byte to align both pair of bits in each pixel, then we or them together.
+   7A89 0F            [ 4]  297    rrca            ;; [1] / E     = [  A  1  B  2  C  3  D  4 ]
+   7A8A 0F            [ 4]  298    rrca            ;; [1] | A     = [  D  4  A  1  B  2  C  3 ]
+   00C0                     299    or__ixh         ;; [2] \ A|IXH = [ AD 14 AB 12 BC 23 CD 34 ]
+   7A8B DD B4                 1    .dw #0xB4DD  ;; Opcode for or ixh
+   00C2                     300    ld__ixh_a       ;; [2] IXH = A
+   7A8D DD 67                 1    .dw #0x67DD  ;; Opcode for ld ixh, a
+   7A8F 0F            [ 4]  301    rrca            ;; [1] /   
+   7A90 0F            [ 4]  302    rrca            ;; [1] |  
+   7A91 0F            [ 4]  303    rrca            ;; [1] | D     = [   AD   14   AB   12   BC   23   CD   34 ]
+   7A92 0F            [ 4]  304    rrca            ;; [1] | A     = [   BC   23   CD   34   AD   14   AB   12 ]
+   00C8                     305    or__ixh         ;; [2] \ A|IXH = [ ABCD 1234 ABCD 1234 ABCD 1234 ABCD 1234 ]
+   7A93 DD B4                 1    .dw #0xB4DD  ;; Opcode for or ixh
+                            306    ;; We revert the MASK (producing ~MASK), making selected pixels be 11, and Others 00
+   7A95 2F            [ 4]  307    cpl             ;; [1] A = ~MASK (SelectedPixels==11, OtherPixels==00)
+                            308 
+                            309    ;; Now we are ready to insert InsrPath. First we multiply (AND) our negated mask (~MASK)
+                            310    ;; with E=(InsrPath ^ FindPat). This does the effect of Masquerading (InsrPat ^ FindPat), 
+                            311    ;; leaving 0's on all pixels that do not have to be modified, and leaving the others 
+                            312    ;; untouched. Those others will be XORed with the original SpriteByte, producing 2 
+                            313    ;; operations (SpriteByte ^ FindPat) ^ InsrPat, but only on the bits of SelectedPixels
+                            314    ;; (because of the previous Masquerading operation). Those 2 operations are (1) Zeroing
+                            315    ;; bits, (2) inserting InsrPat (because we XOR against zeros). Result is FindPat removed
+                            316    ;; and InsrPat inserted, but only on the bits of the SelectedPixels (as others are 0's 
+                            317    ;; after Masquerading).
+   00CB                     318    and__iyl        ;; [2] A = ~MASK & (InsrPat ^ FindPat)
+   7A96 FD A5                 1    .dw #0xA5FD  ;; Opcode for and iyl
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 107.
 Hexadecimal [16-Bits]
 
 
 
-   7A8B 23            [ 6]  319    inc   hl        ;; [2] ++HL point to next byte in the sprite
-   7A8C 13            [ 6]  320    inc   de        ;; [2] ++DE point to next byte in the screen
-                            321    
-   7A8D 0D            [ 4]  322    dec   c         ;; [1] --C holds sprite width, we decrease it to count pixels in this line.
-   7A8E C2 6C 7A      [10]  323    jp    nz, width_loop   ;; [2/3] While not 0, we are still painting this sprite line 
+   7A98 AE            [ 7]  319    xor  (hl)       ;; [2] A = (~MASK & (InsrPat ^ FindPat)) ^ SpriteByte
+                            320    
+   7A99 E5            [11]  321    push  hl        ;; [4] Save HL during the mask computation
+                     00D0   322 aligned_mask_table = .+1 
+   7A9A 21 00 00      [10]  323   ld     hl, #0000 ;; [3] HL = Aligned mask table for transparencies (placeholder)
                             324    
-   7A91 D1            [10]  325    pop   de        ;; [3] Restore DE start line (DestMem)   
-   7A92 05            [ 4]  326    dec   b         ;; [1] --B holds sprite height. We decrease it to count another pixel line finished
-   7A93 CA AC 7A      [10]  327    jp    z, end_sprite_colourize ;; [2/3] If 0, we have finished the last sprite line.
-                            328    
-   00DF                     329    ld__c_iyh       ;; [2] C = IYH (Sprite Width)
-   7A96 FD 4C                 1    .dw #0x4CFD  ;; Opcode for ld c, iyh
-   7A98 7A            [ 4]  330    ld    a, d      ;; [1] Start of next pixel line normally is 0x0800 bytes away.
-   7A99 C6 08         [ 7]  331    add   #0x08     ;; [2] so we add it to DE (just by adding 0x08 to D)
-   7A9B 57            [ 4]  332    ld    d, a      ;; [1]
-   7A9C E6 38         [ 7]  333    and   #0x38     ;; [2] We check if we have crossed memory boundary (every 8 pixel lines)
-   7A9E C2 6B 7A      [10]  334    jp    nz, height_loop  ;; [2/3] .. by checking the 4 bits that identify present memory line. 
-                            335 
-   7AA1 7B            [ 4]  336    ld    a, e      ;; [1] If 0, we have crossed boundaries then DE = DE + 0xC050h
-   7AA2 C6 50         [ 7]  337    add   #0x50     ;; [2] -- Relocate DE pointer to the start of the next pixel line:
-   7AA4 5F            [ 4]  338    ld    e, a      ;; [1] -- DE is moved forward 3 memory banks plus 50 bytes (4000h * 3) 
-   7AA5 7A            [ 4]  339    ld    a, d      ;; [1] -- which effectively is the same as moving it 1 bank backwards and then
-   7AA6 CE C0         [ 7]  340    adc   #0xC0     ;; [2] -- 50 bytes forwards (which is what we want to move it to the next pixel line)
-   7AA8 57            [ 4]  341    ld    d, a      ;; [1] -- Calculations are made with 8 bit maths as it is faster than other alternatives here
-   7AA9 C3 6B 7A      [10]  342    jp    height_loop      ;; [3] Jump to continue with next pixel line 
-                            343 
-   7AAC                     344 end_sprite_colourize:
-                            345                    ;; return in binding
-                            346 
-   7AAC                     347 dms_restore_ix:
-   7AAC DD 21 00 00   [14]  348    ld   ix, #0000               ;; [4] Restore IX before returning
-   7AB0 C9            [10]  349    ret                          ;; [3] Return to caller
+   7A9D 6F            [ 4]  325    ld    l, a      ;; [1] Access mask table element (table must be 256-byte aligned)
+   7A9E 1A            [ 7]  326    ld    a, (de)   ;; [2] Get the value of the byte of the screen where we are going to draw
+   7A9F A6            [ 7]  327    and  (hl)       ;; [2] Erase background part that is to be overwritten (Mask step 1)
+   7AA0 B5            [ 4]  328    or    l         ;; [1] Add up background and sprite information in one byte (Mask step 2)
+                            329    
+   7AA1 E1            [10]  330    pop  hl         ;; [3] Restore HL (sprite)
+                            331    
+   7AA2 12            [ 7]  332    ld  (de), a     ;; [2] Save modified background + sprite data information into memory
+   7AA3 23            [ 6]  333    inc   hl        ;; [2] ++HL point to next byte in the sprite
+   7AA4 13            [ 6]  334    inc   de        ;; [2] ++DE point to next byte in the screen
+                            335    
+   7AA5 0D            [ 4]  336    dec   c         ;; [1] --C holds sprite width, we decrease it to count pixels in this line.
+   7AA6 C2 84 7A      [10]  337    jp    nz, width_loop   ;; [2/3] While not 0, we are still painting this sprite line 
+                            338    
+   7AA9 D1            [10]  339    pop   de        ;; [3] Restore DE start line (DestMem)   
+   7AAA 05            [ 4]  340    dec   b         ;; [1] --B holds sprite height. We decrease it to count another pixel line finished
+   7AAB CA C4 7A      [10]  341    jp    z, end_sprite_colourize ;; [2/3] If 0, we have finished the last sprite line.
+                            342    
+   00E3                     343    ld__c_iyh       ;; [2] C = IYH (Sprite Width)
+   7AAE FD 4C                 1    .dw #0x4CFD  ;; Opcode for ld c, iyh
+   7AB0 7A            [ 4]  344    ld    a, d      ;; [1] Start of next pixel line normally is 0x0800 bytes away.
+   7AB1 C6 08         [ 7]  345    add   #0x08     ;; [2] so we add it to DE (just by adding 0x08 to D)
+   7AB3 57            [ 4]  346    ld    d, a      ;; [1]
+   7AB4 E6 38         [ 7]  347    and   #0x38     ;; [2] We check if we have crossed memory boundary (every 8 pixel lines)
+   7AB6 C2 83 7A      [10]  348    jp    nz, height_loop  ;; [2/3] .. by checking the 4 bits that identify present memory line. 
+                            349 
+   7AB9 7B            [ 4]  350    ld    a, e      ;; [1] If 0, we have crossed boundaries then DE = DE + 0xC050h
+   7ABA C6 50         [ 7]  351    add   #0x50     ;; [2] -- Relocate DE pointer to the start of the next pixel line:
+   7ABC 5F            [ 4]  352    ld    e, a      ;; [1] -- DE is moved forward 3 memory banks plus 50 bytes (4000h * 3) 
+   7ABD 7A            [ 4]  353    ld    a, d      ;; [1] -- which effectively is the same as moving it 1 bank backwards and then
+   7ABE CE C0         [ 7]  354    adc   #0xC0     ;; [2] -- 50 bytes forwards (which is what we want to move it to the next pixel line)
+   7AC0 57            [ 4]  355    ld    d, a      ;; [1] -- Calculations are made with 8 bit maths as it is faster than other alternatives here
+   7AC1 C3 83 7A      [10]  356    jp    height_loop      ;; [3] Jump to continue with next pixel line 
+                            357 
+   7AC4                     358 end_sprite_colourize:
+                            359                    ;; return in binding
+                            360 
+   7AC4                     361 dms_restore_ix:
+   7AC4 DD 21 00 00   [14]  362    ld   ix, #0000               ;; [4] Restore IX before returning
+   7AC8 C9            [10]  363    ret                          ;; [3] Return to caller

@@ -5259,11 +5259,11 @@ Hexadecimal [16-Bits]
                              31 
                              32 
                              33 
-   817D                      34 sys_input_key_actions::
-   817D 04 04 57 6C          35     .dw Key_O,      sys_input_selected_left
-   8181 03 08 58 6C          36     .dw Key_P,      sys_input_selected_right
+   8195                      34 sys_input_key_actions::
+   8195 04 04 6B 6C          35     .dw Key_O,      sys_input_selected_left
+   8199 03 08 6C 6C          36     .dw Key_P,      sys_input_selected_right
                              37     ;;.dw Key_D,      sys_input_show_deck
-   8185 05 80 56 6C          38     .dw Key_Space,  sys_input_action
+   819D 05 80 6A 6C          38     .dw Key_Space,  sys_input_action
                              39     ;;.dw Key_Q,      sys_input_add_card
                              40     ;;.dw Key_A,      sys_input_remove_card
                              41     ;;.dw Key_Esc,    _score_cancel_entry
@@ -5272,7 +5272,7 @@ Hexadecimal [16-Bits]
                              44     ;;.dw Joy0_Up,    _score_move_up
                              45     ;;.dw Joy0_Down,  _score_move_down
                              46     ;;.dw Joy0_Fire1, _score_fire
-   8189 00 00                47     .dw 0
+   81A1 00 00                47     .dw 0
                              48 
                              49 ;;
                              50 ;; Start of _CODE area
@@ -5289,10 +5289,10 @@ Hexadecimal [16-Bits]
                              61 ;;  Output:
                              62 ;;  Modified: 
                              63 ;;
-   6C08                      64 sys_input_clean_buffer::
-   6C08 CD EB 7E      [17]   65     call cpct_isAnyKeyPressed_asm
-   6C0B 20 FB         [12]   66     jr nz, sys_input_clean_buffer
-   6C0D C9            [10]   67     ret
+   6C1C                      64 sys_input_clean_buffer::
+   6C1C CD 03 7F      [17]   65     call cpct_isAnyKeyPressed_asm
+   6C1F 20 FB         [12]   66     jr nz, sys_input_clean_buffer
+   6C21 C9            [10]   67     ret
                              68 
                              69 ;;-----------------------------------------------------------------
                              70 ;;
@@ -5308,16 +5308,16 @@ Hexadecimal [16-Bits]
 
 
 
-   6C0E                      78 sys_input_wait4anykey::
-   6C0E 21 00 00      [10]   79     ld hl, #0
-   6C11                      80 _siw_loop:
-   6C11 E5            [11]   81     push hl
-   6C12 CD EB 7E      [17]   82     call cpct_isAnyKeyPressed_asm
-   6C15 B7            [ 4]   83     or a
-   6C16 E1            [10]   84     pop hl
-   6C17 23            [ 6]   85     inc hl
-   6C18 28 F7         [12]   86     jr z, _siw_loop
-   6C1A C9            [10]   87     ret
+   6C22                      78 sys_input_wait4anykey::
+   6C22 21 00 00      [10]   79     ld hl, #0
+   6C25                      80 _siw_loop:
+   6C25 E5            [11]   81     push hl
+   6C26 CD 03 7F      [17]   82     call cpct_isAnyKeyPressed_asm
+   6C29 B7            [ 4]   83     or a
+   6C2A E1            [10]   84     pop hl
+   6C2B 23            [ 6]   85     inc hl
+   6C2C 28 F7         [12]   86     jr z, _siw_loop
+   6C2E C9            [10]   87     ret
                              88 
                              89 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                              90 ;; DESCRIPTION
@@ -5335,42 +5335,42 @@ Hexadecimal [16-Bits]
                             102 ;;
                             103 ;; Routine taken from Promotion from Bite Studios
                             104 ;;
-   6C1B                     105 sys_input_getKeyPressed::
-   6C1B 21 C7 7E      [10]  106     ld hl, #_cpct_keyboardStatusBuffer
-   6C1E AF            [ 4]  107     xor a                           ;; A = 0
+   6C2F                     105 sys_input_getKeyPressed::
+   6C2F 21 DF 7E      [10]  106     ld hl, #_cpct_keyboardStatusBuffer
+   6C32 AF            [ 4]  107     xor a                           ;; A = 0
                             108 
-   6C1F                     109 _kp_loop:
-   6C1F FE 0A         [ 7]  110     cp #BUFFER_SIZE
-   6C21 28 14         [12]  111     jr z, _kp_endLoop               ;; Check counter value. End if its 0
-   6C23 32 33 6C      [13]  112     ld (_size_counter), a
+   6C33                     109 _kp_loop:
+   6C33 FE 0A         [ 7]  110     cp #BUFFER_SIZE
+   6C35 28 14         [12]  111     jr z, _kp_endLoop               ;; Check counter value. End if its 0
+   6C37 32 47 6C      [13]  112     ld (_size_counter), a
                             113 
-   6C26 7E            [ 7]  114     ld a, (hl)                      ;; Load byte from the buffer
-   6C27 EE FF         [ 7]  115     xor #ZERO_KEYS_ACTIVATED        ;; Inverts bytes
-   6C29 28 06         [12]  116     jr z, _no_key_detected
-   6C2B 67            [ 4]  117         ld h, a                     ;; H is the mask
-   6C2C 3A 33 6C      [13]  118         ld a, (_size_counter)
-   6C2F 6F            [ 4]  119         ld l, a                     ;; L is the offset
+   6C3A 7E            [ 7]  114     ld a, (hl)                      ;; Load byte from the buffer
+   6C3B EE FF         [ 7]  115     xor #ZERO_KEYS_ACTIVATED        ;; Inverts bytes
+   6C3D 28 06         [12]  116     jr z, _no_key_detected
+   6C3F 67            [ 4]  117         ld h, a                     ;; H is the mask
+   6C40 3A 47 6C      [13]  118         ld a, (_size_counter)
+   6C43 6F            [ 4]  119         ld l, a                     ;; L is the offset
                             120         ; ld (_current_key_pressed), hl
-   6C30 C9            [10]  121         ret
-   6C31                     122 _no_key_detected:
-   6C31 23            [ 6]  123     inc hl
+   6C44 C9            [10]  121         ret
+   6C45                     122 _no_key_detected:
+   6C45 23            [ 6]  123     inc hl
                      002B   124 _size_counter = .+1
-   6C32 3E 00         [ 7]  125     ld a, #0x00                     ;; AUTOMODIFIABLE, A = counter
-   6C34 3C            [ 4]  126     inc a
-   6C35 18 E8         [12]  127     jr _kp_loop
-   6C37                     128 _kp_endLoop:
-   6C37 21 00 00      [10]  129     ld hl, #0x00                    ;; Return 0 if no key is pressed
-   6C3A 3E 00         [ 7]  130     ld a, #0
-   6C3C 32 40 6C      [13]  131     ld (_key_released), a
-   6C3F C9            [10]  132     ret
+   6C46 3E 00         [ 7]  125     ld a, #0x00                     ;; AUTOMODIFIABLE, A = counter
+   6C48 3C            [ 4]  126     inc a
+   6C49 18 E8         [12]  127     jr _kp_loop
+   6C4B                     128 _kp_endLoop:
+   6C4B 21 00 00      [10]  129     ld hl, #0x00                    ;; Return 0 if no key is pressed
+   6C4E 3E 00         [ 7]  130     ld a, #0
+   6C50 32 54 6C      [13]  131     ld (_key_released), a
+   6C53 C9            [10]  132     ret
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 102.
 Hexadecimal [16-Bits]
 
 
 
                             133 
-   6C40                     134 _key_released:
-   6C40 00                  135     .db #0
+   6C54                     134 _key_released:
+   6C54 00                  135     .db #0
                             136 
                             137 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                             138 ;; DESCRIPTION
@@ -5388,18 +5388,18 @@ Hexadecimal [16-Bits]
                             150 ;;
                             151 ;; Routine taken from Promotion from Bite Studios
                             152 ;;
-   6C41                     153 sys_input_waitKeyPressed::
-   6C41 CD 1B 6C      [17]  154     call sys_input_getKeyPressed
-   6C44 3A 40 6C      [13]  155     ld a, (_key_released)
-   6C47 B7            [ 4]  156     or a
-   6C48 20 F7         [12]  157     jr nz, sys_input_waitKeyPressed
-   6C4A AF            [ 4]  158     xor a
-   6C4B B4            [ 4]  159     or h
-   6C4C B5            [ 4]  160     or l
-   6C4D 28 F2         [12]  161     jr z, sys_input_waitKeyPressed
-   6C4F 3E 01         [ 7]  162     ld a, #1
-   6C51 32 40 6C      [13]  163     ld (_key_released), a
-   6C54 C9            [10]  164     ret
+   6C55                     153 sys_input_waitKeyPressed::
+   6C55 CD 2F 6C      [17]  154     call sys_input_getKeyPressed
+   6C58 3A 54 6C      [13]  155     ld a, (_key_released)
+   6C5B B7            [ 4]  156     or a
+   6C5C 20 F7         [12]  157     jr nz, sys_input_waitKeyPressed
+   6C5E AF            [ 4]  158     xor a
+   6C5F B4            [ 4]  159     or h
+   6C60 B5            [ 4]  160     or l
+   6C61 28 F2         [12]  161     jr z, sys_input_waitKeyPressed
+   6C63 3E 01         [ 7]  162     ld a, #1
+   6C65 32 54 6C      [13]  163     ld (_key_released), a
+   6C68 C9            [10]  164     ret
                             165 
                             166 
                             167 ;;-----------------------------------------------------------------
@@ -5411,8 +5411,8 @@ Hexadecimal [16-Bits]
                             173 ;;  Output:
                             174 ;;  Modified: 
                             175 ;;
-   6C55                     176 sys_input_init::
-   6C55 C9            [10]  177     ret 
+   6C69                     176 sys_input_init::
+   6C69 C9            [10]  177     ret 
                             178 
                             179 
                             180 ;;-----------------------------------------------------------------
@@ -5435,9 +5435,9 @@ Hexadecimal [16-Bits]
                             192 ;;  Output:
                             193 ;;  Modified: 
                             194 ;;
-   6C56                     195 sys_input_action::
+   6C6A                     195 sys_input_action::
                             196  
-   6C56 C9            [10]  197     ret
+   6C6A C9            [10]  197     ret
                             198 
                             199 
                             200 
@@ -5449,8 +5449,8 @@ Hexadecimal [16-Bits]
                             206 ;;  Output:
                             207 ;;  Modified: AF, HL, IX
                             208 ;;
-   6C57                     209 sys_input_selected_left::
-   6C57 C9            [10]  210     ret
+   6C6B                     209 sys_input_selected_left::
+   6C6B C9            [10]  210     ret
                             211 
                             212 ;;-----------------------------------------------------------------
                             213 ;;
@@ -5460,8 +5460,8 @@ Hexadecimal [16-Bits]
                             217 ;;  Output:
                             218 ;;  Modified: 
                             219 ;;
-   6C58                     220 sys_input_selected_right::
-   6C58 C9            [10]  221     ret
+   6C6C                     220 sys_input_selected_right::
+   6C6C C9            [10]  221     ret
                             222 
                             223 ;;-----------------------------------------------------------------
                             224 ;;
@@ -5473,32 +5473,32 @@ Hexadecimal [16-Bits]
                             230 ;;  Output:
                             231 ;;  Modified: iy, bc
                             232 ;;
-   6C59                     233 sys_input_generic_update::
-   6C59 18 05         [12]  234     jr first_key
-   6C5B                     235 keys_loop:
-   6C5B 01 04 00      [10]  236     ld bc, #4
-   6C5E FD 09         [15]  237     add iy, bc
-   6C60                     238 first_key:
-   6C60 FD 6E 00      [19]  239     ld l, 0(iy)                     ;; Lower part of the key pointer
-   6C63 FD 66 01      [19]  240     ld h, 1(iy)                     ;; Lower part of the key pointer
+   6C6D                     233 sys_input_generic_update::
+   6C6D 18 05         [12]  234     jr first_key
+   6C6F                     235 keys_loop:
+   6C6F 01 04 00      [10]  236     ld bc, #4
+   6C72 FD 09         [15]  237     add iy, bc
+   6C74                     238 first_key:
+   6C74 FD 6E 00      [19]  239     ld l, 0(iy)                     ;; Lower part of the key pointer
+   6C77 FD 66 01      [19]  240     ld h, 1(iy)                     ;; Lower part of the key pointer
                             241     ;; Check if key is null
-   6C66 7D            [ 4]  242     ld a, l
+   6C7A 7D            [ 4]  242     ld a, l
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 104.
 Hexadecimal [16-Bits]
 
 
 
-   6C67 B4            [ 4]  243     or h
-   6C68 C8            [11]  244     ret z                           ;; Return if key is null
+   6C7B B4            [ 4]  243     or h
+   6C7C C8            [11]  244     ret z                           ;; Return if key is null
                             245     ;; Check if key is pressed
-   6C69 CD 11 7E      [17]  246     call cpct_isKeyPressed_asm      ;;
-   6C6C 28 ED         [12]  247     jr z, keys_loop
+   6C7D CD 29 7E      [17]  246     call cpct_isKeyPressed_asm      ;;
+   6C80 28 ED         [12]  247     jr z, keys_loop
                             248     ;; Key pressed execute action
-   6C6E 21 5B 6C      [10]  249     ld hl, #keys_loop               ;;
-   6C71 E5            [11]  250     push hl                         ;; return addres from executed function
-   6C72 FD 6E 02      [19]  251     ld l, 2(iy)                     ;;
-   6C75 FD 66 03      [19]  252     ld h, 3(iy)                     ;; retrieve function address    
-   6C78 E9            [ 4]  253     jp (hl)                         ;; jump to function
+   6C82 21 6F 6C      [10]  249     ld hl, #keys_loop               ;;
+   6C85 E5            [11]  250     push hl                         ;; return addres from executed function
+   6C86 FD 6E 02      [19]  251     ld l, 2(iy)                     ;;
+   6C89 FD 66 03      [19]  252     ld h, 3(iy)                     ;; retrieve function address    
+   6C8C E9            [ 4]  253     jp (hl)                         ;; jump to function
                             254 
                             255 
                             256 
@@ -5511,7 +5511,7 @@ Hexadecimal [16-Bits]
                             263 ;;  Output:
                             264 ;;  Modified: iy, bc
                             265 ;;
-   6C79                     266 sys_input_update::   
-   6C79 FD 21 7D 81   [14]  267     ld iy, #sys_input_key_actions
-   6C7D CD 59 6C      [17]  268     call sys_input_generic_update
-   6C80 C9            [10]  269     ret
+   6C8D                     266 sys_input_update::   
+   6C8D FD 21 95 81   [14]  267     ld iy, #sys_input_key_actions
+   6C91 CD 6D 6C      [17]  268     call sys_input_generic_update
+   6C94 C9            [10]  269     ret

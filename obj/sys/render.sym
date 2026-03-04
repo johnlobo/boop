@@ -75,7 +75,7 @@ Symbol Table
     _s_small   **** GX  |     _s_small   **** GX  |     _s_small   **** GX
     _s_small   **** GX  |     _s_small   **** GX  |     _s_small   **** GX
     _s_small   **** GX  |     _s_small   **** GX  |     _s_small   **** GX
-    _s_small   **** GX  |   0 aligned_=  00CC R   |     cpct_dis   **** GX
+    _s_small   **** GX  |   0 aligned_=  00D0 R   |     cpct_dis   **** GX
     cpct_dra   **** GX  |     cpct_dra   **** GX  |     cpct_dra   **** GX
     cpct_get   **** GX  |     cpct_get   **** GX  |     cpct_get   **** GX
     cpct_isA   **** GX  |     cpct_isK   **** GX  |     cpct_pag=  0000 
@@ -83,18 +83,18 @@ Symbol Table
     cpct_pen   **** GX  |     cpct_px2   **** GX  |     cpct_sca   **** GX
     cpct_set   **** GX  |     cpct_set   **** GX  |     cpct_set   **** GX
     cpct_set   **** GX  |     cpct_set   **** GX  |     cpct_wai   **** GX
-    cpct_wai   **** GX  |     cpct_wai   **** GX  |   0 dms_rest   00F5 R
-  0 end_spri   00F5 R   |     firmware=  0038     |   0 height_l   00B4 R
+    cpct_wai   **** GX  |     cpct_wai   **** GX  |   0 dms_rest   00F9 R
+  0 end_spri   00F9 R   |     firmware=  0038     |   0 height_l   00B8 R
     opc_DI  =  00F3     |     opc_EI  =  00FB     |     opc_JR  =  0018 
-    opc_LD_D=  0016     |   0 sys_rend   0000 GR  |   0 sys_rend   00A1 GR
-  0 sys_rend   0024 GR  |   0 sys_rend   000C GR  |     transpar   **** GX
-  0 width_lo   00B5 R
+    opc_LD_D=  0016     |   0 sys_rend   0000 GR  |   0 sys_rend   00A5 GR
+  0 sys_rend   0097 GR  |   0 sys_rend   0024 GR  |   0 sys_rend   000C GR
+    transpar   **** GX  |   0 width_lo   00B9 R
 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 3.
 Hexadecimal [16-Bits]
 
 Area Table
 
-   0 _CODE      size   FA   flags    0
+   0 _CODE      size   FE   flags    0
    1 _DATA      size    0   flags    0
 

@@ -167,10 +167,10 @@ Hexadecimal [16-Bits]
                      0006    74 GRID_ROWS            = 6
                              75 
                              76 ;;------------------------------------------------------------------------------
-                             77 ;; Cursor color: pen 1 (bright yellow) encoded for Mode 0 solid-box
-                             78 ;;   Both pixels = pen 1 → byte bits [7..0] = 0000 0011 = 0x03
+                             77 ;; Cursor color: pen 7 (yellow) encoded for Mode 0 solid-box
+                             78 ;;   Both pixels = pen 7 → byte bits [7..0] = 0011 1111 = 0x3F
                              79 ;;------------------------------------------------------------------------------
-                     0003    80 CURSOR_COLOR         = 0x03
+                     003F    80 CURSOR_COLOR         = 0x3F
                              81 
                              82 ;;------------------------------------------------------------------------------
                              83 ;; Global variables
@@ -5562,8 +5562,8 @@ Hexadecimal [16-Bits]
                              36 ;;
                              37 .area _DATA
                              38 
-   80FB 00                   39 _game_state:         .db 0
-   80FC 20 47 41 4D 45 20    40 _game_loaded_string: .asciz " GAME LOADED - V.002"
+   8113 00                   39 _game_state:         .db 0
+   8114 20 47 41 4D 45 20    40 _game_loaded_string: .asciz " GAME LOADED - V.002"
         4C 4F 41 44 45 44
         20 2D 20 56 2E 30
         30 32 00
@@ -5583,12 +5583,12 @@ Hexadecimal [16-Bits]
                              54 ;;  Modified: AF, BC, DE, HL
                              55 ;;
    68BB                      56 sys_game_init::
-   68BB CD C3 79      [17]   57    call sys_render_init
+   68BB CD D7 79      [17]   57    call sys_render_init
                              58 
    0003                      59    m_msg_w_background 3
    68BE 26 03         [ 7]    1     ld h, #(3)                         ;;
    68C0 2E 03         [ 7]    2     ld l, #(3)                         ;;
-   68C2 CD 75 7F      [17]    3     call cpct_px2byteM0_asm             ;;
+   68C2 CD 8D 7F      [17]    3     call cpct_px2byteM0_asm             ;;
    68C5 08            [ 4]    4     ex af, af'                          ;;
    68C6 7D            [ 4]    5     ld a, l                             ;;
    68C7 08            [ 4]    6     ex af, af'                          ;;
@@ -5597,11 +5597,11 @@ Hexadecimal [16-Bits]
    68CC 06 2C         [ 7]   62    ld b, #44                           ;; h
    68CE 0E 3C         [ 7]   63    ld c, #60                           ;; w
    68D0 3E 01         [ 7]   64    ld a, #1                            ;; wait for a key
-   68D2 21 FC 80      [10]   65    ld hl, #_game_loaded_string         ;; message
-   68D5 CD 1F 6D      [17]   66    call sys_messages_show
+   68D2 21 14 81      [10]   65    ld hl, #_game_loaded_string         ;; message
+   68D5 CD 33 6D      [17]   66    call sys_messages_show
                              67 
                              68    ;; set random seed using hl from message show
-   68D8 CD E3 7E      [17]   69    call cpct_setSeed_mxor_asm
+   68D8 CD FB 7E      [17]   69    call cpct_setSeed_mxor_asm
                              70 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 108.
 Hexadecimal [16-Bits]
@@ -5610,8 +5610,8 @@ Hexadecimal [16-Bits]
 
                              71    ;; Start in menu state
    68DB AF            [ 4]   72    xor a
-   68DC 32 FB 80      [13]   73    ld (_game_state), a
-   68DF CD A8 6B      [17]   74    call man_menu_init
+   68DC 32 13 81      [13]   73    ld (_game_state), a
+   68DF CD BC 6B      [17]   74    call man_menu_init
                              75 
    68E2 C9            [10]   76    ret
                              77 
@@ -5625,27 +5625,27 @@ Hexadecimal [16-Bits]
                              85 ;;  Modified: AF, BC, DE, HL
                              86 ;;
    68E3                      87 sys_game_update::
-   68E3 CD 6D 7F      [17]   88    call cpct_waitVSYNC_asm
+   68E3 CD 85 7F      [17]   88    call cpct_waitVSYNC_asm
                              89 
-   68E6 3A FB 80      [13]   90    ld a, (_game_state)
+   68E6 3A 13 81      [13]   90    ld a, (_game_state)
    68E9 B7            [ 4]   91    or a
    68EA 28 02         [12]   92    jr z, _sgu_menu
    68EC 18 11         [12]   93    jr _sgu_playing
                              94 
    68EE                      95 _sgu_menu:
-   68EE CD B9 6B      [17]   96    call man_menu_update
+   68EE CD CD 6B      [17]   96    call man_menu_update
                              97 
                              98    ;; Check if player confirmed a selection
-   68F1 3A 7B 81      [13]   99    ld a, (man_menu_confirmed)
+   68F1 3A 93 81      [13]   99    ld a, (man_menu_confirmed)
    68F4 B7            [ 4]  100    or a
    68F5 C8            [11]  101    ret z                               ;; not confirmed yet, stay in menu
                             102 
                             103    ;; Transition to playing: init match (reads selection, resets players, draws screen)
    68F6 3E 01         [ 7]  104    ld a, #GAME_STATE_PLAYING
-   68F8 32 FB 80      [13]  105    ld (_game_state), a
-   68FB CD 33 6B      [17]  106    call man_match_init
+   68F8 32 13 81      [13]  105    ld (_game_state), a
+   68FB CD 41 6B      [17]  106    call man_match_init
    68FE C9            [10]  107    ret
                             108 
    68FF                     109 _sgu_playing:
-   68FF CD 69 6B      [17]  110    call man_match_update
+   68FF CD 7D 6B      [17]  110    call man_match_update
    6902 C9            [10]  111    ret

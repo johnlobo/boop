@@ -5417,15 +5417,15 @@ Hexadecimal [16-Bits]
                              28 ;;
                              29 .area _DATA
                              30 
-   8163 4F 4E 45 20 50 4C    31 _menu_opt1_string:  .asciz "ONE PLAYER"
+   817B 4F 4E 45 20 50 4C    31 _menu_opt1_string:  .asciz "ONE PLAYER"
         41 59 45 52 00
-   816E 54 57 4F 20 50 4C    32 _menu_opt2_string:  .asciz "TWO PLAYERS"
+   8186 54 57 4F 20 50 4C    32 _menu_opt2_string:  .asciz "TWO PLAYERS"
         41 59 45 52 53 00
                              33 
-   817A 00                   34 man_menu_selected::  .db 0      ;; 0 = ONE PLAYER, 1 = TWO PLAYERS
-   817B 00                   35 man_menu_confirmed:: .db 0      ;; 0 = not confirmed, 1 = ONE PLAYER, 2 = TWO PLAYERS
+   8192 00                   34 man_menu_selected::  .db 0      ;; 0 = ONE PLAYER, 1 = TWO PLAYERS
+   8193 00                   35 man_menu_confirmed:: .db 0      ;; 0 = not confirmed, 1 = ONE PLAYER, 2 = TWO PLAYERS
                              36 
-   817C 00                   37 _menu_key_debounce: .db 0       ;; 1 if a key was held last frame
+   8194 00                   37 _menu_key_debounce: .db 0       ;; 1 if a key was held last frame
                              38 
                              39 ;;
                              40 ;; Start of _CODE area
@@ -5441,47 +5441,47 @@ Hexadecimal [16-Bits]
                              50 ;;  Output:
                              51 ;;  Modified: AF, BC, DE, HL
                              52 ;;
-   6B6D                      53 man_menu_draw::
+   6B81                      53 man_menu_draw::
                              54    ;; Draw option 1: ONE PLAYER  (x=31 bytes, y=90 px)
-   6B6D 11 00 C0      [10]   55    ld de, #CPCT_VMEM_START_ASM
-   6B70 0E 1F         [ 7]   56    ld c, #31
-   6B72 06 5A         [ 7]   57    ld b, #90
-   6B74 CD 78 80      [17]   58    call cpct_getScreenPtr_asm
-   6B77 EB            [ 4]   59    ex de, hl
-   6B78 21 63 81      [10]   60    ld hl, #_menu_opt1_string
-   6B7B 3A 7A 81      [13]   61    ld a, (man_menu_selected)
-   6B7E B7            [ 4]   62    or a
-   6B7F 20 04         [12]   63    jr nz, _draw_opt1_white
-   6B81 0E 01         [ 7]   64    ld c, #1                          ;; Bright Yellow = selected
-   6B83 18 02         [12]   65    jr _draw_opt1
-   6B85                      66 _draw_opt1_white:
-   6B85 0E 00         [ 7]   67    ld c, #0                          ;; Bright White = unselected
-   6B87                      68 _draw_opt1:
-   6B87 CD FE 7B      [17]   69    call sys_text_draw_string
+   6B81 11 00 C0      [10]   55    ld de, #CPCT_VMEM_START_ASM
+   6B84 0E 1F         [ 7]   56    ld c, #31
+   6B86 06 5A         [ 7]   57    ld b, #90
+   6B88 CD 90 80      [17]   58    call cpct_getScreenPtr_asm
+   6B8B EB            [ 4]   59    ex de, hl
+   6B8C 21 7B 81      [10]   60    ld hl, #_menu_opt1_string
+   6B8F 3A 92 81      [13]   61    ld a, (man_menu_selected)
+   6B92 B7            [ 4]   62    or a
+   6B93 20 04         [12]   63    jr nz, _draw_opt1_white
+   6B95 0E 01         [ 7]   64    ld c, #1                          ;; Bright Yellow = selected
+   6B97 18 02         [12]   65    jr _draw_opt1
+   6B99                      66 _draw_opt1_white:
+   6B99 0E 00         [ 7]   67    ld c, #0                          ;; Bright White = unselected
+   6B9B                      68 _draw_opt1:
+   6B9B CD 16 7C      [17]   69    call sys_text_draw_string
                              70 
                              71    ;; Draw option 2: TWO PLAYERS  (x=30 bytes, y=110 px)
-   6B8A 11 00 C0      [10]   72    ld de, #CPCT_VMEM_START_ASM
-   6B8D 0E 1E         [ 7]   73    ld c, #30
-   6B8F 06 6E         [ 7]   74    ld b, #110
-   6B91 CD 78 80      [17]   75    call cpct_getScreenPtr_asm
+   6B9E 11 00 C0      [10]   72    ld de, #CPCT_VMEM_START_ASM
+   6BA1 0E 1E         [ 7]   73    ld c, #30
+   6BA3 06 6E         [ 7]   74    ld b, #110
+   6BA5 CD 90 80      [17]   75    call cpct_getScreenPtr_asm
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 105.
 Hexadecimal [16-Bits]
 
 
 
-   6B94 EB            [ 4]   76    ex de, hl
-   6B95 21 6E 81      [10]   77    ld hl, #_menu_opt2_string
-   6B98 3A 7A 81      [13]   78    ld a, (man_menu_selected)
-   6B9B B7            [ 4]   79    or a
-   6B9C 28 04         [12]   80    jr z, _draw_opt2_white
-   6B9E 0E 01         [ 7]   81    ld c, #1                          ;; Bright Yellow = selected
-   6BA0 18 02         [12]   82    jr _draw_opt2
-   6BA2                      83 _draw_opt2_white:
-   6BA2 0E 00         [ 7]   84    ld c, #0                          ;; Bright White = unselected
-   6BA4                      85 _draw_opt2:
-   6BA4 CD FE 7B      [17]   86    call sys_text_draw_string
+   6BA8 EB            [ 4]   76    ex de, hl
+   6BA9 21 86 81      [10]   77    ld hl, #_menu_opt2_string
+   6BAC 3A 92 81      [13]   78    ld a, (man_menu_selected)
+   6BAF B7            [ 4]   79    or a
+   6BB0 28 04         [12]   80    jr z, _draw_opt2_white
+   6BB2 0E 01         [ 7]   81    ld c, #1                          ;; Bright Yellow = selected
+   6BB4 18 02         [12]   82    jr _draw_opt2
+   6BB6                      83 _draw_opt2_white:
+   6BB6 0E 00         [ 7]   84    ld c, #0                          ;; Bright White = unselected
+   6BB8                      85 _draw_opt2:
+   6BB8 CD 16 7C      [17]   86    call sys_text_draw_string
                              87 
-   6BA7 C9            [10]   88    ret
+   6BBB C9            [10]   88    ret
                              89 
                              90 ;;-----------------------------------------------------------------
                              91 ;;
@@ -5492,16 +5492,16 @@ Hexadecimal [16-Bits]
                              96 ;;  Output:
                              97 ;;  Modified: AF, BC, DE, HL
                              98 ;;
-   6BA8                      99 man_menu_init::
-   6BA8 AF            [ 4]  100    xor a
-   6BA9 32 7A 81      [13]  101    ld (man_menu_selected), a
-   6BAC 32 7B 81      [13]  102    ld (man_menu_confirmed), a
-   6BAF 32 7C 81      [13]  103    ld (_menu_key_debounce), a
+   6BBC                      99 man_menu_init::
+   6BBC AF            [ 4]  100    xor a
+   6BBD 32 92 81      [13]  101    ld (man_menu_selected), a
+   6BC0 32 93 81      [13]  102    ld (man_menu_confirmed), a
+   6BC3 32 94 81      [13]  103    ld (_menu_key_debounce), a
                             104 
-   6BB2 CD B7 79      [17]  105    call sys_render_clear_buffer
-   6BB5 CD 6D 6B      [17]  106    call man_menu_draw
+   6BC6 CD CB 79      [17]  105    call sys_render_clear_buffer
+   6BC9 CD 81 6B      [17]  106    call man_menu_draw
                             107 
-   6BB8 C9            [10]  108    ret
+   6BCC C9            [10]  108    ret
                             109 
                             110 ;;-----------------------------------------------------------------
                             111 ;;
@@ -5512,57 +5512,57 @@ Hexadecimal [16-Bits]
                             116 ;;  Output:
                             117 ;;  Modified: AF, BC, DE, HL
                             118 ;;
-   6BB9                     119 man_menu_update::
+   6BCD                     119 man_menu_update::
                             120    ;; Debounce: if a key was held last frame, wait for full release
-   6BB9 3A 7C 81      [13]  121    ld a, (_menu_key_debounce)
-   6BBC B7            [ 4]  122    or a
-   6BBD 28 0A         [12]  123    jr z, _mmu_check_keys
-   6BBF CD EB 7E      [17]  124    call cpct_isAnyKeyPressed_asm
-   6BC2 B7            [ 4]  125    or a
-   6BC3 C0            [11]  126    ret nz                            ;; still held, do nothing this frame
-   6BC4 AF            [ 4]  127    xor a
-   6BC5 32 7C 81      [13]  128    ld (_menu_key_debounce), a
-   6BC8 C9            [10]  129    ret
+   6BCD 3A 94 81      [13]  121    ld a, (_menu_key_debounce)
+   6BD0 B7            [ 4]  122    or a
+   6BD1 28 0A         [12]  123    jr z, _mmu_check_keys
+   6BD3 CD 03 7F      [17]  124    call cpct_isAnyKeyPressed_asm
+   6BD6 B7            [ 4]  125    or a
+   6BD7 C0            [11]  126    ret nz                            ;; still held, do nothing this frame
+   6BD8 AF            [ 4]  127    xor a
+   6BD9 32 94 81      [13]  128    ld (_menu_key_debounce), a
+   6BDC C9            [10]  129    ret
                             130 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 106.
 Hexadecimal [16-Bits]
 
 
 
-   6BC9                     131 _mmu_check_keys:
+   6BDD                     131 _mmu_check_keys:
                             132    ;; Cursor Up: move selection up (toggle between 0 and 1)
-   6BC9 21 00 01      [10]  133    ld hl, #Key_CursorUp
-   6BCC CD 11 7E      [17]  134    call cpct_isKeyPressed_asm
-   6BCF 28 0D         [12]  135    jr z, _mmu_check_down
-   6BD1 3A 7A 81      [13]  136    ld a, (man_menu_selected)
-   6BD4 EE 01         [ 7]  137    xor #1
-   6BD6 32 7A 81      [13]  138    ld (man_menu_selected), a
-   6BD9 CD 6D 6B      [17]  139    call man_menu_draw
-   6BDC 18 24         [12]  140    jr _mmu_set_debounce
+   6BDD 21 00 01      [10]  133    ld hl, #Key_CursorUp
+   6BE0 CD 29 7E      [17]  134    call cpct_isKeyPressed_asm
+   6BE3 28 0D         [12]  135    jr z, _mmu_check_down
+   6BE5 3A 92 81      [13]  136    ld a, (man_menu_selected)
+   6BE8 EE 01         [ 7]  137    xor #1
+   6BEA 32 92 81      [13]  138    ld (man_menu_selected), a
+   6BED CD 81 6B      [17]  139    call man_menu_draw
+   6BF0 18 24         [12]  140    jr _mmu_set_debounce
                             141 
-   6BDE                     142 _mmu_check_down:
+   6BF2                     142 _mmu_check_down:
                             143    ;; Cursor Down: move selection down (toggle between 0 and 1)
-   6BDE 21 00 04      [10]  144    ld hl, #Key_CursorDown
-   6BE1 CD 11 7E      [17]  145    call cpct_isKeyPressed_asm
-   6BE4 28 0D         [12]  146    jr z, _mmu_check_enter
-   6BE6 3A 7A 81      [13]  147    ld a, (man_menu_selected)
-   6BE9 EE 01         [ 7]  148    xor #1
-   6BEB 32 7A 81      [13]  149    ld (man_menu_selected), a
-   6BEE CD 6D 6B      [17]  150    call man_menu_draw
-   6BF1 18 0F         [12]  151    jr _mmu_set_debounce
+   6BF2 21 00 04      [10]  144    ld hl, #Key_CursorDown
+   6BF5 CD 29 7E      [17]  145    call cpct_isKeyPressed_asm
+   6BF8 28 0D         [12]  146    jr z, _mmu_check_enter
+   6BFA 3A 92 81      [13]  147    ld a, (man_menu_selected)
+   6BFD EE 01         [ 7]  148    xor #1
+   6BFF 32 92 81      [13]  149    ld (man_menu_selected), a
+   6C02 CD 81 6B      [17]  150    call man_menu_draw
+   6C05 18 0F         [12]  151    jr _mmu_set_debounce
                             152 
-   6BF3                     153 _mmu_check_enter:
+   6C07                     153 _mmu_check_enter:
                             154    ;; Enter: confirm current selection
-   6BF3 21 02 04      [10]  155    ld hl, #Key_Return
-   6BF6 CD 11 7E      [17]  156    call cpct_isKeyPressed_asm
-   6BF9 28 0C         [12]  157    jr z, _mmu_done
-   6BFB 3A 7A 81      [13]  158    ld a, (man_menu_selected)
-   6BFE 3C            [ 4]  159    inc a                             ;; 1 = ONE PLAYER, 2 = TWO PLAYERS
-   6BFF 32 7B 81      [13]  160    ld (man_menu_confirmed), a
+   6C07 21 02 04      [10]  155    ld hl, #Key_Return
+   6C0A CD 29 7E      [17]  156    call cpct_isKeyPressed_asm
+   6C0D 28 0C         [12]  157    jr z, _mmu_done
+   6C0F 3A 92 81      [13]  158    ld a, (man_menu_selected)
+   6C12 3C            [ 4]  159    inc a                             ;; 1 = ONE PLAYER, 2 = TWO PLAYERS
+   6C13 32 93 81      [13]  160    ld (man_menu_confirmed), a
                             161 
-   6C02                     162 _mmu_set_debounce:
-   6C02 3E 01         [ 7]  163    ld a, #1
-   6C04 32 7C 81      [13]  164    ld (_menu_key_debounce), a
+   6C16                     162 _mmu_set_debounce:
+   6C16 3E 01         [ 7]  163    ld a, #1
+   6C18 32 94 81      [13]  164    ld (_menu_key_debounce), a
                             165 
-   6C07                     166 _mmu_done:
-   6C07 C9            [10]  167    ret
+   6C1B                     166 _mmu_done:
+   6C1B C9            [10]  167    ret

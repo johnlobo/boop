@@ -5378,7 +5378,7 @@ Hexadecimal [16-Bits]
                              79 
    68B0                      80 _main::
                              81    ;; Disable firmware to prevent it from interfering with string drawing
-   68B0 CD 18 7B      [17]   82    call sys_system_disable_firmware
+   68B0 CD 30 7B      [17]   82    call sys_system_disable_firmware
                              83 
                              84    ;; Initialize game
    68B3 CD BB 68      [17]   85    call sys_game_init
