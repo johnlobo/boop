@@ -126,6 +126,16 @@ _match_init_player:
 ;;  Modified: AF, BC, HL
 ;;
 _draw_big_digit:
+   ;; Erase old digit before drawing new one
+   push de                           ;; save screen addr (DE still valid for drawSolidBox)
+   push af                           ;; save digit
+   ld a, #HUD_NUM_BG                 ;; fill color
+   ld c, #S_BIG_NUMBERS_WIDTH
+   ld b, #S_BIG_NUMBERS_HEIGHT
+   call cpct_drawSolidBox_asm        ;; clears area; DE clobbered
+   pop af                            ;; restore digit
+   pop de                            ;; restore screen addr
+   ;; Draw the digit sprite
    push de                           ;; save dest while computing sprite ptr
    ld hl, #_big_num_ptrs
    ld b, #0
@@ -283,6 +293,7 @@ _mdb_col_loop:
    push af                           ;; save cell value
    call _match_col_row_to_screen_addr ;; B=row, C=col -> DE = screen addr
    pop af                            ;; A = cell value
+   inc de                            ;; shift sprite 1 byte (2px) right, same as cursor
    call _match_draw_cell_sprite
    pop bc                            ;; restore row/col
    pop ix                            ;; restore board pointer
@@ -373,10 +384,9 @@ _mdc_draw_sprite:
 ;;  Modified: AF, BC, DE, HL, IX
 ;;
 _match_redraw_all:
-   call sys_render_draw_screen
+   call sys_render_draw_grid
    call _match_draw_board
    call _match_draw_cursor
-   call man_match_draw_hud
    ret
 
 ;;-----------------------------------------------------------------
@@ -463,6 +473,7 @@ _mpp_do_place:
    ld (_cursor_piece), a
 
    call _match_redraw_all
+   call man_match_draw_hud
    ret
 
 ;;-----------------------------------------------------------------
@@ -600,8 +611,10 @@ man_match_init::
    xor a
    ld (_turn_debounce), a
 
-   ;; draw full screen
+   ;; draw full screen: static elements once, then grid + board + cursor + HUD
+   call sys_render_draw_screen
    call _match_redraw_all
+   call man_match_draw_hud
 
    ret
 

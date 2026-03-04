@@ -20,6 +20,7 @@
 .globl sys_render_init
 .globl sys_render_clear_buffer
 .globl sys_render_draw_screen
+.globl sys_render_draw_grid
 
 ;;===============================================================================
 ;; PUBLIC CONSTANTS

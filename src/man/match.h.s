@@ -36,6 +36,7 @@ HUD_P1_KITTENS_X = 10   ;; below P1 catty sprite (render x=9,  w=5)
 HUD_P2_CATS_X    = 67   ;; below P2 cat   sprite (render x=66, w=5)
 HUD_P2_KITTENS_X = 72   ;; below P2 catty sprite (render x=71, w=5)
 HUD_Y            = 89   ;; y = 68 (sprites top) + 17 (height) + 4 (gap)
+HUD_NUM_BG       = 0x00 ;; solid-box fill color used to erase old digit before redraw (pen 0 = black)
 
 ;;------------------------------------------------------------------------------
 ;; Match state constants
@@ -74,10 +75,10 @@ GRID_COLS            = 6
 GRID_ROWS            = 6
 
 ;;------------------------------------------------------------------------------
-;; Cursor color: pen 1 (bright yellow) encoded for Mode 0 solid-box
-;;   Both pixels = pen 1 → byte bits [7..0] = 0000 0011 = 0x03
+;; Cursor color: pen 6 (bright yellow, firmware 24) encoded for Mode 0 solid-box
+;;   Both pixels = pen 6 → byte bits [7..0] = 0011 1100 = 0x3C
 ;;------------------------------------------------------------------------------
-CURSOR_COLOR         = 0x03
+CURSOR_COLOR         = 0x3C
 
 ;;------------------------------------------------------------------------------
 ;; Global variables

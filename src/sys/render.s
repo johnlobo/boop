@@ -138,6 +138,20 @@ sys_render_draw_screen::
     ld hl, #transparency_table
     call cpct_drawSpriteMaskedAlignedTable_asm
 
+    call sys_render_draw_grid
+
+    ret
+
+;;-----------------------------------------------------------------
+;;
+;; sys_render_draw_grid
+;;
+;;  Draws only the grid background sprite (leaves header/HUD untouched).
+;;  Input:
+;;  Output:
+;;  Modified: AF, BC, DE, HL
+;;
+sys_render_draw_grid::
     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 18, 32  ;; grid
     ld c, #BG_GRID_W
     ld b, #BG_GRID_H
