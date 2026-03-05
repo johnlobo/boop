@@ -83,10 +83,20 @@ Six interrupt handlers (`int_handler1`–`int_handler6`) rotate each interrupt, 
 - First cell: X=22 bytes, Y=35 px
 - Cell pitch: 7 bytes wide × 24 px tall
 - Dimensions: 6 cols × 6 rows
-- Cursor color: `CURSOR_COLOR = 0x03` (pen 1 — yellow — both pixels in Mode 0)
+- Cursor color: `CURSOR_COLOR = 0x3C` (pen 6 — bright yellow — both pixels in Mode 0)
 
 **Player struct** (offsets in `match.h.s`):
 `score` 4 bytes BCD (0), `cats` 1 (4), `kittens` 1 (5); `sizeof_Player = 6`
+
+### Kitten Placement Rules
+
+1. **Empty cell only** — a kitten can only be placed on a cell that is currently `BOARD_EMPTY`.
+
+2. **Boop push** — after placement, every kitten present in any of the (up to 8) surrounding cells is pushed one cell **away** from the newly placed kitten. The push direction for each neighbor is the vector from the new kitten to that neighbor (i.e. the neighbor moves one cell further away in the same direction).
+
+3. **Out-of-bounds ejection** — if the push would move a kitten outside the 6×6 grid, the kitten is removed from the board and the **owner's kitten count is incremented** (it is returned to that player's reserve).
+
+4. **Cats are not affected** — only kittens (`BOARD_P1_KITTEN` / `BOARD_P2_KITTEN`) are pushed; cats (`BOARD_P1_CAT` / `BOARD_P2_CAT`) are immovable and ignore the boop.
 
 ### CPCtelera Calling Conventions
 

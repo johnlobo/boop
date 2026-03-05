@@ -20,6 +20,7 @@
 .include "../common.h.s"
 .include "sys/render.h.s"
 .include "sys/input.h.s"
+.include "sys/messages.h.s"
 
 .module man_match
 
@@ -53,11 +54,27 @@ _match_board: .ds 36
 ;;
 ;; Turn / cursor state
 ;;
-_match_state:   .db 0   ;; MATCH_STATE_P1 or MATCH_STATE_P2
+_match_cancelled:: .db 0 ;; set to 1 when player confirms ESC → abandon match
+_match_state:      .db 0 ;; MATCH_STATE_P1 or MATCH_STATE_P2
 _cursor_col:    .db 0   ;; 0 .. GRID_COLS-1
 _cursor_row:    .db 0   ;; 0 .. GRID_ROWS-1
 _cursor_piece:  .db 0   ;; PIECE_CAT or PIECE_KITTEN
 _turn_debounce: .db 0   ;; 1 while a key is held (same pattern as menu.s)
+
+_match_cancel_msg: .asciz " ABANDON MATCH? (Y/N)"
+
+;;
+;; Direction table for boop: 8 (dr, dc) pairs (signed bytes, 0xFF = -1)
+;;
+_boop_dir_table:
+   .db 0xFF, 0xFF   ;; (-1,-1)
+   .db 0xFF, 0x00   ;; (-1, 0)
+   .db 0xFF, 0x01   ;; (-1,+1)
+   .db 0x00, 0xFF   ;;  (0,-1)
+   .db 0x00, 0x01   ;;  (0,+1)
+   .db 0x01, 0xFF   ;; (+1,-1)
+   .db 0x01, 0x00   ;; (+1, 0)
+   .db 0x01, 0x01   ;; (+1,+1)
 
 ;;
 ;; Lookup table: 16-bit pointers to big number sprites 0-9
@@ -126,16 +143,6 @@ _match_init_player:
 ;;  Modified: AF, BC, HL
 ;;
 _draw_big_digit:
-   ;; Erase old digit before drawing new one
-   push de                           ;; save screen addr (DE still valid for drawSolidBox)
-   push af                           ;; save digit
-   ld a, #HUD_NUM_BG                 ;; fill color
-   ld c, #S_BIG_NUMBERS_WIDTH
-   ld b, #S_BIG_NUMBERS_HEIGHT
-   call cpct_drawSolidBox_asm        ;; clears area; DE clobbered
-   pop af                            ;; restore digit
-   pop de                            ;; restore screen addr
-   ;; Draw the digit sprite
    push de                           ;; save dest while computing sprite ptr
    ld hl, #_big_num_ptrs
    ld b, #0
@@ -164,6 +171,47 @@ _draw_big_digit:
 ;;  Modified: AF, BC, DE, HL
 ;;
 man_match_draw_hud::
+   ;; Restore basket + cat-icon background so old digits are erased cleanly
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 0, 50   ;; left basket
+   ld c, #S_BASKET_W
+   ld b, #S_BASKET_H
+   ld hl, #_s_basket
+   call cpct_drawSprite_asm
+
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 62, 50  ;; right basket
+   ld c, #S_BASKET_W
+   ld b, #S_BASKET_H
+   ld hl, #_s_basket
+   call cpct_drawSprite_asm
+
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 4, 68   ;; P1 cat
+   ld bc, #_s_cat_0
+   ld__ixl S_CAT_W
+   ld__ixh S_CAT_H
+   ld hl, #transparency_table
+   call cpct_drawSpriteMaskedAlignedTable_asm
+
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 9, 68   ;; P1 catty
+   ld bc, #_s_catty_0
+   ld__ixl S_CATTY_W
+   ld__ixh S_CATTY_H
+   ld hl, #transparency_table
+   call cpct_drawSpriteMaskedAlignedTable_asm
+
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 66, 68  ;; P2 cat
+   ld bc, #_s_cat_1
+   ld__ixl S_CAT_W
+   ld__ixh S_CAT_H
+   ld hl, #transparency_table
+   call cpct_drawSpriteMaskedAlignedTable_asm
+
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 71, 68  ;; P2 catty
+   ld bc, #_s_catty_1
+   ld__ixl S_CATTY_W
+   ld__ixh S_CATTY_H
+   ld hl, #transparency_table
+   call cpct_drawSpriteMaskedAlignedTable_asm
+
    ;; --- Player 1 cats (below cat sprite) ---
    ld de, #CPCT_VMEM_START_ASM
    ld c, #HUD_P1_CATS_X
@@ -465,6 +513,13 @@ _mpp_do_place:
    inc a                             ;; A = state*2 + piece + 1
    ld (hl), a                        ;; write to board
 
+   ;; Boop: if a kitten was placed, push neighboring kittens
+   ld a, (_cursor_piece)
+   or a
+   jr z, _mpp_no_boop                ;; PIECE_CAT = 0, skip
+   call _match_boop
+_mpp_no_boop:
+
    ;; Toggle state, reset piece selection to kitten
    ld a, (_match_state)
    xor #1
@@ -560,14 +615,211 @@ _mhi_check_space:
 _mhi_check_enter:
    ld hl, #Key_Return
    call cpct_isKeyPressed_asm
-   jr z, _mhi_done
+   jr z, _mhi_check_esc
    call _match_place_piece
+   jr _mhi_set_debounce
+
+_mhi_check_esc:
+   ld hl, #Key_Esc
+   call cpct_isKeyPressed_asm
+   jr z, _mhi_done
+   call _match_confirm_cancel
 
 _mhi_set_debounce:
    ld a, #1
    ld (_turn_debounce), a
 
 _mhi_done:
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_confirm_cancel
+;;
+;;  Shows "ABANDON MATCH? (Y/N)" dialog. Blocks until Y, N or Esc.
+;;  On Y: sets _match_cancelled = 1.
+;;  On N or Esc: restores screen and returns, match continues.
+;;  Input:
+;;  Output:
+;;  Modified: AF, BC, DE, HL
+;;
+_match_confirm_cancel:
+   ;; Show dialog window (wait_for_key=0: no auto-wait; background saved in message_buffer)
+   m_msg_w_background 14            ;; red interior for the dialog box
+   ld e, #6
+   ld d, #78                         ;; y position
+   ld b, #35                        ;; height
+   ld c, #44                         ;; width (auto-computed from text)
+   ld a, #0                          ;; no auto-wait
+   ld hl, #_match_cancel_msg
+   call sys_messages_show            ;; IY = &_window_data; background saved
+
+   ;; Wait for ESC key to be released before accepting new input
+_mcc_wait_esc_release:
+   ld hl, #Key_Esc
+   call cpct_isKeyPressed_asm
+   or a
+   jr nz, _mcc_wait_esc_release
+
+   ;; Poll for Y, N, or Esc
+_mcc_poll:
+   ld hl, #Key_Y
+   call cpct_isKeyPressed_asm
+   or a
+   jr nz, _mcc_yes
+
+   ld hl, #Key_N
+   call cpct_isKeyPressed_asm
+   or a
+   jr nz, _mcc_no
+
+   ld hl, #Key_Esc
+   call cpct_isKeyPressed_asm
+   or a
+   jr nz, _mcc_no
+
+   jr _mcc_poll
+
+_mcc_yes:
+   call sys_messages_restore_message_background
+   ld a, #1
+   ld (_match_cancelled), a
+   ret
+
+_mcc_no:
+   call sys_messages_restore_message_background
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_boop
+;;
+;;  Called after placing a kitten at (_cursor_row, _cursor_col).
+;;  For each of 8 neighbor directions: if the neighbor cell holds a
+;;  kitten, it is pushed one cell further away (neighbor + delta).
+;;  If the destination is off-grid the kitten is removed from the
+;;  board and its owner's Player_kittens count is incremented.
+;;  If the destination is occupied the kitten stays in place.
+;;  Cats (BOARD_P1_CAT / BOARD_P2_CAT) are never affected.
+;;  Input:  _cursor_row, _cursor_col = placed kitten position
+;;  Output:
+;;  Modified: AF, BC, DE, HL, IX, IY
+;;
+_match_boop:
+   ld iy, #_boop_dir_table
+   ld b, #8                          ;; 8 directions to check
+
+_mb_dir_loop:
+   push bc                           ;; save loop counter
+
+   ;; -- compute neighbor row: nr = cursor_row + dr --
+   ld a, (_cursor_row)
+   add a, 0(iy)
+   jp m, _mb_next_dir                ;; nr < 0 → out of bounds
+   ld d, a                           ;; D = nr
+   cp #GRID_ROWS
+   jr nc, _mb_next_dir               ;; nr >= 6 → out of bounds
+
+   ;; -- compute neighbor col: nc = cursor_col + dc --
+   ld a, (_cursor_col)
+   add a, 1(iy)
+   jp m, _mb_next_dir                ;; nc < 0 → out of bounds
+   ld e, a                           ;; E = nc
+   cp #GRID_COLS
+   jr nc, _mb_next_dir               ;; nc >= 6 → out of bounds
+
+   ;; -- look up board[nr][nc] (index = nr*6 + nc) --
+   ld a, d
+   add a, a                          ;; row*2
+   add a, a                          ;; row*4
+   add a, d                          ;; row*5
+   add a, d                          ;; row*6
+   add a, e
+   ld hl, #_match_board
+   ld c, a
+   ld b, #0
+   add hl, bc                        ;; HL = &board[nr][nc]
+
+   ld a, (hl)
+   cp #BOARD_P1_KITTEN
+   jr z, _mb_is_kitten
+   cp #BOARD_P2_KITTEN
+   jr nz, _mb_next_dir               ;; not a kitten → nothing to push
+
+_mb_is_kitten:
+   ;; A = kitten value (2 or 4); HL = source cell; D=nr, E=nc
+   push hl                           ;; save source cell ptr
+   push af                           ;; save kitten board value
+
+   ;; -- destination = neighbor + same delta (pushed away from placed kitten) --
+   ld a, d
+   add a, 0(iy)                      ;; dest_row = nr + dr
+   ld d, a
+   ld a, e
+   add a, 1(iy)                      ;; dest_col = nc + dc
+   ld e, a
+
+   ;; -- destination bounds check --
+   bit 7, d
+   jr nz, _mb_dest_out               ;; dest_row negative
+   ld a, d
+   cp #GRID_ROWS
+   jr nc, _mb_dest_out               ;; dest_row >= 6
+   bit 7, e
+   jr nz, _mb_dest_out               ;; dest_col negative
+   ld a, e
+   cp #GRID_COLS
+   jr nc, _mb_dest_out               ;; dest_col >= 6
+
+   ;; -- destination in bounds: check if empty --
+   ld a, d
+   add a, a                          ;; row*2
+   add a, a                          ;; row*4
+   add a, d                          ;; row*5
+   add a, d                          ;; row*6
+   add a, e
+   ld hl, #_match_board
+   ld c, a
+   ld b, #0
+   add hl, bc                        ;; HL = &board[dest_row][dest_col]
+
+   ld a, (hl)
+   or a
+   jr nz, _mb_dest_blocked           ;; occupied → kitten stays
+
+   ;; -- move kitten to empty destination --
+   pop af
+   ld (hl), a                        ;; write kitten to destination
+   pop hl                            ;; source cell ptr
+   ld (hl), #BOARD_EMPTY
+   jr _mb_next_dir
+
+_mb_dest_blocked:
+   pop af                            ;; balance stack
+   pop hl
+   jr _mb_next_dir
+
+_mb_dest_out:
+   ;; kitten pushed off-grid: remove from board, return to owner's reserve
+   pop af                            ;; kitten board value (2=P1, 4=P2)
+   pop hl                            ;; source cell ptr
+   ld (hl), #BOARD_EMPTY
+   cp #BOARD_P2_KITTEN
+   jr z, _mb_eject_p2
+   ld ix, #man_match_player1
+   inc Player_kittens(ix)
+   jr _mb_next_dir
+
+_mb_eject_p2:
+   ld ix, #man_match_player2
+   inc Player_kittens(ix)
+
+_mb_next_dir:
+   inc iy
+   inc iy                            ;; advance past (dr, dc) pair
+   pop bc                            ;; restore loop counter
+   dec b
+   jp nz, _mb_dir_loop
    ret
 
 ;;-----------------------------------------------------------------
@@ -601,8 +853,9 @@ man_match_init::
    ld (hl), #BOARD_EMPTY
    ldir
 
-   ;; initialise cursor and turn state
+   ;; initialise cursor, turn state and cancel flag
    xor a
+   ld (_match_cancelled), a
    ld (_match_state), a
    ld (_cursor_col), a
    ld (_cursor_row), a
