@@ -5475,17 +5475,17 @@ Hexadecimal [16-Bits]
                              33 ;;
                              34 .area _DATA
                              35 
-   81E8                      36 _window_data::
-   81E8 00 00                37 _window_address: .dw #00
-   81EA 00                   38 _window_x: .db #00
-   81EB 00                   39 _window_y: .db #00
-   81EC 00                   40 _window_w: .db #00
-   81ED 00                   41 _window_h: .db #00
-   81EE 00 00                42 _window_message: .dw #0000
-   81F0 01                   43 _window_wait_for_key: .db #01
-   81F1 00                   44 _window_background_color: .db #00
+   85CB                      36 _window_data::
+   85CB 00 00                37 _window_address: .dw #00
+   85CD 00                   38 _window_x: .db #00
+   85CE 00                   39 _window_y: .db #00
+   85CF 00                   40 _window_w: .db #00
+   85D0 00                   41 _window_h: .db #00
+   85D1 00 00                42 _window_message: .dw #0000
+   85D3 01                   43 _window_wait_for_key: .db #01
+   85D4 00                   44 _window_background_color: .db #00
                              45 
-   81F2 50 52 45 53 53 20    46 _press_any_key_string: .asciz "PRESS ANY KEY"
+   85D5 50 52 45 53 53 20    46 _press_any_key_string: .asciz "PRESS ANY KEY"
         41 4E 59 20 4B 45
         59 00
                              47 
@@ -5526,7 +5526,7 @@ Hexadecimal [16-Bits]
 
                              78 
    6934                      79 sys_messages_load_window_data::
-   6934 FD 21 E8 81   [14]   80     ld iy, #_window_data
+   6934 FD 21 CB 85   [14]   80     ld iy, #_window_data
    6938 08            [ 4]   81     ex af, af'                      ;;
    6939 FD 77 09      [19]   82     ld w_b_color(iy), a             ;; bring background color froam a'
    693C 08            [ 4]   83     ex af, af'                      ;;
@@ -5567,7 +5567,7 @@ Hexadecimal [16-Bits]
    697E 11 00 C0      [10]  118     ld de, #CPCT_VMEM_START_ASM   ;; DE = Pointer to start of the screen
                             119     
                             120     ;;ld_de_frontbuffer                ;; Calculate video memory location and return it in HL
-   6981 CD 57 81      [17]  121     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
+   6981 CD 3A 85      [17]  121     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
                             122     
    6984 FD 75 00      [19]  123     ld w_address(iy), l             ;; keep address in memory
    6987 FD 74 01      [19]  124     ld w_address+1(iy), h           ;;
@@ -5597,7 +5597,7 @@ Hexadecimal [16-Bits]
    6994 FD 46 05      [19]  143     ld b, w_h(iy)
                             144     
    6997 3E FF         [ 7]  145     ld a,#0xff                          ;; Patern of solid box
-   6999 CD 7E 80      [17]  146     call cpct_drawSolidBox_asm
+   6999 CD 61 84      [17]  146     call cpct_drawSolidBox_asm
                             147 
                             148     ;; Draw Front Window
                             149     
@@ -5610,7 +5610,7 @@ Hexadecimal [16-Bits]
    69A3 FD 46 03      [19]  156     ld b, w_y(iy)                   ;;
    69A6 04            [ 4]  157     inc b                           ;; B = y coordinate + 2
    69A7 04            [ 4]  158     inc b                           ;;
-   69A8 CD 57 81      [17]  159     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
+   69A8 CD 3A 85      [17]  159     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
    69AB EB            [ 4]  160     ex de, hl                       ;; move screen address to de
                             161     
    69AC FD 4E 04      [19]  162     ld c, w_w(iy)                   ;;
@@ -5625,7 +5625,7 @@ Hexadecimal [16-Bits]
                             171     
                             172     ;;ld a, #0x00                     ;; Patern of solid box
    69B8 FD 7E 09      [19]  173     ld a, w_b_color(iy)               ;; Patern for solid box  
-   69BB CD 7E 80      [17]  174     call cpct_drawSolidBox_asm
+   69BB CD 61 84      [17]  174     call cpct_drawSolidBox_asm
                             175 
    69BE C9            [10]  176     ret
                             177 
@@ -5654,7 +5654,7 @@ Hexadecimal [16-Bits]
    69C5 21 B2 6A      [10]  195     ld hl, #message_buffer              ;;
    69C8 FD 4E 04      [19]  196     ld c, w_w(iy)                       ;;
    69CB FD 46 05      [19]  197     ld b, w_h(iy)                       ;;
-   69CE CD 06 7F      [17]  198     call cpct_drawSprite_asm            ;;
+   69CE CD E9 82      [17]  198     call cpct_drawSprite_asm            ;;
    69D1 C9            [10]  199     ret
                             200 
                             201 
@@ -5681,7 +5681,7 @@ Hexadecimal [16-Bits]
    69DB 11 B2 6A      [10]  222     ld de, #message_buffer              ;;
    69DE FD 4E 04      [19]  223     ld c, w_w(iy)                       ;;
    69E1 FD 46 05      [19]  224     ld b, w_h(iy)                       ;;
-   69E4 CD BB 7E      [17]  225     call cpct_getScreenToSprite_asm     ;;
+   69E4 CD 9E 82      [17]  225     call cpct_getScreenToSprite_asm     ;;
                             226 
                             227 
    69E7 CD 8B 69      [17]  228     call sys_messages_draw_window
@@ -5715,7 +5715,7 @@ Hexadecimal [16-Bits]
    6A03 80            [ 4]  251     add b                           ;;
    6A04 47            [ 4]  252     ld b, a                         ;;
                             253     
-   6A05 CD 57 81      [17]  254     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
+   6A05 CD 3A 85      [17]  254     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
    6A08 EB            [ 4]  255     ex de, hl                       ;; move screen address to de
                             256 
    6A09 0E 00         [ 7]  257     ld c, #0
@@ -5765,10 +5765,10 @@ Hexadecimal [16-Bits]
 
 
                             298     
-   6A42 CD 57 81      [17]  299     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
+   6A42 CD 3A 85      [17]  299     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
    6A45 EB            [ 4]  300     ex de, hl                       ;; move screen address to de
    6A46 0E 00         [ 7]  301     ld c, #0
-   6A48 21 F2 81      [10]  302     ld hl, #_press_any_key_string
+   6A48 21 D5 85      [10]  302     ld hl, #_press_any_key_string
    6A4B CD B5 78      [17]  303     call sys_text_draw_string
                             304 
    6A4E CD C1 68      [17]  305     call sys_input_wait4anykey
@@ -5833,7 +5833,7 @@ Hexadecimal [16-Bits]
                      0001    23    .else
                              24    .mexit
    6A5E 3E 00         [ 7]  337     ld a,#0x00                          ;; Patern of solid box
-   6A60 CD 7E 80      [17]  338     call cpct_drawSolidBox_asm          ;;
+   6A60 CD 61 84      [17]  338     call cpct_drawSolidBox_asm          ;;
    012F                     339     cpctm_pop bc, de
                      0002     1    .narg v
                      0001     2    .if v

@@ -124,61 +124,61 @@ Hexadecimal [16-Bits]
                      0043    36 HUD_P2_CATS_X    = 67   ;; below P2 cat   sprite (render x=66, w=5)
                      0048    37 HUD_P2_KITTENS_X = 72   ;; below P2 catty sprite (render x=71, w=5)
                      0059    38 HUD_Y            = 89   ;; y = 68 (sprites top) + 17 (height) + 4 (gap)
-                     0000    39 HUD_NUM_BG       = 0x00 ;; solid-box fill color used to erase old digit before redraw (pen 0 = black)
-                             40 
-                             41 ;;------------------------------------------------------------------------------
-                             42 ;; Match state constants
-                             43 ;;------------------------------------------------------------------------------
-                     0000    44 MATCH_STATE_P1       = 0
-                     0001    45 MATCH_STATE_P2       = 1
-                             46 
-                             47 ;;------------------------------------------------------------------------------
-                             48 ;; Piece type constants
-                             49 ;;------------------------------------------------------------------------------
-                     0000    50 PIECE_CAT            = 0
-                     0001    51 PIECE_KITTEN         = 1
-                             52 
-                             53 ;;------------------------------------------------------------------------------
-                             54 ;; Board cell value constants
+                             39 
+                             40 ;;------------------------------------------------------------------------------
+                             41 ;; Match state constants
+                             42 ;;------------------------------------------------------------------------------
+                     0000    43 MATCH_STATE_P1       = 0
+                     0001    44 MATCH_STATE_P2       = 1
+                             45 
+                             46 ;;------------------------------------------------------------------------------
+                             47 ;; Piece type constants
+                             48 ;;------------------------------------------------------------------------------
+                     0000    49 PIECE_CAT            = 0
+                     0001    50 PIECE_KITTEN         = 1
+                             51 
+                             52 ;;------------------------------------------------------------------------------
+                             53 ;; Board cell value constants
+                             54 ;;------------------------------------------------------------------------------
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 5.
 Hexadecimal [16-Bits]
 
 
 
-                             55 ;;------------------------------------------------------------------------------
-                     0000    56 BOARD_EMPTY          = 0
-                     0001    57 BOARD_P1_CAT         = 1
-                     0002    58 BOARD_P1_KITTEN      = 2
-                     0003    59 BOARD_P2_CAT         = 3
-                     0004    60 BOARD_P2_KITTEN      = 4
-                             61 
-                             62 ;;------------------------------------------------------------------------------
-                             63 ;; Grid geometry constants (all tunable)
-                             64 ;;   GRID_FIRST_CELL_X : byte offset within screen row of first cell
-                             65 ;;   GRID_FIRST_CELL_Y : pixel row of first cell
-                             66 ;;   GRID_CELL_W       : cell width in bytes
-                             67 ;;   GRID_CELL_H       : cell height in pixels
-                             68 ;;   GRID_COLS / ROWS  : grid dimensions
-                             69 ;;------------------------------------------------------------------------------
-                     0013    70 GRID_FIRST_CELL_X    = 19   ;; byte 18 (bg origin) + 1 left border byte
-                     0024    71 GRID_FIRST_CELL_Y    = 36   ;; px  32 (bg origin) + 4 px top gap
-                     0007    72 GRID_CELL_W          = 7    ;; byte pitch between cell origins (7 bytes = 4px gap)
-                     0018    73 GRID_CELL_H          = 24   ;; px pitch between cell origins  (24 px)
-                     0006    74 GRID_COLS            = 6
-                     0006    75 GRID_ROWS            = 6
-                             76 
-                             77 ;;------------------------------------------------------------------------------
-                             78 ;; Cursor color: pen 6 (bright yellow, firmware 24) encoded for Mode 0 solid-box
-                             79 ;;   Both pixels = pen 6 → byte bits [7..0] = 0011 1100 = 0x3C
-                             80 ;;------------------------------------------------------------------------------
-                     003C    81 CURSOR_COLOR         = 0x3C
-                             82 
-                             83 ;;------------------------------------------------------------------------------
-                             84 ;; Global variables
-                             85 ;;------------------------------------------------------------------------------
-                             86 .globl man_match_player1
-                             87 .globl man_match_player2
-                             88 .globl man_match_num_players      ;; 1 or 2
+                     0000    55 BOARD_EMPTY          = 0
+                     0001    56 BOARD_P1_CAT         = 1
+                     0002    57 BOARD_P1_KITTEN      = 2
+                     0003    58 BOARD_P2_CAT         = 3
+                     0004    59 BOARD_P2_KITTEN      = 4
+                             60 
+                             61 ;;------------------------------------------------------------------------------
+                             62 ;; Grid geometry constants (all tunable)
+                             63 ;;   GRID_FIRST_CELL_X : byte offset within screen row of first cell
+                             64 ;;   GRID_FIRST_CELL_Y : pixel row of first cell
+                             65 ;;   GRID_CELL_W       : cell width in bytes
+                             66 ;;   GRID_CELL_H       : cell height in pixels
+                             67 ;;   GRID_COLS / ROWS  : grid dimensions
+                             68 ;;------------------------------------------------------------------------------
+                     0013    69 GRID_FIRST_CELL_X    = 19   ;; byte 18 (bg origin) + 1 left border byte
+                     0024    70 GRID_FIRST_CELL_Y    = 36   ;; px  32 (bg origin) + 4 px top gap
+                     0007    71 GRID_CELL_W          = 7    ;; byte pitch between cell origins (7 bytes = 4px gap)
+                     0018    72 GRID_CELL_H          = 24   ;; px pitch between cell origins  (24 px)
+                     0006    73 GRID_COLS            = 6
+                     0006    74 GRID_ROWS            = 6
+                             75 
+                             76 ;;------------------------------------------------------------------------------
+                             77 ;; Cursor color: pen 6 (bright yellow, firmware 24) encoded for Mode 0 solid-box
+                             78 ;;   Both pixels = pen 6 → byte bits [7..0] = 0011 1100 = 0x3C
+                             79 ;;------------------------------------------------------------------------------
+                     003C    80 CURSOR_COLOR         = 0x3C
+                             81 
+                             82 ;;------------------------------------------------------------------------------
+                             83 ;; Global variables
+                             84 ;;------------------------------------------------------------------------------
+                             85 .globl man_match_player1
+                             86 .globl man_match_player2
+                             87 .globl man_match_num_players      ;; 1 or 2
+                             88 .globl _match_cancelled           ;; 1 when player confirmed abandon
                              89 
                              90 ;;------------------------------------------------------------------------------
                              91 ;; Global routines
@@ -5597,8 +5597,8 @@ Hexadecimal [16-Bits]
                              38 ;;
                              39 .area _DATA
                              40 
-   8220 00                   41 _game_state:         .db 0
-   8221 20 47 41 4D 45 20    42 _game_loaded_string: .asciz " GAME LOADED - V.003"
+   8603 00                   41 _game_state:         .db 0
+   8604 20 47 41 4D 45 20    42 _game_loaded_string: .asciz " GAME LOADED - V.003"
         4C 4F 41 44 45 44
         20 2D 20 56 2E 30
         30 33 00
@@ -5623,7 +5623,7 @@ Hexadecimal [16-Bits]
    0003                      61    m_msg_w_background 3
    7A6F 26 03         [ 7]    1     ld h, #(3)                         ;;
    7A71 2E 03         [ 7]    2     ld l, #(3)                         ;;
-   7A73 CD 54 80      [17]    3     call cpct_px2byteM0_asm             ;;
+   7A73 CD 37 84      [17]    3     call cpct_px2byteM0_asm             ;;
    7A76 08            [ 4]    4     ex af, af'                          ;;
    7A77 7D            [ 4]    5     ld a, l                             ;;
    7A78 08            [ 4]    6     ex af, af'                          ;;
@@ -5632,11 +5632,11 @@ Hexadecimal [16-Bits]
    7A7D 06 2C         [ 7]   64    ld b, #44                           ;; h
    7A7F 0E 3C         [ 7]   65    ld c, #60                           ;; w
    7A81 3E 01         [ 7]   66    ld a, #1                            ;; wait for a key
-   7A83 21 21 82      [10]   67    ld hl, #_game_loaded_string         ;; message
+   7A83 21 04 86      [10]   67    ld hl, #_game_loaded_string         ;; message
    7A86 CD D2 69      [17]   68    call sys_messages_show
                              69 
                              70    ;; set random seed using hl from message show
-   7A89 CD C2 7F      [17]   71    call cpct_setSeed_mxor_asm
+   7A89 CD A5 83      [17]   71    call cpct_setSeed_mxor_asm
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 109.
 Hexadecimal [16-Bits]
 
@@ -5645,8 +5645,8 @@ Hexadecimal [16-Bits]
                              72 
                              73    ;; Start in menu state
    7A8C AF            [ 4]   74    xor a
-   7A8D 32 20 82      [13]   75    ld (_game_state), a
-   7A90 CD 28 7E      [17]   76    call man_menu_init
+   7A8D 32 03 86      [13]   75    ld (_game_state), a
+   7A90 CD 0B 82      [17]   76    call man_menu_init
                              77 
    7A93 C9            [10]   78    ret
                              79 
@@ -5660,20 +5660,20 @@ Hexadecimal [16-Bits]
                              87 ;;  Modified: AF, BC, DE, HL
                              88 ;;
    7A94                      89 sys_game_update::
-   7A94 CD 4C 80      [17]   90    call cpct_waitVSYNC_asm
+   7A94 CD 2F 84      [17]   90    call cpct_waitVSYNC_asm
                              91 
-   7A97 3A 20 82      [13]   92    ld a, (_game_state)
+   7A97 3A 03 86      [13]   92    ld a, (_game_state)
    7A9A B7            [ 4]   93    or a
    7A9B 28 06         [12]   94    jr z, _sgu_menu
    7A9D FE 01         [ 7]   95    cp #GAME_STATE_PLAYING
    7A9F 28 20         [12]   96    jr z, _sgu_playing
-   7AA1 18 22         [12]   97    jr _sgu_help
+   7AA1 18 2E         [12]   97    jr _sgu_help
                              98 
    7AA3                      99 _sgu_menu:
-   7AA3 CD 39 7E      [17]  100    call man_menu_update
+   7AA3 CD 1C 82      [17]  100    call man_menu_update
                             101 
                             102    ;; Check if player confirmed a selection
-   7AA6 3A 5F 83      [13]  103    ld a, (man_menu_confirmed)
+   7AA6 3A 8F 87      [13]  103    ld a, (man_menu_confirmed)
    7AA9 B7            [ 4]  104    or a
    7AAA C8            [11]  105    ret z                               ;; not confirmed yet, stay in menu
                             106 
@@ -5683,34 +5683,44 @@ Hexadecimal [16-Bits]
                             110 
                             111    ;; Transition to playing: init match (reads selection, resets players, draws screen)
    7AAF 3E 01         [ 7]  112    ld a, #GAME_STATE_PLAYING
-   7AB1 32 20 82      [13]  113    ld (_game_state), a
-   7AB4 CD A6 7D      [17]  114    call man_match_init
+   7AB1 32 03 86      [13]  113    ld (_game_state), a
+   7AB4 CD 86 81      [17]  114    call man_match_init
    7AB7 C9            [10]  115    ret
                             116 
    7AB8                     117 _sgu_goto_help:
    7AB8 3E 02         [ 7]  118    ld a, #GAME_STATE_HELP
-   7ABA 32 20 82      [13]  119    ld (_game_state), a
-   7ABD CD 4F 7B      [17]  120    call man_help_init
+   7ABA 32 03 86      [13]  119    ld (_game_state), a
+   7ABD CD 5B 7B      [17]  120    call man_help_init
    7AC0 C9            [10]  121    ret
                             122 
    7AC1                     123 _sgu_playing:
-   7AC1 CD E2 7D      [17]  124    call man_match_update
-   7AC4 C9            [10]  125    ret
-                            126 
+   7AC1 CD C5 81      [17]  124    call man_match_update
+                            125 
+                            126    ;; Check if the player abandoned the match
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 110.
 Hexadecimal [16-Bits]
 
 
 
-   7AC5                     127 _sgu_help:
-   7AC5 CD 5A 7B      [17]  128    call man_help_update
-                            129 
-                            130    ;; Return to menu when done
-   7AC8 3A 36 82      [13]  131    ld a, (man_help_done)
-   7ACB B7            [ 4]  132    or a
-   7ACC C8            [11]  133    ret z                               ;; not done yet, stay on help screen
-                            134 
-   7ACD AF            [ 4]  135    xor a
-   7ACE 32 20 82      [13]  136    ld (_game_state), a
-   7AD1 CD 28 7E      [17]  137    call man_menu_init
-   7AD4 C9            [10]  138    ret
+   7AC4 3A 04 87      [13]  127    ld a, (_match_cancelled)
+   7AC7 B7            [ 4]  128    or a
+   7AC8 C8            [11]  129    ret z
+                            130 
+                            131    ;; Transition back to menu
+   7AC9 AF            [ 4]  132    xor a
+   7ACA 32 03 86      [13]  133    ld (_game_state), a               ;; GAME_STATE_MENU = 0
+   7ACD CD 0B 82      [17]  134    call man_menu_init
+   7AD0 C9            [10]  135    ret
+                            136 
+   7AD1                     137 _sgu_help:
+   7AD1 CD 66 7B      [17]  138    call man_help_update
+                            139 
+                            140    ;; Return to menu when done
+   7AD4 3A 19 86      [13]  141    ld a, (man_help_done)
+   7AD7 B7            [ 4]  142    or a
+   7AD8 C8            [11]  143    ret z                               ;; not done yet, stay on help screen
+                            144 
+   7AD9 AF            [ 4]  145    xor a
+   7ADA 32 03 86      [13]  146    ld (_game_state), a
+   7ADD CD 0B 82      [17]  147    call man_menu_init
+   7AE0 C9            [10]  148    ret

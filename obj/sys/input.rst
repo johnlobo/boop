@@ -5259,11 +5259,11 @@ Hexadecimal [16-Bits]
                              31 
                              32 
                              33 
-   81DA                      34 sys_input_key_actions::
-   81DA 04 04 0A 69          35     .dw Key_O,      sys_input_selected_left
-   81DE 03 08 0B 69          36     .dw Key_P,      sys_input_selected_right
+   85BD                      34 sys_input_key_actions::
+   85BD 04 04 0A 69          35     .dw Key_O,      sys_input_selected_left
+   85C1 03 08 0B 69          36     .dw Key_P,      sys_input_selected_right
                              37     ;;.dw Key_D,      sys_input_show_deck
-   81E2 05 80 09 69          38     .dw Key_Space,  sys_input_action
+   85C5 05 80 09 69          38     .dw Key_Space,  sys_input_action
                              39     ;;.dw Key_Q,      sys_input_add_card
                              40     ;;.dw Key_A,      sys_input_remove_card
                              41     ;;.dw Key_Esc,    _score_cancel_entry
@@ -5272,7 +5272,7 @@ Hexadecimal [16-Bits]
                              44     ;;.dw Joy0_Up,    _score_move_up
                              45     ;;.dw Joy0_Down,  _score_move_down
                              46     ;;.dw Joy0_Fire1, _score_fire
-   81E6 00 00                47     .dw 0
+   85C9 00 00                47     .dw 0
                              48 
                              49 ;;
                              50 ;; Start of _CODE area
@@ -5290,7 +5290,7 @@ Hexadecimal [16-Bits]
                              62 ;;  Modified: 
                              63 ;;
    68BB                      64 sys_input_clean_buffer::
-   68BB CD CA 7F      [17]   65     call cpct_isAnyKeyPressed_asm
+   68BB CD AD 83      [17]   65     call cpct_isAnyKeyPressed_asm
    68BE 20 FB         [12]   66     jr nz, sys_input_clean_buffer
    68C0 C9            [10]   67     ret
                              68 
@@ -5312,7 +5312,7 @@ Hexadecimal [16-Bits]
    68C1 21 00 00      [10]   79     ld hl, #0
    68C4                      80 _siw_loop:
    68C4 E5            [11]   81     push hl
-   68C5 CD CA 7F      [17]   82     call cpct_isAnyKeyPressed_asm
+   68C5 CD AD 83      [17]   82     call cpct_isAnyKeyPressed_asm
    68C8 B7            [ 4]   83     or a
    68C9 E1            [10]   84     pop hl
    68CA 23            [ 6]   85     inc hl
@@ -5336,7 +5336,7 @@ Hexadecimal [16-Bits]
                             103 ;; Routine taken from Promotion from Bite Studios
                             104 ;;
    68CE                     105 sys_input_getKeyPressed::
-   68CE 21 A6 7F      [10]  106     ld hl, #_cpct_keyboardStatusBuffer
+   68CE 21 89 83      [10]  106     ld hl, #_cpct_keyboardStatusBuffer
    68D1 AF            [ 4]  107     xor a                           ;; A = 0
                             108 
    68D2                     109 _kp_loop:
@@ -5491,7 +5491,7 @@ Hexadecimal [16-Bits]
    691A B4            [ 4]  243     or h
    691B C8            [11]  244     ret z                           ;; Return if key is null
                             245     ;; Check if key is pressed
-   691C CD F0 7E      [17]  246     call cpct_isKeyPressed_asm      ;;
+   691C CD D3 82      [17]  246     call cpct_isKeyPressed_asm      ;;
    691F 28 ED         [12]  247     jr z, keys_loop
                             248     ;; Key pressed execute action
    6921 21 0E 69      [10]  249     ld hl, #keys_loop               ;;
@@ -5512,6 +5512,6 @@ Hexadecimal [16-Bits]
                             264 ;;  Modified: iy, bc
                             265 ;;
    692C                     266 sys_input_update::   
-   692C FD 21 DA 81   [14]  267     ld iy, #sys_input_key_actions
+   692C FD 21 BD 85   [14]  267     ld iy, #sys_input_key_actions
    6930 CD 0C 69      [17]  268     call sys_input_generic_update
    6933 C9            [10]  269     ret

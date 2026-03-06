@@ -63,61 +63,61 @@ Hexadecimal [16-Bits]
                      0043    36 HUD_P2_CATS_X    = 67   ;; below P2 cat   sprite (render x=66, w=5)
                      0048    37 HUD_P2_KITTENS_X = 72   ;; below P2 catty sprite (render x=71, w=5)
                      0059    38 HUD_Y            = 89   ;; y = 68 (sprites top) + 17 (height) + 4 (gap)
-                     0000    39 HUD_NUM_BG       = 0x00 ;; solid-box fill color used to erase old digit before redraw (pen 0 = black)
-                             40 
-                             41 ;;------------------------------------------------------------------------------
-                             42 ;; Match state constants
-                             43 ;;------------------------------------------------------------------------------
-                     0000    44 MATCH_STATE_P1       = 0
-                     0001    45 MATCH_STATE_P2       = 1
-                             46 
-                             47 ;;------------------------------------------------------------------------------
-                             48 ;; Piece type constants
-                             49 ;;------------------------------------------------------------------------------
-                     0000    50 PIECE_CAT            = 0
-                     0001    51 PIECE_KITTEN         = 1
-                             52 
-                             53 ;;------------------------------------------------------------------------------
-                             54 ;; Board cell value constants
+                             39 
+                             40 ;;------------------------------------------------------------------------------
+                             41 ;; Match state constants
+                             42 ;;------------------------------------------------------------------------------
+                     0000    43 MATCH_STATE_P1       = 0
+                     0001    44 MATCH_STATE_P2       = 1
+                             45 
+                             46 ;;------------------------------------------------------------------------------
+                             47 ;; Piece type constants
+                             48 ;;------------------------------------------------------------------------------
+                     0000    49 PIECE_CAT            = 0
+                     0001    50 PIECE_KITTEN         = 1
+                             51 
+                             52 ;;------------------------------------------------------------------------------
+                             53 ;; Board cell value constants
+                             54 ;;------------------------------------------------------------------------------
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 3.
 Hexadecimal [16-Bits]
 
 
 
-                             55 ;;------------------------------------------------------------------------------
-                     0000    56 BOARD_EMPTY          = 0
-                     0001    57 BOARD_P1_CAT         = 1
-                     0002    58 BOARD_P1_KITTEN      = 2
-                     0003    59 BOARD_P2_CAT         = 3
-                     0004    60 BOARD_P2_KITTEN      = 4
-                             61 
-                             62 ;;------------------------------------------------------------------------------
-                             63 ;; Grid geometry constants (all tunable)
-                             64 ;;   GRID_FIRST_CELL_X : byte offset within screen row of first cell
-                             65 ;;   GRID_FIRST_CELL_Y : pixel row of first cell
-                             66 ;;   GRID_CELL_W       : cell width in bytes
-                             67 ;;   GRID_CELL_H       : cell height in pixels
-                             68 ;;   GRID_COLS / ROWS  : grid dimensions
-                             69 ;;------------------------------------------------------------------------------
-                     0013    70 GRID_FIRST_CELL_X    = 19   ;; byte 18 (bg origin) + 1 left border byte
-                     0024    71 GRID_FIRST_CELL_Y    = 36   ;; px  32 (bg origin) + 4 px top gap
-                     0007    72 GRID_CELL_W          = 7    ;; byte pitch between cell origins (7 bytes = 4px gap)
-                     0018    73 GRID_CELL_H          = 24   ;; px pitch between cell origins  (24 px)
-                     0006    74 GRID_COLS            = 6
-                     0006    75 GRID_ROWS            = 6
-                             76 
-                             77 ;;------------------------------------------------------------------------------
-                             78 ;; Cursor color: pen 6 (bright yellow, firmware 24) encoded for Mode 0 solid-box
-                             79 ;;   Both pixels = pen 6 → byte bits [7..0] = 0011 1100 = 0x3C
-                             80 ;;------------------------------------------------------------------------------
-                     003C    81 CURSOR_COLOR         = 0x3C
-                             82 
-                             83 ;;------------------------------------------------------------------------------
-                             84 ;; Global variables
-                             85 ;;------------------------------------------------------------------------------
-                             86 .globl man_match_player1
-                             87 .globl man_match_player2
-                             88 .globl man_match_num_players      ;; 1 or 2
+                     0000    55 BOARD_EMPTY          = 0
+                     0001    56 BOARD_P1_CAT         = 1
+                     0002    57 BOARD_P1_KITTEN      = 2
+                     0003    58 BOARD_P2_CAT         = 3
+                     0004    59 BOARD_P2_KITTEN      = 4
+                             60 
+                             61 ;;------------------------------------------------------------------------------
+                             62 ;; Grid geometry constants (all tunable)
+                             63 ;;   GRID_FIRST_CELL_X : byte offset within screen row of first cell
+                             64 ;;   GRID_FIRST_CELL_Y : pixel row of first cell
+                             65 ;;   GRID_CELL_W       : cell width in bytes
+                             66 ;;   GRID_CELL_H       : cell height in pixels
+                             67 ;;   GRID_COLS / ROWS  : grid dimensions
+                             68 ;;------------------------------------------------------------------------------
+                     0013    69 GRID_FIRST_CELL_X    = 19   ;; byte 18 (bg origin) + 1 left border byte
+                     0024    70 GRID_FIRST_CELL_Y    = 36   ;; px  32 (bg origin) + 4 px top gap
+                     0007    71 GRID_CELL_W          = 7    ;; byte pitch between cell origins (7 bytes = 4px gap)
+                     0018    72 GRID_CELL_H          = 24   ;; px pitch between cell origins  (24 px)
+                     0006    73 GRID_COLS            = 6
+                     0006    74 GRID_ROWS            = 6
+                             75 
+                             76 ;;------------------------------------------------------------------------------
+                             77 ;; Cursor color: pen 6 (bright yellow, firmware 24) encoded for Mode 0 solid-box
+                             78 ;;   Both pixels = pen 6 → byte bits [7..0] = 0011 1100 = 0x3C
+                             79 ;;------------------------------------------------------------------------------
+                     003C    80 CURSOR_COLOR         = 0x3C
+                             81 
+                             82 ;;------------------------------------------------------------------------------
+                             83 ;; Global variables
+                             84 ;;------------------------------------------------------------------------------
+                             85 .globl man_match_player1
+                             86 .globl man_match_player2
+                             87 .globl man_match_num_players      ;; 1 or 2
+                             88 .globl _match_cancelled           ;; 1 when player confirmed abandon
                              89 
                              90 ;;------------------------------------------------------------------------------
                              91 ;; Global routines
@@ -5479,675 +5479,1673 @@ Hexadecimal [16-Bits]
 
 
 
+                             23 .include "sys/messages.h.s"
+                              1 ;;-----------------------------LICENSE NOTICE------------------------------------
+                              2 
+                              3 ;;
+                              4 ;;  This program is free software: you can redistribute it and/or modify
+                              5 ;;  it under the terms of the GNU Lesser General Public License as published by
+                              6 ;;  the Free Software Foundation, either version 3 of the License, or
+                              7 ;;  (at your option) any later version.
+                              8 ;;
+                              9 ;;  This program is distributed in the hope that it will be useful,
+                             10 ;;  but WITHOUT ANY WARRANTY; without even the implied warranty of
+                             11 ;;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+                             12 ;;  GNU Lesser General Public License for more details.
+                             13 ;;
+                             14 ;;  You should have received a copy of the GNU Lesser General Public License
+                             15 ;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+                             16 ;;-------------------------------------------------------------------------------
+                             17 
+                             18 .module messages_system
+                             19 
+                             20 ;;------------------------------------------------------------------------------
+                             21 ;; Global constants
+                             22 ;;------------------------------------------------------------------------------
                              23 
-                             24 .module man_match
+                     001E    24 MINIMUM_WINDOW_WIDTH = 30
                              25 
-                     0000    26 MATCH_INITIAL_CATS    = 0
-                     0008    27 MATCH_INITIAL_KITTENS = 8
-                             28 
-                             29 ;; Cursor box dimensions (smaller than cell to leave gaps)
-                             30 ;; Width: GRID_CELL_W - 1 byte = 2 pixels thinner
-                             31 ;; Height: GRID_CELL_H - 2 pixels shorter
-                     0005    32 CURSOR_W              = 5
-                     0014    33 CURSOR_H              = 20
-                             34 
-                     0003    35 S_BIG_NUMBERS_W = 3
-                     000D    36 S_BIG_NUMBERS_H = 13
-                             37 
-                             38 ;;
-                             39 ;; Start of _DATA area
-                             40 ;;
-                             41 .area _DATA
-                             42 
-   82F0                      43 man_match_player1:: .ds sizeof_Player
-   82F6                      44 man_match_player2:: .ds sizeof_Player
-   82FC 01                   45 man_match_num_players:: .db 1
-                             46 
-                             47 ;;
-                             48 ;; Board: 6x6 cells, row-major [row*6 + col]
-                             49 ;; Values: 0=empty, 1=P1 cat, 2=P1 kitten, 3=P2 cat, 4=P2 kitten
-                             50 ;;
-   82FD                      51 _match_board: .ds 36
-                             52 
-                             53 ;;
-                             54 ;; Turn / cursor state
-                             55 ;;
-   8321 00                   56 _match_state:   .db 0   ;; MATCH_STATE_P1 or MATCH_STATE_P2
-   8322 00                   57 _cursor_col:    .db 0   ;; 0 .. GRID_COLS-1
-   8323 00                   58 _cursor_row:    .db 0   ;; 0 .. GRID_ROWS-1
-   8324 00                   59 _cursor_piece:  .db 0   ;; PIECE_CAT or PIECE_KITTEN
-   8325 00                   60 _turn_debounce: .db 0   ;; 1 while a key is held (same pattern as menu.s)
-                             61 
-                             62 ;;
-                             63 ;; Lookup table: 16-bit pointers to big number sprites 0-9
-                             64 ;;
-   8326                      65 _big_num_ptrs:
-   8326 14 62                66    .dw _s_big_numbers_00
-   8328 3B 62                67    .dw _s_big_numbers_01
-   832A 62 62                68    .dw _s_big_numbers_02
-   832C 89 62                69    .dw _s_big_numbers_03
-   832E B0 62                70    .dw _s_big_numbers_04
-   8330 D7 62                71    .dw _s_big_numbers_05
-   8332 FE 62                72    .dw _s_big_numbers_06
-   8334 25 63                73    .dw _s_big_numbers_07
-   8336 4C 63                74    .dw _s_big_numbers_08
-   8338 73 63                75    .dw _s_big_numbers_09
-                             76 
-                             77 ;;
+                             26 ;;------------------------------------------------------------------------------
+                             27 ;; Global variables
+                             28 ;;------------------------------------------------------------------------------
+                             29 
+                             30 ;;------------------------------------------------------------------------------
+                             31 ;; Global routines
+                             32 ;;------------------------------------------------------------------------------
+                             33 
+                             34 .globl sys_messages_load_window_data
+                             35 .globl sys_messages_draw_window
+                             36 .globl sys_messages_show
+                             37 .globl sys_messages_draw_box
+                             38 .globl sys_messages_restore_message_background
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 106.
 Hexadecimal [16-Bits]
 
 
 
-                             78 ;; Lookup table: sprite pointers for board cell values 1-4
-                             79 ;;   index 0 (value 1) -> P1 cat
-                             80 ;;   index 1 (value 2) -> P1 kitten
-                             81 ;;   index 2 (value 3) -> P2 cat
-                             82 ;;   index 3 (value 4) -> P2 kitten
-                             83 ;;
-   833A                      84 _board_sprite_ptrs:
-   833A 44 64                85    .dw _s_cat_0
-   833C 9A 63                86    .dw _s_catty_0
-   833E 99 64                87    .dw _s_cat_1
-   8340 EF 63                88    .dw _s_catty_1
-                             89 
-                             90 ;;
-                             91 ;; Start of _CODE area
-                             92 ;;
-                             93 .area _CODE
-                             94 
-                             95 ;;-----------------------------------------------------------------
-                             96 ;;
-                             97 ;; _match_init_player
-                             98 ;;
-                             99 ;;  Zeroes score and sets cats, kittens for one player struct
-                            100 ;;  Input:  HL = pointer to player struct
-                            101 ;;  Output:
-                            102 ;;  Modified: AF, IX
-                            103 ;;
-   7B68                     104 _match_init_player:
-   7B68 E5            [11]  105    push hl
-   7B69 DD E1         [14]  106    pop ix                            ;; IX = player struct pointer (IX supports displacement)
-   7B6B AF            [ 4]  107    xor a
-   7B6C DD 77 00      [19]  108    ld Player_score+0(ix), a
-   7B6F DD 77 01      [19]  109    ld Player_score+1(ix), a
-   7B72 DD 77 02      [19]  110    ld Player_score+2(ix), a
-   7B75 DD 77 03      [19]  111    ld Player_score+3(ix), a
-   7B78 3E 00         [ 7]  112    ld a, #MATCH_INITIAL_CATS
-   7B7A DD 77 04      [19]  113    ld Player_cats(ix), a
-   7B7D 3E 08         [ 7]  114    ld a, #MATCH_INITIAL_KITTENS
-   7B7F DD 77 05      [19]  115    ld Player_kittens(ix), a
-   7B82 C9            [10]  116    ret
-                            117 
-                            118 ;;-----------------------------------------------------------------
-                            119 ;;
-                            120 ;; _draw_big_digit
-                            121 ;;
-                            122 ;;  Draws a single big number sprite at the given screen address.
-                            123 ;;  Input:  A  = digit (0-9)
-                            124 ;;          DE = screen destination address
-                            125 ;;  Output:
-                            126 ;;  Modified: AF, BC, HL
-                            127 ;;
-   7B83                     128 _draw_big_digit:
-                            129    ;; Erase old digit before drawing new one
-   7B83 D5            [11]  130    push de                           ;; save screen addr (DE still valid for drawSolidBox)
-   7B84 F5            [11]  131    push af                           ;; save digit
-   7B85 3E 00         [ 7]  132    ld a, #HUD_NUM_BG                 ;; fill color
+                             24 
+                             25 .module man_match
+                             26 
+                     0000    27 MATCH_INITIAL_CATS    = 0
+                     0008    28 MATCH_INITIAL_KITTENS = 8
+                             29 
+                             30 ;; Cursor box dimensions (smaller than cell to leave gaps)
+                             31 ;; Width: GRID_CELL_W - 1 byte = 2 pixels thinner
+                             32 ;; Height: GRID_CELL_H - 2 pixels shorter
+                     0005    33 CURSOR_W              = 5
+                     0014    34 CURSOR_H              = 20
+                             35 
+                     0003    36 S_BIG_NUMBERS_W = 3
+                     000D    37 S_BIG_NUMBERS_H = 13
+                             38 
+                             39 ;;
+                             40 ;; Start of _DATA area
+                             41 ;;
+                             42 .area _DATA
+                             43 
+   86D3                      44 man_match_player1:: .ds sizeof_Player
+   86D9                      45 man_match_player2:: .ds sizeof_Player
+   86DF 01                   46 man_match_num_players:: .db 1
+                             47 
+                             48 ;;
+                             49 ;; Board: 6x6 cells, row-major [row*6 + col]
+                             50 ;; Values: 0=empty, 1=P1 cat, 2=P1 kitten, 3=P2 cat, 4=P2 kitten
+                             51 ;;
+   86E0                      52 _match_board: .ds 36
+                             53 
+                             54 ;;
+                             55 ;; Turn / cursor state
+                             56 ;;
+   8704 00                   57 _match_cancelled:: .db 0 ;; set to 1 when player confirms ESC → abandon match
+   8705 00                   58 _match_state:      .db 0 ;; MATCH_STATE_P1 or MATCH_STATE_P2
+   8706 00                   59 _cursor_col:    .db 0   ;; 0 .. GRID_COLS-1
+   8707 00                   60 _cursor_row:    .db 0   ;; 0 .. GRID_ROWS-1
+   8708 00                   61 _cursor_piece:  .db 0   ;; PIECE_CAT or PIECE_KITTEN
+   8709 00                   62 _turn_debounce: .db 0   ;; 1 while a key is held (same pattern as menu.s)
+                             63 
+   870A 20 41 42 41 4E 44    64 _match_cancel_msg:  .asciz " ABANDON MATCH? (Y/N)"
+        4F 4E 20 4D 41 54
+        43 48 3F 20 28 59
+        2F 4E 29 00
+   8720 20 20 20 20 50 4C    65 _match_p1_wins_msg: .asciz "    PLAYER 1 WINS!"
+        41 59 45 52 20 31
+        20 57 49 4E 53 21
+        00
+   8733 20 20 20 20 50 4C    66 _match_p2_wins_msg: .asciz "    PLAYER 2 WINS!"
+        41 59 45 52 20 32
+        20 57 49 4E 53 21
+        00
+                             67 
+                             68 ;;
+                             69 ;; Direction table for boop: 8 (dr, dc) pairs (signed bytes, 0xFF = -1)
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 107.
 Hexadecimal [16-Bits]
 
 
 
-   7B87 0E 03         [ 7]  133    ld c, #S_BIG_NUMBERS_WIDTH
-   7B89 06 0D         [ 7]  134    ld b, #S_BIG_NUMBERS_HEIGHT
-   7B8B CD 7E 80      [17]  135    call cpct_drawSolidBox_asm        ;; clears area; DE clobbered
-   7B8E F1            [10]  136    pop af                            ;; restore digit
-   7B8F D1            [10]  137    pop de                            ;; restore screen addr
-                            138    ;; Draw the digit sprite
-   7B90 D5            [11]  139    push de                           ;; save dest while computing sprite ptr
-   7B91 21 26 83      [10]  140    ld hl, #_big_num_ptrs
-   7B94 06 00         [ 7]  141    ld b, #0
-   7B96 4F            [ 4]  142    ld c, a
-   7B97 CB 21         [ 8]  143    sla c                             ;; C = digit * 2 (each table entry = 2 bytes)
-   7B99 CB 10         [ 8]  144    rl b                              ;; carry into B (always 0 for digits 0-9)
-   7B9B 09            [11]  145    add hl, bc                        ;; HL = &_big_num_ptrs[digit * 2]
-   7B9C 4E            [ 7]  146    ld c, (hl)
-   7B9D 23            [ 6]  147    inc hl
-   7B9E 46            [ 7]  148    ld b, (hl)                        ;; BC = sprite data pointer
-   7B9F D1            [10]  149    pop de                            ;; restore dest
-   0038                     150    ld__ixl S_BIG_NUMBERS_W
-   7BA0 DD 2E 03              1    .db #0xDD, #0x2E, S_BIG_NUMBERS_W  ;; Opcode for ld ixl, Value
-   003B                     151    ld__ixh S_BIG_NUMBERS_H
-   7BA3 DD 26 0D              1    .db #0xDD, #0x26, S_BIG_NUMBERS_H  ;; Opcode for ld ixh, Value
-   7BA6 21 00 01      [10]  152    ld hl, #transparency_table
-   7BA9 CD 76 81      [17]  153    call cpct_drawSpriteMaskedAlignedTable_asm
-   7BAC C9            [10]  154    ret
-                            155 
-                            156 ;;-----------------------------------------------------------------
-                            157 ;;
-                            158 ;; man_match_draw_hud
-                            159 ;;
-                            160 ;;  Draws cats and kittens counts for each player using big number sprites.
-                            161 ;;  Player 1 is drawn always; player 2 only when num_players == 2.
-                            162 ;;  Input:
-                            163 ;;  Output:
-                            164 ;;  Modified: AF, BC, DE, HL
-                            165 ;;
-   7BAD                     166 man_match_draw_hud::
-                            167    ;; --- Player 1 cats (below cat sprite) ---
-   7BAD 11 00 C0      [10]  168    ld de, #CPCT_VMEM_START_ASM
-   7BB0 0E 05         [ 7]  169    ld c, #HUD_P1_CATS_X
-   7BB2 06 59         [ 7]  170    ld b, #HUD_Y
-   7BB4 CD 57 81      [17]  171    call cpct_getScreenPtr_asm
-   7BB7 EB            [ 4]  172    ex de, hl                         ;; DE = screen address
-   7BB8 3A F4 82      [13]  173    ld a, (man_match_player1 + Player_cats)
-   7BBB CD 83 7B      [17]  174    call _draw_big_digit
-                            175 
-                            176    ;; --- Player 1 kittens (below catty sprite) ---
-   7BBE 11 00 C0      [10]  177    ld de, #CPCT_VMEM_START_ASM
-   7BC1 0E 0A         [ 7]  178    ld c, #HUD_P1_KITTENS_X
-   7BC3 06 59         [ 7]  179    ld b, #HUD_Y
-   7BC5 CD 57 81      [17]  180    call cpct_getScreenPtr_asm
-   7BC8 EB            [ 4]  181    ex de, hl
-   7BC9 3A F5 82      [13]  182    ld a, (man_match_player1 + Player_kittens)
-   7BCC CD 83 7B      [17]  183    call _draw_big_digit
-                            184 
-                            185    ;; --- Player 2 cats (below cat sprite) ---
+                             70 ;;
+   8746                      71 _boop_dir_table:
+   8746 FF FF                72    .db 0xFF, 0xFF   ;; (-1,-1)
+   8748 FF 00                73    .db 0xFF, 0x00   ;; (-1, 0)
+   874A FF 01                74    .db 0xFF, 0x01   ;; (-1,+1)
+   874C 00 FF                75    .db 0x00, 0xFF   ;;  (0,-1)
+   874E 00 01                76    .db 0x00, 0x01   ;;  (0,+1)
+   8750 01 FF                77    .db 0x01, 0xFF   ;; (+1,-1)
+   8752 01 00                78    .db 0x01, 0x00   ;; (+1, 0)
+   8754 01 01                79    .db 0x01, 0x01   ;; (+1,+1)
+                             80 
+                             81 ;;
+                             82 ;; Lookup table: 16-bit pointers to big number sprites 0-9
+                             83 ;;
+   8756                      84 _big_num_ptrs:
+   8756 14 62                85    .dw _s_big_numbers_00
+   8758 3B 62                86    .dw _s_big_numbers_01
+   875A 62 62                87    .dw _s_big_numbers_02
+   875C 89 62                88    .dw _s_big_numbers_03
+   875E B0 62                89    .dw _s_big_numbers_04
+   8760 D7 62                90    .dw _s_big_numbers_05
+   8762 FE 62                91    .dw _s_big_numbers_06
+   8764 25 63                92    .dw _s_big_numbers_07
+   8766 4C 63                93    .dw _s_big_numbers_08
+   8768 73 63                94    .dw _s_big_numbers_09
+                             95 
+                             96 ;;
+                             97 ;; Lookup table: sprite pointers for board cell values 1-4
+                             98 ;;   index 0 (value 1) -> P1 cat
+                             99 ;;   index 1 (value 2) -> P1 kitten
+                            100 ;;   index 2 (value 3) -> P2 cat
+                            101 ;;   index 3 (value 4) -> P2 kitten
+                            102 ;;
+   876A                     103 _board_sprite_ptrs:
+   876A 44 64               104    .dw _s_cat_0
+   876C 9A 63               105    .dw _s_catty_0
+   876E 99 64               106    .dw _s_cat_1
+   8770 EF 63               107    .dw _s_catty_1
+                            108 
+                            109 ;;
+                            110 ;; Start of _CODE area
+                            111 ;;
+                            112 .area _CODE
+                            113 
+                            114 ;;-----------------------------------------------------------------
+                            115 ;;
+                            116 ;; _match_init_player
+                            117 ;;
+                            118 ;;  Zeroes score and sets cats, kittens for one player struct
+                            119 ;;  Input:  HL = pointer to player struct
+                            120 ;;  Output:
+                            121 ;;  Modified: AF, IX
+                            122 ;;
+   7B74                     123 _match_init_player:
+   7B74 E5            [11]  124    push hl
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 108.
 Hexadecimal [16-Bits]
 
 
 
-   7BCF 11 00 C0      [10]  186    ld de, #CPCT_VMEM_START_ASM
-   7BD2 0E 43         [ 7]  187    ld c, #HUD_P2_CATS_X
-   7BD4 06 59         [ 7]  188    ld b, #HUD_Y
-   7BD6 CD 57 81      [17]  189    call cpct_getScreenPtr_asm
-   7BD9 EB            [ 4]  190    ex de, hl
-   7BDA 3A FA 82      [13]  191    ld a, (man_match_player2 + Player_cats)
-   7BDD CD 83 7B      [17]  192    call _draw_big_digit
-                            193 
-                            194    ;; --- Player 2 kittens (below catty sprite) ---
-   7BE0 11 00 C0      [10]  195    ld de, #CPCT_VMEM_START_ASM
-   7BE3 0E 48         [ 7]  196    ld c, #HUD_P2_KITTENS_X
-   7BE5 06 59         [ 7]  197    ld b, #HUD_Y
-   7BE7 CD 57 81      [17]  198    call cpct_getScreenPtr_asm
-   7BEA EB            [ 4]  199    ex de, hl
-   7BEB 3A FB 82      [13]  200    ld a, (man_match_player2 + Player_kittens)
-   7BEE CD 83 7B      [17]  201    call _draw_big_digit
-                            202 
-   7BF1 C9            [10]  203    ret
-                            204 
-                            205 ;;-----------------------------------------------------------------
-                            206 ;;
-                            207 ;; _match_col_row_to_screen_addr
-                            208 ;;
-                            209 ;;  Converts a grid (col, row) position to a video memory address.
-                            210 ;;  Input:  C = col (0 .. GRID_COLS-1)
-                            211 ;;          B = row (0 .. GRID_ROWS-1)
-                            212 ;;  Output: DE = screen address
-                            213 ;;  Modified: AF, BC, DE, HL
-                            214 ;;
-   7BF2                     215 _match_col_row_to_screen_addr:
-                            216    ;; Y = GRID_FIRST_CELL_Y + row * GRID_CELL_H  (row*24 = row*16 + row*8)
-                            217    ;; Computed first so we can use E as a temporary before DE is set for the call
-   7BF2 78            [ 4]  218    ld a, b
-   7BF3 87            [ 4]  219    add a, a                          ;; A = row * 2
-   7BF4 87            [ 4]  220    add a, a                          ;; A = row * 4
-   7BF5 87            [ 4]  221    add a, a                          ;; A = row * 8
-   7BF6 5F            [ 4]  222    ld e, a                           ;; E = row * 8  (temp; DE overwritten below)
-   7BF7 87            [ 4]  223    add a, a                          ;; A = row * 16
-   7BF8 83            [ 4]  224    add a, e                          ;; A = row * 24
-   7BF9 C6 24         [ 7]  225    add a, #GRID_FIRST_CELL_Y
-   7BFB 47            [ 4]  226    ld b, a                           ;; B = Y pixel row
-                            227 
-                            228    ;; X = GRID_FIRST_CELL_X + col * GRID_CELL_W  (col*7 = col*8 - col)
-   7BFC 79            [ 4]  229    ld a, c
-   7BFD 87            [ 4]  230    add a, a                          ;; A = col * 2
-   7BFE 87            [ 4]  231    add a, a                          ;; A = col * 4
-   7BFF 87            [ 4]  232    add a, a                          ;; A = col * 8
-   7C00 91            [ 4]  233    sub c                             ;; A = col*8 - col = col * 7  (C still = col)
-   7C01 C6 13         [ 7]  234    add a, #GRID_FIRST_CELL_X
-   7C03 4F            [ 4]  235    ld c, a                           ;; C = X byte offset
-                            236 
-   7C04 11 00 C0      [10]  237    ld de, #CPCT_VMEM_START_ASM
-   7C07 CD 57 81      [17]  238    call cpct_getScreenPtr_asm        ;; HL = screen address
-   7C0A EB            [ 4]  239    ex de, hl                         ;; DE = screen address
-   7C0B C9            [10]  240    ret
+   7B75 DD E1         [14]  125    pop ix                            ;; IX = player struct pointer (IX supports displacement)
+   7B77 AF            [ 4]  126    xor a
+   7B78 DD 77 00      [19]  127    ld Player_score+0(ix), a
+   7B7B DD 77 01      [19]  128    ld Player_score+1(ix), a
+   7B7E DD 77 02      [19]  129    ld Player_score+2(ix), a
+   7B81 DD 77 03      [19]  130    ld Player_score+3(ix), a
+   7B84 3E 00         [ 7]  131    ld a, #MATCH_INITIAL_CATS
+   7B86 DD 77 04      [19]  132    ld Player_cats(ix), a
+   7B89 3E 08         [ 7]  133    ld a, #MATCH_INITIAL_KITTENS
+   7B8B DD 77 05      [19]  134    ld Player_kittens(ix), a
+   7B8E C9            [10]  135    ret
+                            136 
+                            137 ;;-----------------------------------------------------------------
+                            138 ;;
+                            139 ;; _draw_big_digit
+                            140 ;;
+                            141 ;;  Draws a single big number sprite at the given screen address.
+                            142 ;;  Input:  A  = digit (0-9)
+                            143 ;;          DE = screen destination address
+                            144 ;;  Output:
+                            145 ;;  Modified: AF, BC, HL
+                            146 ;;
+   7B8F                     147 _draw_big_digit:
+   7B8F D5            [11]  148    push de                           ;; save dest while computing sprite ptr
+   7B90 21 56 87      [10]  149    ld hl, #_big_num_ptrs
+   7B93 06 00         [ 7]  150    ld b, #0
+   7B95 4F            [ 4]  151    ld c, a
+   7B96 CB 21         [ 8]  152    sla c                             ;; C = digit * 2 (each table entry = 2 bytes)
+   7B98 CB 10         [ 8]  153    rl b                              ;; carry into B (always 0 for digits 0-9)
+   7B9A 09            [11]  154    add hl, bc                        ;; HL = &_big_num_ptrs[digit * 2]
+   7B9B 4E            [ 7]  155    ld c, (hl)
+   7B9C 23            [ 6]  156    inc hl
+   7B9D 46            [ 7]  157    ld b, (hl)                        ;; BC = sprite data pointer
+   7B9E D1            [10]  158    pop de                            ;; restore dest
+   002B                     159    ld__ixl S_BIG_NUMBERS_W
+   7B9F DD 2E 03              1    .db #0xDD, #0x2E, S_BIG_NUMBERS_W  ;; Opcode for ld ixl, Value
+   002E                     160    ld__ixh S_BIG_NUMBERS_H
+   7BA2 DD 26 0D              1    .db #0xDD, #0x26, S_BIG_NUMBERS_H  ;; Opcode for ld ixh, Value
+   7BA5 21 00 01      [10]  161    ld hl, #transparency_table
+   7BA8 CD 59 85      [17]  162    call cpct_drawSpriteMaskedAlignedTable_asm
+   7BAB C9            [10]  163    ret
+                            164 
+                            165 ;;-----------------------------------------------------------------
+                            166 ;;
+                            167 ;; man_match_draw_hud
+                            168 ;;
+                            169 ;;  Draws cats and kittens counts for each player using big number sprites.
+                            170 ;;  Player 1 is drawn always; player 2 only when num_players == 2.
+                            171 ;;  Input:
+                            172 ;;  Output:
+                            173 ;;  Modified: AF, BC, DE, HL
+                            174 ;;
+   7BAC                     175 man_match_draw_hud::
+                            176    ;; Restore basket + cat-icon background so old digits are erased cleanly
+   0038                     177    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 0, 50   ;; left basket
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 109.
 Hexadecimal [16-Bits]
 
 
 
-                            241 
-                            242 ;;-----------------------------------------------------------------
-                            243 ;;
-                            244 ;; _match_draw_cell_sprite
-                            245 ;;
-                            246 ;;  Draws the masked sprite for a given board cell value.
-                            247 ;;  Input:  A  = board value (1-4)
-                            248 ;;          DE = screen destination address
-                            249 ;;  Output:
-                            250 ;;  Modified: AF, BC, DE, HL, IX
-                            251 ;;
-   7C0C                     252 _match_draw_cell_sprite:
-   7C0C D5            [11]  253    push de                           ;; save screen address
-   7C0D 3D            [ 4]  254    dec a                             ;; A = 0-3 (table index)
-   7C0E 21 3A 83      [10]  255    ld hl, #_board_sprite_ptrs
-   7C11 06 00         [ 7]  256    ld b, #0
-   7C13 4F            [ 4]  257    ld c, a
-   7C14 CB 21         [ 8]  258    sla c                             ;; C = index * 2
-   7C16 CB 10         [ 8]  259    rl b
-   7C18 09            [11]  260    add hl, bc                        ;; HL = &_board_sprite_ptrs[index]
-   7C19 4E            [ 7]  261    ld c, (hl)
-   7C1A 23            [ 6]  262    inc hl
-   7C1B 46            [ 7]  263    ld b, (hl)                        ;; BC = sprite data pointer
-   7C1C D1            [10]  264    pop de                            ;; restore screen address
-   00B5                     265    ld__ixl S_CAT_W
-   7C1D DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
-   00B8                     266    ld__ixh S_CAT_H
-   7C20 DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
-   7C23 21 00 01      [10]  267    ld hl, #transparency_table
-   7C26 CD 76 81      [17]  268    call cpct_drawSpriteMaskedAlignedTable_asm
-   7C29 C9            [10]  269    ret
-                            270 
-                            271 ;;-----------------------------------------------------------------
-                            272 ;;
-                            273 ;; _match_draw_board
-                            274 ;;
-                            275 ;;  Iterates all 6x6 cells and draws sprites for non-empty ones.
-                            276 ;;  Input:
-                            277 ;;  Output:
-                            278 ;;  Modified: AF, BC, DE, HL, IX
-                            279 ;;
-   7C2A                     280 _match_draw_board:
-   7C2A DD 21 FD 82   [14]  281    ld ix, #_match_board
-   7C2E 06 00         [ 7]  282    ld b, #0                          ;; B = row
-   7C30                     283 _mdb_row_loop:
-   7C30 0E 00         [ 7]  284    ld c, #0                          ;; C = col
-   7C32                     285 _mdb_col_loop:
-   7C32 DD 7E 00      [19]  286    ld a, 0(ix)                       ;; A = cell value
-   7C35 DD 23         [10]  287    inc ix                            ;; advance board pointer
-   7C37 B7            [ 4]  288    or a
-   7C38 28 0F         [12]  289    jr z, _mdb_next_col               ;; skip empty cells
-                            290 
-   7C3A DD E5         [15]  291    push ix                           ;; save board pointer (clobbered by sprite draw)
-   7C3C C5            [11]  292    push bc                           ;; save row (B) and col (C)
-   7C3D F5            [11]  293    push af                           ;; save cell value
+   7BAC 11 E0 D1      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (50 / 8) + 2048 * (50 & 7) + 0   ;; [3] REG16 = screenPtr
+   7BAF 0E 12         [ 7]  178    ld c, #S_BASKET_W
+   7BB1 06 4A         [ 7]  179    ld b, #S_BASKET_H
+   7BB3 21 E0 5C      [10]  180    ld hl, #_s_basket
+   7BB6 CD E9 82      [17]  181    call cpct_drawSprite_asm
+                            182 
+   0045                     183    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 62, 50  ;; right basket
+   7BB9 11 1E D2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (50 / 8) + 2048 * (50 & 7) + 62   ;; [3] REG16 = screenPtr
+   7BBC 0E 12         [ 7]  184    ld c, #S_BASKET_W
+   7BBE 06 4A         [ 7]  185    ld b, #S_BASKET_H
+   7BC0 21 E0 5C      [10]  186    ld hl, #_s_basket
+   7BC3 CD E9 82      [17]  187    call cpct_drawSprite_asm
+                            188 
+   0052                     189    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 4, 68   ;; P1 cat
+   7BC6 11 84 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 4   ;; [3] REG16 = screenPtr
+   7BC9 01 44 64      [10]  190    ld bc, #_s_cat_0
+   0058                     191    ld__ixl S_CAT_W
+   7BCC DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
+   005B                     192    ld__ixh S_CAT_H
+   7BCF DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
+   7BD2 21 00 01      [10]  193    ld hl, #transparency_table
+   7BD5 CD 59 85      [17]  194    call cpct_drawSpriteMaskedAlignedTable_asm
+                            195 
+   0064                     196    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 9, 68   ;; P1 catty
+   7BD8 11 89 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 9   ;; [3] REG16 = screenPtr
+   7BDB 01 9A 63      [10]  197    ld bc, #_s_catty_0
+   006A                     198    ld__ixl S_CATTY_W
+   7BDE DD 2E 05              1    .db #0xDD, #0x2E, S_CATTY_W  ;; Opcode for ld ixl, Value
+   006D                     199    ld__ixh S_CATTY_H
+   7BE1 DD 26 11              1    .db #0xDD, #0x26, S_CATTY_H  ;; Opcode for ld ixh, Value
+   7BE4 21 00 01      [10]  200    ld hl, #transparency_table
+   7BE7 CD 59 85      [17]  201    call cpct_drawSpriteMaskedAlignedTable_asm
+                            202 
+   0076                     203    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 66, 68  ;; P2 cat
+   7BEA 11 C2 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 66   ;; [3] REG16 = screenPtr
+   7BED 01 99 64      [10]  204    ld bc, #_s_cat_1
+   007C                     205    ld__ixl S_CAT_W
+   7BF0 DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
+   007F                     206    ld__ixh S_CAT_H
+   7BF3 DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
+   7BF6 21 00 01      [10]  207    ld hl, #transparency_table
+   7BF9 CD 59 85      [17]  208    call cpct_drawSpriteMaskedAlignedTable_asm
+                            209 
+   0088                     210    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 71, 68  ;; P2 catty
+   7BFC 11 C7 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 71   ;; [3] REG16 = screenPtr
+   7BFF 01 EF 63      [10]  211    ld bc, #_s_catty_1
+   008E                     212    ld__ixl S_CATTY_W
+   7C02 DD 2E 05              1    .db #0xDD, #0x2E, S_CATTY_W  ;; Opcode for ld ixl, Value
+   0091                     213    ld__ixh S_CATTY_H
+   7C05 DD 26 11              1    .db #0xDD, #0x26, S_CATTY_H  ;; Opcode for ld ixh, Value
+   7C08 21 00 01      [10]  214    ld hl, #transparency_table
+   7C0B CD 59 85      [17]  215    call cpct_drawSpriteMaskedAlignedTable_asm
+                            216 
+                            217    ;; --- Player 1 cats (below cat sprite) ---
+   7C0E 11 00 C0      [10]  218    ld de, #CPCT_VMEM_START_ASM
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 110.
 Hexadecimal [16-Bits]
 
 
 
-   7C3E CD F2 7B      [17]  294    call _match_col_row_to_screen_addr ;; B=row, C=col -> DE = screen addr
-   7C41 F1            [10]  295    pop af                            ;; A = cell value
-   7C42 13            [ 6]  296    inc de                            ;; shift sprite 1 byte (2px) right, same as cursor
-   7C43 CD 0C 7C      [17]  297    call _match_draw_cell_sprite
-   7C46 C1            [10]  298    pop bc                            ;; restore row/col
-   7C47 DD E1         [14]  299    pop ix                            ;; restore board pointer
-                            300 
-   7C49                     301 _mdb_next_col:
-   7C49 0C            [ 4]  302    inc c
-   7C4A 79            [ 4]  303    ld a, c
-   7C4B FE 06         [ 7]  304    cp #GRID_COLS
-   7C4D 38 E3         [12]  305    jr c, _mdb_col_loop
-                            306 
-   7C4F 04            [ 4]  307    inc b
-   7C50 78            [ 4]  308    ld a, b
-   7C51 FE 06         [ 7]  309    cp #GRID_ROWS
-   7C53 38 DB         [12]  310    jr c, _mdb_row_loop
-                            311 
-   7C55 C9            [10]  312    ret
-                            313 
-                            314 ;;-----------------------------------------------------------------
-                            315 ;;
-                            316 ;; _match_draw_cursor
-                            317 ;;
-                            318 ;;  Draws the cursor: yellow solid box with current piece sprite on top.
-                            319 ;;  Input:
-                            320 ;;  Output:
-                            321 ;;  Modified: AF, BC, DE, HL, IX
-                            322 ;;
-   7C56                     323 _match_draw_cursor:
-                            324    ;; Compute screen address for cursor position
-   7C56 3A 22 83      [13]  325    ld a, (_cursor_col)
-   7C59 4F            [ 4]  326    ld c, a
-   7C5A 3A 23 83      [13]  327    ld a, (_cursor_row)
-   7C5D 47            [ 4]  328    ld b, a
-   7C5E CD F2 7B      [17]  329    call _match_col_row_to_screen_addr  ;; DE = screen addr
-   7C61 13            [ 6]  330    inc de                              ;; shift cursor 1 byte (2px) right within cell
-                            331 
-                            332    ;; Draw yellow solid box (cursor background, slightly smaller than cell)
-   7C62 3E 3C         [ 7]  333    ld a, #CURSOR_COLOR
-   7C64 0E 05         [ 7]  334    ld c, #CURSOR_W
-   7C66 06 14         [ 7]  335    ld b, #CURSOR_H
-   7C68 CD 7E 80      [17]  336    call cpct_drawSolidBox_asm          ;; DE is clobbered
-                            337 
-                            338    ;; Recompute screen address (cpct_drawSolidBox_asm modified DE)
-   7C6B 3A 22 83      [13]  339    ld a, (_cursor_col)
-   7C6E 4F            [ 4]  340    ld c, a
-   7C6F 3A 23 83      [13]  341    ld a, (_cursor_row)
-   7C72 47            [ 4]  342    ld b, a
-   7C73 CD F2 7B      [17]  343    call _match_col_row_to_screen_addr  ;; DE = screen addr
-   7C76 13            [ 6]  344    inc de                              ;; shift cursor 1 byte (2px) right within cell
-                            345 
-                            346    ;; Select sprite based on current player state and piece type
-   7C77 3A 21 83      [13]  347    ld a, (_match_state)
-   7C7A B7            [ 4]  348    or a
+   7C11 0E 05         [ 7]  219    ld c, #HUD_P1_CATS_X
+   7C13 06 59         [ 7]  220    ld b, #HUD_Y
+   7C15 CD 3A 85      [17]  221    call cpct_getScreenPtr_asm
+   7C18 EB            [ 4]  222    ex de, hl                         ;; DE = screen address
+   7C19 3A D7 86      [13]  223    ld a, (man_match_player1 + Player_cats)
+   7C1C CD 8F 7B      [17]  224    call _draw_big_digit
+                            225 
+                            226    ;; --- Player 1 kittens (below catty sprite) ---
+   7C1F 11 00 C0      [10]  227    ld de, #CPCT_VMEM_START_ASM
+   7C22 0E 0A         [ 7]  228    ld c, #HUD_P1_KITTENS_X
+   7C24 06 59         [ 7]  229    ld b, #HUD_Y
+   7C26 CD 3A 85      [17]  230    call cpct_getScreenPtr_asm
+   7C29 EB            [ 4]  231    ex de, hl
+   7C2A 3A D8 86      [13]  232    ld a, (man_match_player1 + Player_kittens)
+   7C2D CD 8F 7B      [17]  233    call _draw_big_digit
+                            234 
+                            235    ;; --- Player 2 cats (below cat sprite) ---
+   7C30 11 00 C0      [10]  236    ld de, #CPCT_VMEM_START_ASM
+   7C33 0E 43         [ 7]  237    ld c, #HUD_P2_CATS_X
+   7C35 06 59         [ 7]  238    ld b, #HUD_Y
+   7C37 CD 3A 85      [17]  239    call cpct_getScreenPtr_asm
+   7C3A EB            [ 4]  240    ex de, hl
+   7C3B 3A DD 86      [13]  241    ld a, (man_match_player2 + Player_cats)
+   7C3E CD 8F 7B      [17]  242    call _draw_big_digit
+                            243 
+                            244    ;; --- Player 2 kittens (below catty sprite) ---
+   7C41 11 00 C0      [10]  245    ld de, #CPCT_VMEM_START_ASM
+   7C44 0E 48         [ 7]  246    ld c, #HUD_P2_KITTENS_X
+   7C46 06 59         [ 7]  247    ld b, #HUD_Y
+   7C48 CD 3A 85      [17]  248    call cpct_getScreenPtr_asm
+   7C4B EB            [ 4]  249    ex de, hl
+   7C4C 3A DE 86      [13]  250    ld a, (man_match_player2 + Player_kittens)
+   7C4F CD 8F 7B      [17]  251    call _draw_big_digit
+                            252 
+   7C52 C9            [10]  253    ret
+                            254 
+                            255 ;;-----------------------------------------------------------------
+                            256 ;;
+                            257 ;; _match_col_row_to_screen_addr
+                            258 ;;
+                            259 ;;  Converts a grid (col, row) position to a video memory address.
+                            260 ;;  Input:  C = col (0 .. GRID_COLS-1)
+                            261 ;;          B = row (0 .. GRID_ROWS-1)
+                            262 ;;  Output: DE = screen address
+                            263 ;;  Modified: AF, BC, DE, HL
+                            264 ;;
+   7C53                     265 _match_col_row_to_screen_addr:
+                            266    ;; Y = GRID_FIRST_CELL_Y + row * GRID_CELL_H  (row*24 = row*16 + row*8)
+                            267    ;; Computed first so we can use E as a temporary before DE is set for the call
+   7C53 78            [ 4]  268    ld a, b
+   7C54 87            [ 4]  269    add a, a                          ;; A = row * 2
+   7C55 87            [ 4]  270    add a, a                          ;; A = row * 4
+   7C56 87            [ 4]  271    add a, a                          ;; A = row * 8
+   7C57 5F            [ 4]  272    ld e, a                           ;; E = row * 8  (temp; DE overwritten below)
+   7C58 87            [ 4]  273    add a, a                          ;; A = row * 16
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 111.
 Hexadecimal [16-Bits]
 
 
 
-   7C7B 20 10         [12]  349    jr nz, _mdc_p2
-                            350 
-                            351    ;; P1
-   7C7D 3A 24 83      [13]  352    ld a, (_cursor_piece)
-   7C80 B7            [ 4]  353    or a
-   7C81 20 05         [12]  354    jr nz, _mdc_p1_kitten
-   7C83 01 44 64      [10]  355    ld bc, #_s_cat_0
-   7C86 18 13         [12]  356    jr _mdc_draw_sprite
-   7C88                     357 _mdc_p1_kitten:
-   7C88 01 9A 63      [10]  358    ld bc, #_s_catty_0
-   7C8B 18 0E         [12]  359    jr _mdc_draw_sprite
-                            360 
-   7C8D                     361 _mdc_p2:
-   7C8D 3A 24 83      [13]  362    ld a, (_cursor_piece)
-   7C90 B7            [ 4]  363    or a
-   7C91 20 05         [12]  364    jr nz, _mdc_p2_kitten
-   7C93 01 99 64      [10]  365    ld bc, #_s_cat_1
-   7C96 18 03         [12]  366    jr _mdc_draw_sprite
-   7C98                     367 _mdc_p2_kitten:
-   7C98 01 EF 63      [10]  368    ld bc, #_s_catty_1
-                            369 
-   7C9B                     370 _mdc_draw_sprite:
-   0133                     371    ld__ixl S_CAT_W
-   7C9B DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
-   0136                     372    ld__ixh S_CAT_H
-   7C9E DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
-   7CA1 21 00 01      [10]  373    ld hl, #transparency_table
-   7CA4 CD 76 81      [17]  374    call cpct_drawSpriteMaskedAlignedTable_asm
-   7CA7 C9            [10]  375    ret
-                            376 
-                            377 ;;-----------------------------------------------------------------
-                            378 ;;
-                            379 ;; _match_redraw_all
-                            380 ;;
-                            381 ;;  Full redraw: background, board pieces, cursor, HUD.
-                            382 ;;  Input:
-                            383 ;;  Output:
-                            384 ;;  Modified: AF, BC, DE, HL, IX
-                            385 ;;
-   7CA8                     386 _match_redraw_all:
-   7CA8 CD 01 77      [17]  387    call sys_render_draw_grid
-   7CAB CD 2A 7C      [17]  388    call _match_draw_board
-   7CAE CD 56 7C      [17]  389    call _match_draw_cursor
-   7CB1 C9            [10]  390    ret
-                            391 
-                            392 ;;-----------------------------------------------------------------
-                            393 ;;
-                            394 ;; _match_place_piece
-                            395 ;;
-                            396 ;;  Places the current player's selected piece at the cursor position.
-                            397 ;;  Does nothing if the cell is occupied or the player has no pieces left.
-                            398 ;;  On success: decrements piece count, toggles state, redraws.
-                            399 ;;  Input:
-                            400 ;;  Output:
-                            401 ;;  Modified: AF, BC, DE, HL, IX
+   7C59 83            [ 4]  274    add a, e                          ;; A = row * 24
+   7C5A C6 24         [ 7]  275    add a, #GRID_FIRST_CELL_Y
+   7C5C 47            [ 4]  276    ld b, a                           ;; B = Y pixel row
+                            277 
+                            278    ;; X = GRID_FIRST_CELL_X + col * GRID_CELL_W  (col*7 = col*8 - col)
+   7C5D 79            [ 4]  279    ld a, c
+   7C5E 87            [ 4]  280    add a, a                          ;; A = col * 2
+   7C5F 87            [ 4]  281    add a, a                          ;; A = col * 4
+   7C60 87            [ 4]  282    add a, a                          ;; A = col * 8
+   7C61 91            [ 4]  283    sub c                             ;; A = col*8 - col = col * 7  (C still = col)
+   7C62 C6 13         [ 7]  284    add a, #GRID_FIRST_CELL_X
+   7C64 4F            [ 4]  285    ld c, a                           ;; C = X byte offset
+                            286 
+   7C65 11 00 C0      [10]  287    ld de, #CPCT_VMEM_START_ASM
+   7C68 CD 3A 85      [17]  288    call cpct_getScreenPtr_asm        ;; HL = screen address
+   7C6B EB            [ 4]  289    ex de, hl                         ;; DE = screen address
+   7C6C C9            [10]  290    ret
+                            291 
+                            292 ;;-----------------------------------------------------------------
+                            293 ;;
+                            294 ;; _match_draw_cell_sprite
+                            295 ;;
+                            296 ;;  Draws the masked sprite for a given board cell value.
+                            297 ;;  Input:  A  = board value (1-4)
+                            298 ;;          DE = screen destination address
+                            299 ;;  Output:
+                            300 ;;  Modified: AF, BC, DE, HL, IX
+                            301 ;;
+   7C6D                     302 _match_draw_cell_sprite:
+   7C6D D5            [11]  303    push de                           ;; save screen address
+   7C6E 3D            [ 4]  304    dec a                             ;; A = 0-3 (table index)
+   7C6F 21 6A 87      [10]  305    ld hl, #_board_sprite_ptrs
+   7C72 06 00         [ 7]  306    ld b, #0
+   7C74 4F            [ 4]  307    ld c, a
+   7C75 CB 21         [ 8]  308    sla c                             ;; C = index * 2
+   7C77 CB 10         [ 8]  309    rl b
+   7C79 09            [11]  310    add hl, bc                        ;; HL = &_board_sprite_ptrs[index]
+   7C7A 4E            [ 7]  311    ld c, (hl)
+   7C7B 23            [ 6]  312    inc hl
+   7C7C 46            [ 7]  313    ld b, (hl)                        ;; BC = sprite data pointer
+   7C7D D1            [10]  314    pop de                            ;; restore screen address
+   010A                     315    ld__ixl S_CAT_W
+   7C7E DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
+   010D                     316    ld__ixh S_CAT_H
+   7C81 DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
+   7C84 21 00 01      [10]  317    ld hl, #transparency_table
+   7C87 CD 59 85      [17]  318    call cpct_drawSpriteMaskedAlignedTable_asm
+   7C8A C9            [10]  319    ret
+                            320 
+                            321 ;;-----------------------------------------------------------------
+                            322 ;;
+                            323 ;; _match_draw_board
+                            324 ;;
+                            325 ;;  Iterates all 6x6 cells and draws sprites for non-empty ones.
+                            326 ;;  Input:
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 112.
 Hexadecimal [16-Bits]
 
 
 
-                            402 ;;
-   7CB2                     403 _match_place_piece:
-                            404    ;; Compute board index = row*6 + col
-   7CB2 3A 23 83      [13]  405    ld a, (_cursor_row)
-   7CB5 47            [ 4]  406    ld b, a                           ;; B = row
-   7CB6 07            [ 4]  407    rlca                              ;; A = row * 2
-   7CB7 07            [ 4]  408    rlca                              ;; A = row * 4
-   7CB8 80            [ 4]  409    add a, b                          ;; A = row * 5
-   7CB9 80            [ 4]  410    add a, b                          ;; A = row * 6
-   7CBA 47            [ 4]  411    ld b, a                           ;; B = row * 6
-   7CBB 3A 22 83      [13]  412    ld a, (_cursor_col)
-   7CBE 80            [ 4]  413    add a, b                          ;; A = row*6 + col
-   7CBF 4F            [ 4]  414    ld c, a
-   7CC0 06 00         [ 7]  415    ld b, #0
-                            416 
-                            417    ;; HL = &_match_board[idx]
-   7CC2 21 FD 82      [10]  418    ld hl, #_match_board
-   7CC5 09            [11]  419    add hl, bc
-                            420 
-                            421    ;; Check cell is empty
-   7CC6 7E            [ 7]  422    ld a, (hl)
-   7CC7 B7            [ 4]  423    or a
-   7CC8 C0            [11]  424    ret nz                            ;; occupied, do nothing
-                            425 
-                            426    ;; Load player struct into IX
-   7CC9 3A 21 83      [13]  427    ld a, (_match_state)
-   7CCC B7            [ 4]  428    or a
-   7CCD 20 06         [12]  429    jr nz, _mpp_player2
-   7CCF DD 21 F0 82   [14]  430    ld ix, #man_match_player1
-   7CD3 18 04         [12]  431    jr _mpp_got_player
-   7CD5                     432 _mpp_player2:
-   7CD5 DD 21 F6 82   [14]  433    ld ix, #man_match_player2
-                            434 
-   7CD9                     435 _mpp_got_player:
-                            436    ;; Check/decrement piece count; HL still points to board cell
-   7CD9 3A 24 83      [13]  437    ld a, (_cursor_piece)
-   7CDC B7            [ 4]  438    or a
-   7CDD 20 0B         [12]  439    jr nz, _mpp_check_kitten
-                            440 
-                            441    ;; CAT
-   7CDF DD 7E 04      [19]  442    ld a, Player_cats(ix)
-   7CE2 B7            [ 4]  443    or a
-   7CE3 C8            [11]  444    ret z                             ;; no cats left
-   7CE4 3D            [ 4]  445    dec a
-   7CE5 DD 77 04      [19]  446    ld Player_cats(ix), a
-   7CE8 18 09         [12]  447    jr _mpp_do_place
-                            448 
-   7CEA                     449 _mpp_check_kitten:
-                            450    ;; KITTEN
-   7CEA DD 7E 05      [19]  451    ld a, Player_kittens(ix)
-   7CED B7            [ 4]  452    or a
-   7CEE C8            [11]  453    ret z                             ;; no kittens left
-   7CEF 3D            [ 4]  454    dec a
-   7CF0 DD 77 05      [19]  455    ld Player_kittens(ix), a
-                            456 
+                            327 ;;  Output:
+                            328 ;;  Modified: AF, BC, DE, HL, IX
+                            329 ;;
+   7C8B                     330 _match_draw_board:
+   7C8B DD 21 E0 86   [14]  331    ld ix, #_match_board
+   7C8F 06 00         [ 7]  332    ld b, #0                          ;; B = row
+   7C91                     333 _mdb_row_loop:
+   7C91 0E 00         [ 7]  334    ld c, #0                          ;; C = col
+   7C93                     335 _mdb_col_loop:
+   7C93 DD 7E 00      [19]  336    ld a, 0(ix)                       ;; A = cell value
+   7C96 DD 23         [10]  337    inc ix                            ;; advance board pointer
+   7C98 B7            [ 4]  338    or a
+   7C99 28 0F         [12]  339    jr z, _mdb_next_col               ;; skip empty cells
+                            340 
+   7C9B DD E5         [15]  341    push ix                           ;; save board pointer (clobbered by sprite draw)
+   7C9D C5            [11]  342    push bc                           ;; save row (B) and col (C)
+   7C9E F5            [11]  343    push af                           ;; save cell value
+   7C9F CD 53 7C      [17]  344    call _match_col_row_to_screen_addr ;; B=row, C=col -> DE = screen addr
+   7CA2 F1            [10]  345    pop af                            ;; A = cell value
+   7CA3 13            [ 6]  346    inc de                            ;; shift sprite 1 byte (2px) right, same as cursor
+   7CA4 CD 6D 7C      [17]  347    call _match_draw_cell_sprite
+   7CA7 C1            [10]  348    pop bc                            ;; restore row/col
+   7CA8 DD E1         [14]  349    pop ix                            ;; restore board pointer
+                            350 
+   7CAA                     351 _mdb_next_col:
+   7CAA 0C            [ 4]  352    inc c
+   7CAB 79            [ 4]  353    ld a, c
+   7CAC FE 06         [ 7]  354    cp #GRID_COLS
+   7CAE 38 E3         [12]  355    jr c, _mdb_col_loop
+                            356 
+   7CB0 04            [ 4]  357    inc b
+   7CB1 78            [ 4]  358    ld a, b
+   7CB2 FE 06         [ 7]  359    cp #GRID_ROWS
+   7CB4 38 DB         [12]  360    jr c, _mdb_row_loop
+                            361 
+   7CB6 C9            [10]  362    ret
+                            363 
+                            364 ;;-----------------------------------------------------------------
+                            365 ;;
+                            366 ;; _match_draw_cursor
+                            367 ;;
+                            368 ;;  Draws the cursor: yellow solid box with current piece sprite on top.
+                            369 ;;  Input:
+                            370 ;;  Output:
+                            371 ;;  Modified: AF, BC, DE, HL, IX
+                            372 ;;
+   7CB7                     373 _match_draw_cursor:
+                            374    ;; Compute screen address for cursor position
+   7CB7 3A 06 87      [13]  375    ld a, (_cursor_col)
+   7CBA 4F            [ 4]  376    ld c, a
+   7CBB 3A 07 87      [13]  377    ld a, (_cursor_row)
+   7CBE 47            [ 4]  378    ld b, a
+   7CBF CD 53 7C      [17]  379    call _match_col_row_to_screen_addr  ;; DE = screen addr
+   7CC2 13            [ 6]  380    inc de                              ;; shift cursor 1 byte (2px) right within cell
+                            381 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 113.
 Hexadecimal [16-Bits]
 
 
 
-   7CF3                     457 _mpp_do_place:
-                            458    ;; board_value = _match_state*2 + _cursor_piece + 1
-                            459    ;;   P1 cat=1, P1 kitten=2, P2 cat=3, P2 kitten=4
-   7CF3 3A 21 83      [13]  460    ld a, (_match_state)
-   7CF6 87            [ 4]  461    add a, a                          ;; A = state * 2
-   7CF7 47            [ 4]  462    ld b, a
-   7CF8 3A 24 83      [13]  463    ld a, (_cursor_piece)
-   7CFB 80            [ 4]  464    add a, b                          ;; A = state*2 + piece
-   7CFC 3C            [ 4]  465    inc a                             ;; A = state*2 + piece + 1
-   7CFD 77            [ 7]  466    ld (hl), a                        ;; write to board
-                            467 
-                            468    ;; Toggle state, reset piece selection to kitten
-   7CFE 3A 21 83      [13]  469    ld a, (_match_state)
-   7D01 EE 01         [ 7]  470    xor #1
-   7D03 32 21 83      [13]  471    ld (_match_state), a
-   7D06 3E 01         [ 7]  472    ld a, #PIECE_KITTEN
-   7D08 32 24 83      [13]  473    ld (_cursor_piece), a
-                            474 
-   7D0B CD A8 7C      [17]  475    call _match_redraw_all
-   7D0E CD AD 7B      [17]  476    call man_match_draw_hud
-   7D11 C9            [10]  477    ret
-                            478 
-                            479 ;;-----------------------------------------------------------------
-                            480 ;;
-                            481 ;; _match_handle_input
-                            482 ;;
-                            483 ;;  Reads directional keys, Space, and Enter each frame.
-                            484 ;;  Identical debounce pattern to menu.s.
-                            485 ;;  Input:
-                            486 ;;  Output:
-                            487 ;;  Modified: AF, BC, DE, HL
-                            488 ;;
-   7D12                     489 _match_handle_input:
-                            490    ;; Debounce: wait for full key release before accepting new input
-   7D12 3A 25 83      [13]  491    ld a, (_turn_debounce)
-   7D15 B7            [ 4]  492    or a
-   7D16 28 0A         [12]  493    jr z, _mhi_check_keys
-   7D18 CD CA 7F      [17]  494    call cpct_isAnyKeyPressed_asm
-   7D1B B7            [ 4]  495    or a
-   7D1C C0            [11]  496    ret nz                            ;; key still held, do nothing
-   7D1D AF            [ 4]  497    xor a
-   7D1E 32 25 83      [13]  498    ld (_turn_debounce), a
-   7D21 C9            [10]  499    ret
-                            500 
-   7D22                     501 _mhi_check_keys:
-                            502    ;; Cursor Up
-   7D22 21 00 01      [10]  503    ld hl, #Key_CursorUp
-   7D25 CD F0 7E      [17]  504    call cpct_isKeyPressed_asm
-   7D28 28 0F         [12]  505    jr z, _mhi_check_down
-   7D2A 3A 23 83      [13]  506    ld a, (_cursor_row)
-   7D2D B7            [ 4]  507    or a
-   7D2E 28 09         [12]  508    jr z, _mhi_check_down             ;; already at row 0
-   7D30 3D            [ 4]  509    dec a
-   7D31 32 23 83      [13]  510    ld (_cursor_row), a
-   7D34 CD A8 7C      [17]  511    call _match_redraw_all
+                            382    ;; Draw yellow solid box (cursor background, slightly smaller than cell)
+   7CC3 3E 3C         [ 7]  383    ld a, #CURSOR_COLOR
+   7CC5 0E 05         [ 7]  384    ld c, #CURSOR_W
+   7CC7 06 14         [ 7]  385    ld b, #CURSOR_H
+   7CC9 CD 61 84      [17]  386    call cpct_drawSolidBox_asm          ;; DE is clobbered
+                            387 
+                            388    ;; Recompute screen address (cpct_drawSolidBox_asm modified DE)
+   7CCC 3A 06 87      [13]  389    ld a, (_cursor_col)
+   7CCF 4F            [ 4]  390    ld c, a
+   7CD0 3A 07 87      [13]  391    ld a, (_cursor_row)
+   7CD3 47            [ 4]  392    ld b, a
+   7CD4 CD 53 7C      [17]  393    call _match_col_row_to_screen_addr  ;; DE = screen addr
+   7CD7 13            [ 6]  394    inc de                              ;; shift cursor 1 byte (2px) right within cell
+                            395 
+                            396    ;; Select sprite based on current player state and piece type
+   7CD8 3A 05 87      [13]  397    ld a, (_match_state)
+   7CDB B7            [ 4]  398    or a
+   7CDC 20 10         [12]  399    jr nz, _mdc_p2
+                            400 
+                            401    ;; P1
+   7CDE 3A 08 87      [13]  402    ld a, (_cursor_piece)
+   7CE1 B7            [ 4]  403    or a
+   7CE2 20 05         [12]  404    jr nz, _mdc_p1_kitten
+   7CE4 01 44 64      [10]  405    ld bc, #_s_cat_0
+   7CE7 18 13         [12]  406    jr _mdc_draw_sprite
+   7CE9                     407 _mdc_p1_kitten:
+   7CE9 01 9A 63      [10]  408    ld bc, #_s_catty_0
+   7CEC 18 0E         [12]  409    jr _mdc_draw_sprite
+                            410 
+   7CEE                     411 _mdc_p2:
+   7CEE 3A 08 87      [13]  412    ld a, (_cursor_piece)
+   7CF1 B7            [ 4]  413    or a
+   7CF2 20 05         [12]  414    jr nz, _mdc_p2_kitten
+   7CF4 01 99 64      [10]  415    ld bc, #_s_cat_1
+   7CF7 18 03         [12]  416    jr _mdc_draw_sprite
+   7CF9                     417 _mdc_p2_kitten:
+   7CF9 01 EF 63      [10]  418    ld bc, #_s_catty_1
+                            419 
+   7CFC                     420 _mdc_draw_sprite:
+   0188                     421    ld__ixl S_CAT_W
+   7CFC DD 2E 05              1    .db #0xDD, #0x2E, S_CAT_W  ;; Opcode for ld ixl, Value
+   018B                     422    ld__ixh S_CAT_H
+   7CFF DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
+   7D02 21 00 01      [10]  423    ld hl, #transparency_table
+   7D05 CD 59 85      [17]  424    call cpct_drawSpriteMaskedAlignedTable_asm
+   7D08 C9            [10]  425    ret
+                            426 
+                            427 ;;-----------------------------------------------------------------
+                            428 ;;
+                            429 ;; _match_redraw_all
+                            430 ;;
+                            431 ;;  Full redraw: background, board pieces, cursor, HUD.
+                            432 ;;  Input:
+                            433 ;;  Output:
+                            434 ;;  Modified: AF, BC, DE, HL, IX
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 114.
 Hexadecimal [16-Bits]
 
 
 
-   7D37 18 67         [12]  512    jr _mhi_set_debounce
-                            513 
-   7D39                     514 _mhi_check_down:
-   7D39 21 00 04      [10]  515    ld hl, #Key_CursorDown
-   7D3C CD F0 7E      [17]  516    call cpct_isKeyPressed_asm
-   7D3F 28 10         [12]  517    jr z, _mhi_check_left
-   7D41 3A 23 83      [13]  518    ld a, (_cursor_row)
-   7D44 FE 05         [ 7]  519    cp #(GRID_ROWS - 1)
-   7D46 28 09         [12]  520    jr z, _mhi_check_left             ;; already at last row
-   7D48 3C            [ 4]  521    inc a
-   7D49 32 23 83      [13]  522    ld (_cursor_row), a
-   7D4C CD A8 7C      [17]  523    call _match_redraw_all
-   7D4F 18 4F         [12]  524    jr _mhi_set_debounce
-                            525 
-   7D51                     526 _mhi_check_left:
-   7D51 21 01 01      [10]  527    ld hl, #Key_CursorLeft
-   7D54 CD F0 7E      [17]  528    call cpct_isKeyPressed_asm
-   7D57 28 0F         [12]  529    jr z, _mhi_check_right
-   7D59 3A 22 83      [13]  530    ld a, (_cursor_col)
-   7D5C B7            [ 4]  531    or a
-   7D5D 28 09         [12]  532    jr z, _mhi_check_right            ;; already at col 0
-   7D5F 3D            [ 4]  533    dec a
-   7D60 32 22 83      [13]  534    ld (_cursor_col), a
-   7D63 CD A8 7C      [17]  535    call _match_redraw_all
-   7D66 18 38         [12]  536    jr _mhi_set_debounce
-                            537 
-   7D68                     538 _mhi_check_right:
-   7D68 21 00 02      [10]  539    ld hl, #Key_CursorRight
-   7D6B CD F0 7E      [17]  540    call cpct_isKeyPressed_asm
-   7D6E 28 10         [12]  541    jr z, _mhi_check_space
-   7D70 3A 22 83      [13]  542    ld a, (_cursor_col)
-   7D73 FE 05         [ 7]  543    cp #(GRID_COLS - 1)
-   7D75 28 09         [12]  544    jr z, _mhi_check_space            ;; already at last col
-   7D77 3C            [ 4]  545    inc a
-   7D78 32 22 83      [13]  546    ld (_cursor_col), a
-   7D7B CD A8 7C      [17]  547    call _match_redraw_all
-   7D7E 18 20         [12]  548    jr _mhi_set_debounce
-                            549 
-   7D80                     550 _mhi_check_space:
-   7D80 21 05 80      [10]  551    ld hl, #Key_Space
-   7D83 CD F0 7E      [17]  552    call cpct_isKeyPressed_asm
-   7D86 28 0D         [12]  553    jr z, _mhi_check_enter
-   7D88 3A 24 83      [13]  554    ld a, (_cursor_piece)
-   7D8B EE 01         [ 7]  555    xor #1                            ;; toggle 0<->1
-   7D8D 32 24 83      [13]  556    ld (_cursor_piece), a
-   7D90 CD A8 7C      [17]  557    call _match_redraw_all
-   7D93 18 0B         [12]  558    jr _mhi_set_debounce
-                            559 
-   7D95                     560 _mhi_check_enter:
-   7D95 21 02 04      [10]  561    ld hl, #Key_Return
-   7D98 CD F0 7E      [17]  562    call cpct_isKeyPressed_asm
-   7D9B 28 08         [12]  563    jr z, _mhi_done
-   7D9D CD B2 7C      [17]  564    call _match_place_piece
-                            565 
-   7DA0                     566 _mhi_set_debounce:
+                            435 ;;
+   7D09                     436 _match_redraw_all:
+   7D09 CD 01 77      [17]  437    call sys_render_draw_grid
+   7D0C CD 8B 7C      [17]  438    call _match_draw_board
+   7D0F CD B7 7C      [17]  439    call _match_draw_cursor
+   7D12 C9            [10]  440    ret
+                            441 
+                            442 ;;-----------------------------------------------------------------
+                            443 ;;
+                            444 ;; _match_place_piece
+                            445 ;;
+                            446 ;;  Places the current player's selected piece at the cursor position.
+                            447 ;;  Does nothing if the cell is occupied or the player has no pieces left.
+                            448 ;;  On success: decrements piece count, toggles state, redraws.
+                            449 ;;  Input:
+                            450 ;;  Output:
+                            451 ;;  Modified: AF, BC, DE, HL, IX
+                            452 ;;
+   7D13                     453 _match_place_piece:
+                            454    ;; Compute board index = row*6 + col
+   7D13 3A 07 87      [13]  455    ld a, (_cursor_row)
+   7D16 47            [ 4]  456    ld b, a                           ;; B = row
+   7D17 07            [ 4]  457    rlca                              ;; A = row * 2
+   7D18 07            [ 4]  458    rlca                              ;; A = row * 4
+   7D19 80            [ 4]  459    add a, b                          ;; A = row * 5
+   7D1A 80            [ 4]  460    add a, b                          ;; A = row * 6
+   7D1B 47            [ 4]  461    ld b, a                           ;; B = row * 6
+   7D1C 3A 06 87      [13]  462    ld a, (_cursor_col)
+   7D1F 80            [ 4]  463    add a, b                          ;; A = row*6 + col
+   7D20 4F            [ 4]  464    ld c, a
+   7D21 06 00         [ 7]  465    ld b, #0
+                            466 
+                            467    ;; HL = &_match_board[idx]
+   7D23 21 E0 86      [10]  468    ld hl, #_match_board
+   7D26 09            [11]  469    add hl, bc
+                            470 
+                            471    ;; Check cell is empty
+   7D27 7E            [ 7]  472    ld a, (hl)
+   7D28 B7            [ 4]  473    or a
+   7D29 C0            [11]  474    ret nz                            ;; occupied, do nothing
+                            475 
+                            476    ;; Load player struct into IX
+   7D2A 3A 05 87      [13]  477    ld a, (_match_state)
+   7D2D B7            [ 4]  478    or a
+   7D2E 20 06         [12]  479    jr nz, _mpp_player2
+   7D30 DD 21 D3 86   [14]  480    ld ix, #man_match_player1
+   7D34 18 04         [12]  481    jr _mpp_got_player
+   7D36                     482 _mpp_player2:
+   7D36 DD 21 D9 86   [14]  483    ld ix, #man_match_player2
+                            484 
+   7D3A                     485 _mpp_got_player:
+                            486    ;; Check/decrement piece count; HL still points to board cell
+   7D3A 3A 08 87      [13]  487    ld a, (_cursor_piece)
+   7D3D B7            [ 4]  488    or a
+   7D3E 20 0B         [12]  489    jr nz, _mpp_check_kitten
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 115.
 Hexadecimal [16-Bits]
 
 
 
-   7DA0 3E 01         [ 7]  567    ld a, #1
-   7DA2 32 25 83      [13]  568    ld (_turn_debounce), a
-                            569 
-   7DA5                     570 _mhi_done:
-   7DA5 C9            [10]  571    ret
-                            572 
-                            573 ;;-----------------------------------------------------------------
-                            574 ;;
-                            575 ;; man_match_init
-                            576 ;;
-                            577 ;;  Initializes the match: reads num_players from menu, resets
-                            578 ;;  player structs, clears board, initialises cursor and state,
-                            579 ;;  then draws the full screen.
-                            580 ;;  Input:
-                            581 ;;  Output:
-                            582 ;;  Modified: AF, BC, DE, HL
-                            583 ;;
-   7DA6                     584 man_match_init::
-                            585    ;; store number of players from menu selection
-   7DA6 3A 5F 83      [13]  586    ld a, (man_menu_confirmed)        ;; 1 = ONE PLAYER, 2 = TWO PLAYERS
-   7DA9 32 FC 82      [13]  587    ld (man_match_num_players), a
-                            588 
-                            589    ;; init player 1
-   7DAC 21 F0 82      [10]  590    ld hl, #man_match_player1
-   7DAF CD 68 7B      [17]  591    call _match_init_player
-                            592 
-                            593    ;; init player 2
-   7DB2 21 F6 82      [10]  594    ld hl, #man_match_player2
-   7DB5 CD 68 7B      [17]  595    call _match_init_player
-                            596 
-                            597    ;; clear board (36 bytes) using ldir memset pattern
-   7DB8 21 FD 82      [10]  598    ld hl, #_match_board
-   7DBB 11 FE 82      [10]  599    ld de, #(_match_board + 1)
-   7DBE 01 23 00      [10]  600    ld bc, #35
-   7DC1 36 00         [10]  601    ld (hl), #BOARD_EMPTY
-   7DC3 ED B0         [21]  602    ldir
-                            603 
-                            604    ;; initialise cursor and turn state
-   7DC5 AF            [ 4]  605    xor a
-   7DC6 32 21 83      [13]  606    ld (_match_state), a
-   7DC9 32 22 83      [13]  607    ld (_cursor_col), a
-   7DCC 32 23 83      [13]  608    ld (_cursor_row), a
-   7DCF 3E 01         [ 7]  609    ld a, #PIECE_KITTEN               ;; start with kitten selected
-   7DD1 32 24 83      [13]  610    ld (_cursor_piece), a
-   7DD4 AF            [ 4]  611    xor a
-   7DD5 32 25 83      [13]  612    ld (_turn_debounce), a
-                            613 
-                            614    ;; draw full screen: static elements once, then grid + board + cursor + HUD
-   7DD8 CD 8E 76      [17]  615    call sys_render_draw_screen
-   7DDB CD A8 7C      [17]  616    call _match_redraw_all
-   7DDE CD AD 7B      [17]  617    call man_match_draw_hud
-                            618 
-   7DE1 C9            [10]  619    ret
-                            620 
-                            621 ;;-----------------------------------------------------------------
+                            490 
+                            491    ;; CAT
+   7D40 DD 7E 04      [19]  492    ld a, Player_cats(ix)
+   7D43 B7            [ 4]  493    or a
+   7D44 C8            [11]  494    ret z                             ;; no cats left
+   7D45 3D            [ 4]  495    dec a
+   7D46 DD 77 04      [19]  496    ld Player_cats(ix), a
+   7D49 18 09         [12]  497    jr _mpp_do_place
+                            498 
+   7D4B                     499 _mpp_check_kitten:
+                            500    ;; KITTEN
+   7D4B DD 7E 05      [19]  501    ld a, Player_kittens(ix)
+   7D4E B7            [ 4]  502    or a
+   7D4F C8            [11]  503    ret z                             ;; no kittens left
+   7D50 3D            [ 4]  504    dec a
+   7D51 DD 77 05      [19]  505    ld Player_kittens(ix), a
+                            506 
+   7D54                     507 _mpp_do_place:
+                            508    ;; board_value = _match_state*2 + _cursor_piece + 1
+                            509    ;;   P1 cat=1, P1 kitten=2, P2 cat=3, P2 kitten=4
+   7D54 3A 05 87      [13]  510    ld a, (_match_state)
+   7D57 87            [ 4]  511    add a, a                          ;; A = state * 2
+   7D58 47            [ 4]  512    ld b, a
+   7D59 3A 08 87      [13]  513    ld a, (_cursor_piece)
+   7D5C 80            [ 4]  514    add a, b                          ;; A = state*2 + piece
+   7D5D 3C            [ 4]  515    inc a                             ;; A = state*2 + piece + 1
+   7D5E 77            [ 7]  516    ld (hl), a                        ;; write to board
+                            517 
+                            518    ;; Boop: kittens push neighboring kittens; cats push kittens and cats
+   7D5F 3A 08 87      [13]  519    ld a, (_cursor_piece)
+   7D62 B7            [ 4]  520    or a
+   7D63 28 05         [12]  521    jr z, _mpp_boop_cat               ;; PIECE_CAT = 0
+   7D65 CD AF 7E      [17]  522    call _match_boop
+   7D68 18 03         [12]  523    jr _mpp_do_check
+   7D6A                     524 _mpp_boop_cat:
+   7D6A CD 44 7F      [17]  525    call _match_boop_cat
+   7D6D                     526 _mpp_do_check:
+   7D6D CD F1 7F      [17]  527    call _match_check_lines           ;; check for 3 same-color pieces in a row
+                            528 
+                            529    ;; After boop + line resolution: check if placing player has no pieces left
+                            530    ;; (boop may have ejected their own pieces back; lines may have converted some)
+   7D70 3A 05 87      [13]  531    ld a, (_match_state)              ;; still = placing player (not yet toggled)
+   7D73 B7            [ 4]  532    or a
+   7D74 20 06         [12]  533    jr nz, _mpp_pe_p2
+   7D76 DD 21 D3 86   [14]  534    ld ix, #man_match_player1
+   7D7A 18 04         [12]  535    jr _mpp_pe_chk
+   7D7C                     536 _mpp_pe_p2:
+   7D7C DD 21 D9 86   [14]  537    ld ix, #man_match_player2
+   7D80                     538 _mpp_pe_chk:
+   7D80 DD 7E 04      [19]  539    ld a, Player_cats(ix)
+   7D83 B7            [ 4]  540    or a
+   7D84 20 06         [12]  541    jr nz, _mpp_pe_done
+   7D86 DD 7E 05      [19]  542    ld a, Player_kittens(ix)
+   7D89 B7            [ 4]  543    or a
+   7D8A 28 26         [12]  544    jr z, _mpp_pe_out                 ;; 0 cats and 0 kittens → opponent wins
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 116.
 Hexadecimal [16-Bits]
 
 
 
-                            622 ;;
-                            623 ;; man_match_update
-                            624 ;;
-                            625 ;;  Main match update, called every frame while playing.
-                            626 ;;  Input:
-                            627 ;;  Output:
-                            628 ;;  Modified: AF, BC, DE, HL
-                            629 ;;
-   7DE2                     630 man_match_update::
-   7DE2 CD 12 7D      [17]  631    call _match_handle_input
-                            632 
-   7DE5 C9            [10]  633    ret
+   7D8C                     545 _mpp_pe_done:
+                            546 
+                            547    ;; Toggle state, reset piece selection to kitten
+   7D8C 3A 05 87      [13]  548    ld a, (_match_state)
+   7D8F EE 01         [ 7]  549    xor #1
+   7D91 32 05 87      [13]  550    ld (_match_state), a
+   7D94 3E 01         [ 7]  551    ld a, #PIECE_KITTEN
+   7D96 32 08 87      [13]  552    ld (_cursor_piece), a
+                            553 
+                            554    ;; Move cursor to top corner for next player's turn
+                            555    ;; P1 -> top-left (col 0, row 0), P2 -> top-right (col 5, row 0)
+   7D99 AF            [ 4]  556    xor a
+   7D9A 32 07 87      [13]  557    ld (_cursor_row), a
+   7D9D 3A 05 87      [13]  558    ld a, (_match_state)
+   7DA0 B7            [ 4]  559    or a
+   7DA1 28 02         [12]  560    jr z, _mpp_cursor_p1
+   7DA3 3E 05         [ 7]  561    ld a, #(GRID_COLS - 1)
+   7DA5                     562 _mpp_cursor_p1:
+   7DA5 32 06 87      [13]  563    ld (_cursor_col), a
+                            564 
+   7DA8 CD 09 7D      [17]  565    call _match_redraw_all
+   7DAB CD AC 7B      [17]  566    call man_match_draw_hud
+   7DAE CD D7 80      [17]  567    call _match_check_cat_lines       ;; check 3 cats in a row → winner
+   7DB1 C9            [10]  568    ret
+                            569 
+   7DB2                     570 _mpp_pe_out:
+                            571    ;; Placing player is out of pieces after resolution → redraw, opponent wins
+   7DB2 CD 09 7D      [17]  572    call _match_redraw_all
+   7DB5 CD AC 7B      [17]  573    call man_match_draw_hud
+   7DB8 3A 05 87      [13]  574    ld a, (_match_state)              ;; placing player: 0=P1, 1=P2
+   7DBB EE 01         [ 7]  575    xor #1
+   7DBD 3C            [ 4]  576    inc a                             ;; winner: state=0→2(P2), state=1→1(P1)
+   7DBE C3 AA 80      [10]  577    jp _match_declare_winner
+                            578 
+                            579 ;;-----------------------------------------------------------------
+                            580 ;;
+                            581 ;; _match_handle_input
+                            582 ;;
+                            583 ;;  Reads directional keys, Space, and Enter each frame.
+                            584 ;;  Identical debounce pattern to menu.s.
+                            585 ;;  Input:
+                            586 ;;  Output:
+                            587 ;;  Modified: AF, BC, DE, HL
+                            588 ;;
+   7DC1                     589 _match_handle_input:
+                            590    ;; Debounce: wait for full key release before accepting new input
+   7DC1 3A 09 87      [13]  591    ld a, (_turn_debounce)
+   7DC4 B7            [ 4]  592    or a
+   7DC5 28 0A         [12]  593    jr z, _mhi_check_keys
+   7DC7 CD AD 83      [17]  594    call cpct_isAnyKeyPressed_asm
+   7DCA B7            [ 4]  595    or a
+   7DCB C0            [11]  596    ret nz                            ;; key still held, do nothing
+   7DCC AF            [ 4]  597    xor a
+   7DCD 32 09 87      [13]  598    ld (_turn_debounce), a
+   7DD0 C9            [10]  599    ret
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 117.
+Hexadecimal [16-Bits]
+
+
+
+                            600 
+   7DD1                     601 _mhi_check_keys:
+                            602    ;; Cursor Up
+   7DD1 21 00 01      [10]  603    ld hl, #Key_CursorUp
+   7DD4 CD D3 82      [17]  604    call cpct_isKeyPressed_asm
+   7DD7 28 0F         [12]  605    jr z, _mhi_check_down
+   7DD9 3A 07 87      [13]  606    ld a, (_cursor_row)
+   7DDC B7            [ 4]  607    or a
+   7DDD 28 09         [12]  608    jr z, _mhi_check_down             ;; already at row 0
+   7DDF 3D            [ 4]  609    dec a
+   7DE0 32 07 87      [13]  610    ld (_cursor_row), a
+   7DE3 CD 09 7D      [17]  611    call _match_redraw_all
+   7DE6 18 74         [12]  612    jr _mhi_set_debounce
+                            613 
+   7DE8                     614 _mhi_check_down:
+   7DE8 21 00 04      [10]  615    ld hl, #Key_CursorDown
+   7DEB CD D3 82      [17]  616    call cpct_isKeyPressed_asm
+   7DEE 28 10         [12]  617    jr z, _mhi_check_left
+   7DF0 3A 07 87      [13]  618    ld a, (_cursor_row)
+   7DF3 FE 05         [ 7]  619    cp #(GRID_ROWS - 1)
+   7DF5 28 09         [12]  620    jr z, _mhi_check_left             ;; already at last row
+   7DF7 3C            [ 4]  621    inc a
+   7DF8 32 07 87      [13]  622    ld (_cursor_row), a
+   7DFB CD 09 7D      [17]  623    call _match_redraw_all
+   7DFE 18 5C         [12]  624    jr _mhi_set_debounce
+                            625 
+   7E00                     626 _mhi_check_left:
+   7E00 21 01 01      [10]  627    ld hl, #Key_CursorLeft
+   7E03 CD D3 82      [17]  628    call cpct_isKeyPressed_asm
+   7E06 28 0F         [12]  629    jr z, _mhi_check_right
+   7E08 3A 06 87      [13]  630    ld a, (_cursor_col)
+   7E0B B7            [ 4]  631    or a
+   7E0C 28 09         [12]  632    jr z, _mhi_check_right            ;; already at col 0
+   7E0E 3D            [ 4]  633    dec a
+   7E0F 32 06 87      [13]  634    ld (_cursor_col), a
+   7E12 CD 09 7D      [17]  635    call _match_redraw_all
+   7E15 18 45         [12]  636    jr _mhi_set_debounce
+                            637 
+   7E17                     638 _mhi_check_right:
+   7E17 21 00 02      [10]  639    ld hl, #Key_CursorRight
+   7E1A CD D3 82      [17]  640    call cpct_isKeyPressed_asm
+   7E1D 28 10         [12]  641    jr z, _mhi_check_space
+   7E1F 3A 06 87      [13]  642    ld a, (_cursor_col)
+   7E22 FE 05         [ 7]  643    cp #(GRID_COLS - 1)
+   7E24 28 09         [12]  644    jr z, _mhi_check_space            ;; already at last col
+   7E26 3C            [ 4]  645    inc a
+   7E27 32 06 87      [13]  646    ld (_cursor_col), a
+   7E2A CD 09 7D      [17]  647    call _match_redraw_all
+   7E2D 18 2D         [12]  648    jr _mhi_set_debounce
+                            649 
+   7E2F                     650 _mhi_check_space:
+   7E2F 21 05 80      [10]  651    ld hl, #Key_Space
+   7E32 CD D3 82      [17]  652    call cpct_isKeyPressed_asm
+   7E35 28 0D         [12]  653    jr z, _mhi_check_enter
+   7E37 3A 08 87      [13]  654    ld a, (_cursor_piece)
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 118.
+Hexadecimal [16-Bits]
+
+
+
+   7E3A EE 01         [ 7]  655    xor #1                            ;; toggle 0<->1
+   7E3C 32 08 87      [13]  656    ld (_cursor_piece), a
+   7E3F CD 09 7D      [17]  657    call _match_redraw_all
+   7E42 18 18         [12]  658    jr _mhi_set_debounce
+                            659 
+   7E44                     660 _mhi_check_enter:
+   7E44 21 02 04      [10]  661    ld hl, #Key_Return
+   7E47 CD D3 82      [17]  662    call cpct_isKeyPressed_asm
+   7E4A 28 05         [12]  663    jr z, _mhi_check_esc
+   7E4C CD 13 7D      [17]  664    call _match_place_piece
+   7E4F 18 0B         [12]  665    jr _mhi_set_debounce
+                            666 
+   7E51                     667 _mhi_check_esc:
+   7E51 21 08 04      [10]  668    ld hl, #Key_Esc
+   7E54 CD D3 82      [17]  669    call cpct_isKeyPressed_asm
+   7E57 28 08         [12]  670    jr z, _mhi_done
+   7E59 CD 62 7E      [17]  671    call _match_confirm_cancel
+                            672 
+   7E5C                     673 _mhi_set_debounce:
+   7E5C 3E 01         [ 7]  674    ld a, #1
+   7E5E 32 09 87      [13]  675    ld (_turn_debounce), a
+                            676 
+   7E61                     677 _mhi_done:
+   7E61 C9            [10]  678    ret
+                            679 
+                            680 ;;-----------------------------------------------------------------
+                            681 ;;
+                            682 ;; _match_confirm_cancel
+                            683 ;;
+                            684 ;;  Shows "ABANDON MATCH? (Y/N)" dialog. Blocks until Y, N or Esc.
+                            685 ;;  On Y: sets _match_cancelled = 1.
+                            686 ;;  On N or Esc: restores screen and returns, match continues.
+                            687 ;;  Input:
+                            688 ;;  Output:
+                            689 ;;  Modified: AF, BC, DE, HL
+                            690 ;;
+   7E62                     691 _match_confirm_cancel:
+                            692    ;; Show dialog window (wait_for_key=0: no auto-wait; background saved in message_buffer)
+   02EE                     693    m_msg_w_background 14            ;; red interior for the dialog box
+   7E62 26 0E         [ 7]    1     ld h, #(14)                         ;;
+   7E64 2E 0E         [ 7]    2     ld l, #(14)                         ;;
+   7E66 CD 37 84      [17]    3     call cpct_px2byteM0_asm             ;;
+   7E69 08            [ 4]    4     ex af, af'                          ;;
+   7E6A 7D            [ 4]    5     ld a, l                             ;;
+   7E6B 08            [ 4]    6     ex af, af'                          ;;
+   7E6C 1E 06         [ 7]  694    ld e, #6
+   7E6E 16 4E         [ 7]  695    ld d, #78                         ;; y position
+   7E70 06 23         [ 7]  696    ld b, #35                        ;; height
+   7E72 0E 2C         [ 7]  697    ld c, #44                         ;; width (auto-computed from text)
+   7E74 3E 00         [ 7]  698    ld a, #0                          ;; no auto-wait
+   7E76 21 0A 87      [10]  699    ld hl, #_match_cancel_msg
+   7E79 CD D2 69      [17]  700    call sys_messages_show            ;; IY = &_window_data; background saved
+                            701 
+                            702    ;; Wait for ESC key to be released before accepting new input
+   7E7C                     703 _mcc_wait_esc_release:
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 119.
+Hexadecimal [16-Bits]
+
+
+
+   7E7C 21 08 04      [10]  704    ld hl, #Key_Esc
+   7E7F CD D3 82      [17]  705    call cpct_isKeyPressed_asm
+   7E82 B7            [ 4]  706    or a
+   7E83 20 F7         [12]  707    jr nz, _mcc_wait_esc_release
+                            708 
+                            709    ;; Poll for Y, N, or Esc
+   7E85                     710 _mcc_poll:
+   7E85 21 05 08      [10]  711    ld hl, #Key_Y
+   7E88 CD D3 82      [17]  712    call cpct_isKeyPressed_asm
+   7E8B B7            [ 4]  713    or a
+   7E8C 20 14         [12]  714    jr nz, _mcc_yes
+                            715 
+   7E8E 21 05 40      [10]  716    ld hl, #Key_N
+   7E91 CD D3 82      [17]  717    call cpct_isKeyPressed_asm
+   7E94 B7            [ 4]  718    or a
+   7E95 20 14         [12]  719    jr nz, _mcc_no
+                            720 
+   7E97 21 08 04      [10]  721    ld hl, #Key_Esc
+   7E9A CD D3 82      [17]  722    call cpct_isKeyPressed_asm
+   7E9D B7            [ 4]  723    or a
+   7E9E 20 0B         [12]  724    jr nz, _mcc_no
+                            725 
+   7EA0 18 E3         [12]  726    jr _mcc_poll
+                            727 
+   7EA2                     728 _mcc_yes:
+   7EA2 CD BF 69      [17]  729    call sys_messages_restore_message_background
+   7EA5 3E 01         [ 7]  730    ld a, #1
+   7EA7 32 04 87      [13]  731    ld (_match_cancelled), a
+   7EAA C9            [10]  732    ret
+                            733 
+   7EAB                     734 _mcc_no:
+   7EAB CD BF 69      [17]  735    call sys_messages_restore_message_background
+   7EAE C9            [10]  736    ret
+                            737 
+                            738 ;;-----------------------------------------------------------------
+                            739 ;;
+                            740 ;; _match_boop
+                            741 ;;
+                            742 ;;  Called after placing a kitten at (_cursor_row, _cursor_col).
+                            743 ;;  For each of 8 neighbor directions: if the neighbor cell holds a
+                            744 ;;  kitten, it is pushed one cell further away (neighbor + delta).
+                            745 ;;  If the destination is off-grid the kitten is removed from the
+                            746 ;;  board and its owner's Player_kittens count is incremented.
+                            747 ;;  If the destination is occupied the kitten stays in place.
+                            748 ;;  Cats (BOARD_P1_CAT / BOARD_P2_CAT) are never affected.
+                            749 ;;  Input:  _cursor_row, _cursor_col = placed kitten position
+                            750 ;;  Output:
+                            751 ;;  Modified: AF, BC, DE, HL, IX, IY
+                            752 ;;
+   7EAF                     753 _match_boop:
+   7EAF FD 21 46 87   [14]  754    ld iy, #_boop_dir_table
+   7EB3 06 08         [ 7]  755    ld b, #8                          ;; 8 directions to check
+                            756 
+   7EB5                     757 _mb_dir_loop:
+   7EB5 C5            [11]  758    push bc                           ;; save loop counter
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 120.
+Hexadecimal [16-Bits]
+
+
+
+                            759 
+                            760    ;; -- compute neighbor row: nr = cursor_row + dr --
+   7EB6 3A 07 87      [13]  761    ld a, (_cursor_row)
+   7EB9 FD 86 00      [19]  762    add a, 0(iy)
+   7EBC FA 3A 7F      [10]  763    jp m, _mb_next_dir                ;; nr < 0 → out of bounds
+   7EBF 57            [ 4]  764    ld d, a                           ;; D = nr
+   7EC0 FE 06         [ 7]  765    cp #GRID_ROWS
+   7EC2 30 76         [12]  766    jr nc, _mb_next_dir               ;; nr >= 6 → out of bounds
+                            767 
+                            768    ;; -- compute neighbor col: nc = cursor_col + dc --
+   7EC4 3A 06 87      [13]  769    ld a, (_cursor_col)
+   7EC7 FD 86 01      [19]  770    add a, 1(iy)
+   7ECA FA 3A 7F      [10]  771    jp m, _mb_next_dir                ;; nc < 0 → out of bounds
+   7ECD 5F            [ 4]  772    ld e, a                           ;; E = nc
+   7ECE FE 06         [ 7]  773    cp #GRID_COLS
+   7ED0 30 68         [12]  774    jr nc, _mb_next_dir               ;; nc >= 6 → out of bounds
+                            775 
+                            776    ;; -- look up board[nr][nc] (index = nr*6 + nc) --
+   7ED2 7A            [ 4]  777    ld a, d
+   7ED3 87            [ 4]  778    add a, a                          ;; row*2
+   7ED4 87            [ 4]  779    add a, a                          ;; row*4
+   7ED5 82            [ 4]  780    add a, d                          ;; row*5
+   7ED6 82            [ 4]  781    add a, d                          ;; row*6
+   7ED7 83            [ 4]  782    add a, e
+   7ED8 21 E0 86      [10]  783    ld hl, #_match_board
+   7EDB 4F            [ 4]  784    ld c, a
+   7EDC 06 00         [ 7]  785    ld b, #0
+   7EDE 09            [11]  786    add hl, bc                        ;; HL = &board[nr][nc]
+                            787 
+   7EDF 7E            [ 7]  788    ld a, (hl)
+   7EE0 FE 02         [ 7]  789    cp #BOARD_P1_KITTEN
+   7EE2 28 04         [12]  790    jr z, _mb_is_kitten
+   7EE4 FE 04         [ 7]  791    cp #BOARD_P2_KITTEN
+   7EE6 20 52         [12]  792    jr nz, _mb_next_dir               ;; not a kitten → nothing to push
+                            793 
+   7EE8                     794 _mb_is_kitten:
+                            795    ;; A = kitten value (2 or 4); HL = source cell; D=nr, E=nc
+   7EE8 E5            [11]  796    push hl                           ;; save source cell ptr
+   7EE9 F5            [11]  797    push af                           ;; save kitten board value
+                            798 
+                            799    ;; -- destination = neighbor + same delta (pushed away from placed kitten) --
+   7EEA 7A            [ 4]  800    ld a, d
+   7EEB FD 86 00      [19]  801    add a, 0(iy)                      ;; dest_row = nr + dr
+   7EEE 57            [ 4]  802    ld d, a
+   7EEF 7B            [ 4]  803    ld a, e
+   7EF0 FD 86 01      [19]  804    add a, 1(iy)                      ;; dest_col = nc + dc
+   7EF3 5F            [ 4]  805    ld e, a
+                            806 
+                            807    ;; -- destination bounds check --
+   7EF4 CB 7A         [ 8]  808    bit 7, d
+   7EF6 20 2A         [12]  809    jr nz, _mb_dest_out               ;; dest_row negative
+   7EF8 7A            [ 4]  810    ld a, d
+   7EF9 FE 06         [ 7]  811    cp #GRID_ROWS
+   7EFB 30 25         [12]  812    jr nc, _mb_dest_out               ;; dest_row >= 6
+   7EFD CB 7B         [ 8]  813    bit 7, e
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 121.
+Hexadecimal [16-Bits]
+
+
+
+   7EFF 20 21         [12]  814    jr nz, _mb_dest_out               ;; dest_col negative
+   7F01 7B            [ 4]  815    ld a, e
+   7F02 FE 06         [ 7]  816    cp #GRID_COLS
+   7F04 30 1C         [12]  817    jr nc, _mb_dest_out               ;; dest_col >= 6
+                            818 
+                            819    ;; -- destination in bounds: check if empty --
+   7F06 7A            [ 4]  820    ld a, d
+   7F07 87            [ 4]  821    add a, a                          ;; row*2
+   7F08 87            [ 4]  822    add a, a                          ;; row*4
+   7F09 82            [ 4]  823    add a, d                          ;; row*5
+   7F0A 82            [ 4]  824    add a, d                          ;; row*6
+   7F0B 83            [ 4]  825    add a, e
+   7F0C 21 E0 86      [10]  826    ld hl, #_match_board
+   7F0F 4F            [ 4]  827    ld c, a
+   7F10 06 00         [ 7]  828    ld b, #0
+   7F12 09            [11]  829    add hl, bc                        ;; HL = &board[dest_row][dest_col]
+                            830 
+   7F13 7E            [ 7]  831    ld a, (hl)
+   7F14 B7            [ 4]  832    or a
+   7F15 20 07         [12]  833    jr nz, _mb_dest_blocked           ;; occupied → kitten stays
+                            834 
+                            835    ;; -- move kitten to empty destination --
+   7F17 F1            [10]  836    pop af
+   7F18 77            [ 7]  837    ld (hl), a                        ;; write kitten to destination
+   7F19 E1            [10]  838    pop hl                            ;; source cell ptr
+   7F1A 36 00         [10]  839    ld (hl), #BOARD_EMPTY
+   7F1C 18 1C         [12]  840    jr _mb_next_dir
+                            841 
+   7F1E                     842 _mb_dest_blocked:
+   7F1E F1            [10]  843    pop af                            ;; balance stack
+   7F1F E1            [10]  844    pop hl
+   7F20 18 18         [12]  845    jr _mb_next_dir
+                            846 
+   7F22                     847 _mb_dest_out:
+                            848    ;; kitten pushed off-grid: remove from board, return to owner's reserve
+   7F22 F1            [10]  849    pop af                            ;; kitten board value (2=P1, 4=P2)
+   7F23 E1            [10]  850    pop hl                            ;; source cell ptr
+   7F24 36 00         [10]  851    ld (hl), #BOARD_EMPTY
+   7F26 FE 04         [ 7]  852    cp #BOARD_P2_KITTEN
+   7F28 28 09         [12]  853    jr z, _mb_eject_p2
+   7F2A DD 21 D3 86   [14]  854    ld ix, #man_match_player1
+   7F2E DD 34 05      [23]  855    inc Player_kittens(ix)
+   7F31 18 07         [12]  856    jr _mb_next_dir
+                            857 
+   7F33                     858 _mb_eject_p2:
+   7F33 DD 21 D9 86   [14]  859    ld ix, #man_match_player2
+   7F37 DD 34 05      [23]  860    inc Player_kittens(ix)
+                            861 
+   7F3A                     862 _mb_next_dir:
+   7F3A FD 23         [10]  863    inc iy
+   7F3C FD 23         [10]  864    inc iy                            ;; advance past (dr, dc) pair
+   7F3E C1            [10]  865    pop bc                            ;; restore loop counter
+   7F3F 05            [ 4]  866    dec b
+   7F40 C2 B5 7E      [10]  867    jp nz, _mb_dir_loop
+   7F43 C9            [10]  868    ret
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 122.
+Hexadecimal [16-Bits]
+
+
+
+                            869 
+                            870 ;;-----------------------------------------------------------------
+                            871 ;;
+                            872 ;; _match_boop_cat
+                            873 ;;
+                            874 ;;  Called after placing a cat at (_cursor_row, _cursor_col).
+                            875 ;;  For each of 8 neighbor directions: if the neighbor cell holds
+                            876 ;;  any piece (kitten or cat), it is pushed one cell further away.
+                            877 ;;  If the destination is off-grid the piece is removed from the
+                            878 ;;  board and returned to its owner's reserve (kittens or cats).
+                            879 ;;  If the destination is occupied the piece stays in place.
+                            880 ;;  Input:  _cursor_row, _cursor_col = placed cat position
+                            881 ;;  Output:
+                            882 ;;  Modified: AF, BC, DE, HL, IX, IY
+                            883 ;;
+   7F44                     884 _match_boop_cat:
+   7F44 FD 21 46 87   [14]  885    ld iy, #_boop_dir_table
+   7F48 06 08         [ 7]  886    ld b, #8                          ;; 8 directions to check
+                            887 
+   7F4A                     888 _mbc_dir_loop:
+   7F4A C5            [11]  889    push bc                           ;; save loop counter
+                            890 
+                            891    ;; -- compute neighbor row: nr = cursor_row + dr --
+   7F4B 3A 07 87      [13]  892    ld a, (_cursor_row)
+   7F4E FD 86 00      [19]  893    add a, 0(iy)
+   7F51 FA D0 7F      [10]  894    jp m, _mbc_next_dir               ;; nr < 0 → out of bounds
+   7F54 57            [ 4]  895    ld d, a                           ;; D = nr
+   7F55 FE 06         [ 7]  896    cp #GRID_ROWS
+   7F57 30 77         [12]  897    jr nc, _mbc_next_dir              ;; nr >= 6 → out of bounds
+                            898 
+                            899    ;; -- compute neighbor col: nc = cursor_col + dc --
+   7F59 3A 06 87      [13]  900    ld a, (_cursor_col)
+   7F5C FD 86 01      [19]  901    add a, 1(iy)
+   7F5F FA D0 7F      [10]  902    jp m, _mbc_next_dir               ;; nc < 0 → out of bounds
+   7F62 5F            [ 4]  903    ld e, a                           ;; E = nc
+   7F63 FE 06         [ 7]  904    cp #GRID_COLS
+   7F65 30 69         [12]  905    jr nc, _mbc_next_dir              ;; nc >= 6 → out of bounds
+                            906 
+                            907    ;; -- look up board[nr][nc] --
+   7F67 7A            [ 4]  908    ld a, d
+   7F68 87            [ 4]  909    add a, a                          ;; row*2
+   7F69 87            [ 4]  910    add a, a                          ;; row*4
+   7F6A 82            [ 4]  911    add a, d                          ;; row*5
+   7F6B 82            [ 4]  912    add a, d                          ;; row*6
+   7F6C 83            [ 4]  913    add a, e
+   7F6D 21 E0 86      [10]  914    ld hl, #_match_board
+   7F70 4F            [ 4]  915    ld c, a
+   7F71 06 00         [ 7]  916    ld b, #0
+   7F73 09            [11]  917    add hl, bc                        ;; HL = &board[nr][nc]
+                            918 
+   7F74 7E            [ 7]  919    ld a, (hl)
+   7F75 B7            [ 4]  920    or a
+   7F76 28 58         [12]  921    jr z, _mbc_next_dir               ;; empty → nothing to push
+                            922 
+   7F78                     923 _mbc_is_piece:
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 123.
+Hexadecimal [16-Bits]
+
+
+
+                            924    ;; A = piece value (1-4); HL = source cell; D=nr, E=nc
+   7F78 E5            [11]  925    push hl                           ;; save source cell ptr
+   7F79 F5            [11]  926    push af                           ;; save piece board value
+                            927 
+                            928    ;; -- destination = neighbor + same delta --
+   7F7A 7A            [ 4]  929    ld a, d
+   7F7B FD 86 00      [19]  930    add a, 0(iy)                      ;; dest_row = nr + dr
+   7F7E 57            [ 4]  931    ld d, a
+   7F7F 7B            [ 4]  932    ld a, e
+   7F80 FD 86 01      [19]  933    add a, 1(iy)                      ;; dest_col = nc + dc
+   7F83 5F            [ 4]  934    ld e, a
+                            935 
+                            936    ;; -- destination bounds check --
+   7F84 CB 7A         [ 8]  937    bit 7, d
+   7F86 20 2A         [12]  938    jr nz, _mbc_dest_out              ;; dest_row negative
+   7F88 7A            [ 4]  939    ld a, d
+   7F89 FE 06         [ 7]  940    cp #GRID_ROWS
+   7F8B 30 25         [12]  941    jr nc, _mbc_dest_out              ;; dest_row >= 6
+   7F8D CB 7B         [ 8]  942    bit 7, e
+   7F8F 20 21         [12]  943    jr nz, _mbc_dest_out              ;; dest_col negative
+   7F91 7B            [ 4]  944    ld a, e
+   7F92 FE 06         [ 7]  945    cp #GRID_COLS
+   7F94 30 1C         [12]  946    jr nc, _mbc_dest_out              ;; dest_col >= 6
+                            947 
+                            948    ;; -- destination in bounds: check if empty --
+   7F96 7A            [ 4]  949    ld a, d
+   7F97 87            [ 4]  950    add a, a                          ;; row*2
+   7F98 87            [ 4]  951    add a, a                          ;; row*4
+   7F99 82            [ 4]  952    add a, d                          ;; row*5
+   7F9A 82            [ 4]  953    add a, d                          ;; row*6
+   7F9B 83            [ 4]  954    add a, e
+   7F9C 21 E0 86      [10]  955    ld hl, #_match_board
+   7F9F 4F            [ 4]  956    ld c, a
+   7FA0 06 00         [ 7]  957    ld b, #0
+   7FA2 09            [11]  958    add hl, bc                        ;; HL = &board[dest_row][dest_col]
+                            959 
+   7FA3 7E            [ 7]  960    ld a, (hl)
+   7FA4 B7            [ 4]  961    or a
+   7FA5 20 07         [12]  962    jr nz, _mbc_dest_blocked          ;; occupied → piece stays
+                            963 
+                            964    ;; -- move piece to empty destination --
+   7FA7 F1            [10]  965    pop af
+   7FA8 77            [ 7]  966    ld (hl), a                        ;; write piece to destination
+   7FA9 E1            [10]  967    pop hl                            ;; source cell ptr
+   7FAA 36 00         [10]  968    ld (hl), #BOARD_EMPTY
+   7FAC 18 22         [12]  969    jr _mbc_next_dir
+                            970 
+   7FAE                     971 _mbc_dest_blocked:
+   7FAE F1            [10]  972    pop af                            ;; balance stack
+   7FAF E1            [10]  973    pop hl
+   7FB0 18 1E         [12]  974    jr _mbc_next_dir
+                            975 
+   7FB2                     976 _mbc_dest_out:
+                            977    ;; piece pushed off-grid: remove from board, return to owner's reserve
+   7FB2 F1            [10]  978    pop af                            ;; piece board value (1-4)
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 124.
+Hexadecimal [16-Bits]
+
+
+
+   7FB3 E1            [10]  979    pop hl                            ;; source cell ptr
+   7FB4 36 00         [10]  980    ld (hl), #BOARD_EMPTY
+                            981    ;; owner: values 1,2 = P1; values 3,4 = P2
+   7FB6 FE 03         [ 7]  982    cp #3
+   7FB8 30 06         [12]  983    jr nc, _mbc_eject_p2
+   7FBA DD 21 D3 86   [14]  984    ld ix, #man_match_player1
+   7FBE 18 04         [12]  985    jr _mbc_eject_inc
+   7FC0                     986 _mbc_eject_p2:
+   7FC0 DD 21 D9 86   [14]  987    ld ix, #man_match_player2
+   7FC4                     988 _mbc_eject_inc:
+                            989    ;; type: odd value = cat, even value = kitten
+   7FC4 CB 47         [ 8]  990    bit 0, a
+   7FC6 28 05         [12]  991    jr z, _mbc_eject_kitten           ;; even → kitten
+   7FC8 DD 34 04      [23]  992    inc Player_cats(ix)
+   7FCB 18 03         [12]  993    jr _mbc_next_dir
+   7FCD                     994 _mbc_eject_kitten:
+   7FCD DD 34 05      [23]  995    inc Player_kittens(ix)
+                            996 
+   7FD0                     997 _mbc_next_dir:
+   7FD0 FD 23         [10]  998    inc iy
+   7FD2 FD 23         [10]  999    inc iy                            ;; advance past (dr, dc) pair
+   7FD4 C1            [10] 1000    pop bc                            ;; restore loop counter
+   7FD5 05            [ 4] 1001    dec b
+   7FD6 C2 4A 7F      [10] 1002    jp nz, _mbc_dir_loop
+   7FD9 C9            [10] 1003    ret
+                           1004 
+                           1005 ;;-----------------------------------------------------------------
+                           1006 ;;
+                           1007 ;; _mrl_process_kitten
+                           1008 ;;
+                           1009 ;;  For a single board cell: if it holds a kitten (even value),
+                           1010 ;;  clears it and gives the owner +1 cat. If it holds a cat (odd),
+                           1011 ;;  does nothing (cats remain in place).
+                           1012 ;;  Input:  HL = board cell pointer
+                           1013 ;;          A  = cell value (must be non-zero)
+                           1014 ;;  Output: -
+                           1015 ;;  Modified: AF, IX
+                           1016 ;;
+   7FDA                    1017 _mrl_process_kitten:
+   7FDA CB 47         [ 8] 1018    bit 0, a                          ;; odd = cat → nothing to do
+   7FDC C0            [11] 1019    ret nz
+                           1020    ;; even = kitten: clear cell and award 1 cat to owner
+   7FDD 36 00         [10] 1021    ld (hl), #BOARD_EMPTY
+   7FDF FE 04         [ 7] 1022    cp #BOARD_P2_KITTEN
+   7FE1 28 06         [12] 1023    jr z, _mpk_p2
+   7FE3 DD 21 D3 86   [14] 1024    ld ix, #man_match_player1
+   7FE7 18 04         [12] 1025    jr _mpk_add
+   7FE9                    1026 _mpk_p2:
+   7FE9 DD 21 D9 86   [14] 1027    ld ix, #man_match_player2
+   7FED                    1028 _mpk_add:
+   7FED DD 34 04      [23] 1029    inc Player_cats(ix)
+   7FF0 C9            [10] 1030    ret
+                           1031 
+                           1032 ;;-----------------------------------------------------------------
+                           1033 ;;
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 125.
+Hexadecimal [16-Bits]
+
+
+
+                           1034 ;; _match_check_lines
+                           1035 ;;
+                           1036 ;;  After any placement + boop, scans every row and column for 3
+                           1037 ;;  consecutive same-colour pieces (any mix of cats and kittens of
+                           1038 ;;  the same player). For each match:
+                           1039 ;;    - kittens are removed from the board; owner gets +1 cat each
+                           1040 ;;    - cats are left in place
+                           1041 ;;  Both players are checked. Called for both kitten and cat placement.
+                           1042 ;;
+                           1043 ;;  Horizontal windows: col 0..3 in each row (0..5)
+                           1044 ;;  Vertical   windows: row 0..3 in each col (0..5)
+                           1045 ;;
+                           1046 ;;  Input:  -
+                           1047 ;;  Output: -
+                           1048 ;;  Modified: AF, BC, DE, HL, IX
+                           1049 ;;
+   7FF1                    1050 _match_check_lines:
+                           1051    ;; === Horizontal scan ===
+   7FF1 06 00         [ 7] 1052    ld b, #0                          ;; B = row (0..5)
+   7FF3                    1053 _mcl_h_rowloop:
+   7FF3 0E 00         [ 7] 1054    ld c, #0                          ;; C = col window start (0..3)
+   7FF5                    1055 _mcl_h_colloop:
+   7FF5 C5            [11] 1056    push bc                           ;; save row/col
+                           1057 
+                           1058    ;; Compute HL = &board[row][col]
+   7FF6 78            [ 4] 1059    ld a, b
+   7FF7 87            [ 4] 1060    add a, a                          ;; row*2
+   7FF8 87            [ 4] 1061    add a, a                          ;; row*4
+   7FF9 80            [ 4] 1062    add a, b                          ;; row*5
+   7FFA 80            [ 4] 1063    add a, b                          ;; row*6
+   7FFB 81            [ 4] 1064    add a, c
+   7FFC 21 E0 86      [10] 1065    ld hl, #_match_board
+   7FFF 16 00         [ 7] 1066    ld d, #0
+   8001 5F            [ 4] 1067    ld e, a
+   8002 19            [11] 1068    add hl, de                        ;; HL = &board[row][col]
+                           1069 
+   8003 7E            [ 7] 1070    ld a, (hl)
+   8004 B7            [ 4] 1071    or a
+   8005 28 32         [12] 1072    jr z, _mcl_h_next                 ;; empty → skip
+   8007 57            [ 4] 1073    ld d, a                           ;; D = v0
+   8008 FE 03         [ 7] 1074    cp #3
+   800A 30 14         [12] 1075    jr nc, _mcl_h_v0_p2               ;; v0 >= 3 → P2 colour
+                           1076 
+                           1077    ;; P1 colour (v0 in {1,2}): v1 and v2 must be in {1,2}
+   800C 23            [ 6] 1078    inc hl
+   800D 7E            [ 7] 1079    ld a, (hl)
+   800E B7            [ 4] 1080    or a
+   800F 28 28         [12] 1081    jr z, _mcl_h_next                 ;; empty
+   8011 FE 03         [ 7] 1082    cp #3
+   8013 30 24         [12] 1083    jr nc, _mcl_h_next                ;; P2 piece → mismatch
+   8015 23            [ 6] 1084    inc hl
+   8016 7E            [ 7] 1085    ld a, (hl)
+   8017 B7            [ 4] 1086    or a
+   8018 28 1F         [12] 1087    jr z, _mcl_h_next                 ;; empty
+   801A FE 03         [ 7] 1088    cp #3
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 126.
+Hexadecimal [16-Bits]
+
+
+
+   801C 30 1B         [12] 1089    jr nc, _mcl_h_next                ;; P2 piece → mismatch
+   801E 18 0C         [12] 1090    jr _mcl_h_match
+                           1091 
+   8020                    1092 _mcl_h_v0_p2:
+                           1093    ;; P2 colour (v0 in {3,4}): v1 and v2 must be >= 3
+   8020 23            [ 6] 1094    inc hl
+   8021 7E            [ 7] 1095    ld a, (hl)
+   8022 FE 03         [ 7] 1096    cp #3
+   8024 38 13         [12] 1097    jr c, _mcl_h_next                 ;; empty or P1 → mismatch
+   8026 23            [ 6] 1098    inc hl
+   8027 7E            [ 7] 1099    ld a, (hl)
+   8028 FE 03         [ 7] 1100    cp #3
+   802A 38 0D         [12] 1101    jr c, _mcl_h_next                 ;; mismatch
+                           1102 
+   802C                    1103 _mcl_h_match:
+                           1104    ;; HL = ptr+2, A = v2, D = v0; process each cell
+   802C CD DA 7F      [17] 1105    call _mrl_process_kitten          ;; v2
+   802F 2B            [ 6] 1106    dec hl
+   8030 7E            [ 7] 1107    ld a, (hl)
+   8031 CD DA 7F      [17] 1108    call _mrl_process_kitten          ;; v1
+   8034 2B            [ 6] 1109    dec hl
+   8035 7E            [ 7] 1110    ld a, (hl)
+   8036 CD DA 7F      [17] 1111    call _mrl_process_kitten          ;; v0
+   8039                    1112 _mcl_h_next:
+   8039 C1            [10] 1113    pop bc
+   803A 0C            [ 4] 1114    inc c
+   803B 79            [ 4] 1115    ld a, c
+   803C FE 04         [ 7] 1116    cp #(GRID_COLS - 2)
+   803E 38 B5         [12] 1117    jr c, _mcl_h_colloop
+   8040 04            [ 4] 1118    inc b
+   8041 78            [ 4] 1119    ld a, b
+   8042 FE 06         [ 7] 1120    cp #GRID_ROWS
+   8044 38 AD         [12] 1121    jr c, _mcl_h_rowloop
+                           1122 
+                           1123    ;; === Vertical scan ===
+   8046 0E 00         [ 7] 1124    ld c, #0                          ;; C = col (0..5)
+   8048                    1125 _mcl_v_colloop:
+   8048 06 00         [ 7] 1126    ld b, #0                          ;; B = row window start (0..3)
+   804A                    1127 _mcl_v_rowloop:
+   804A C5            [11] 1128    push bc                           ;; save row/col
+                           1129 
+                           1130    ;; Compute HL = &board[row][col]
+   804B 78            [ 4] 1131    ld a, b
+   804C 87            [ 4] 1132    add a, a
+   804D 87            [ 4] 1133    add a, a
+   804E 80            [ 4] 1134    add a, b
+   804F 80            [ 4] 1135    add a, b
+   8050 81            [ 4] 1136    add a, c
+   8051 21 E0 86      [10] 1137    ld hl, #_match_board
+   8054 16 00         [ 7] 1138    ld d, #0
+   8056 5F            [ 4] 1139    ld e, a
+   8057 19            [11] 1140    add hl, de                        ;; HL = &board[row][col]
+                           1141 
+   8058 7E            [ 7] 1142    ld a, (hl)
+   8059 B7            [ 4] 1143    or a
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 127.
+Hexadecimal [16-Bits]
+
+
+
+   805A 28 40         [12] 1144    jr z, _mcl_v_next                 ;; empty → skip
+   805C 57            [ 4] 1145    ld d, a                           ;; D = v0
+   805D FE 03         [ 7] 1146    cp #3
+   805F 38 13         [12] 1147    jr c, _mcl_v_p1                   ;; v0 < 3 → P1 colour
+                           1148 
+                           1149    ;; P2 colour: v1 and v2 must be >= 3
+   8061 E5            [11] 1150    push hl                           ;; [ptr0, BC_outer]
+   8062 01 06 00      [10] 1151    ld bc, #GRID_COLS
+   8065 09            [11] 1152    add hl, bc                        ;; HL = ptr1
+   8066 7E            [ 7] 1153    ld a, (hl)
+   8067 FE 03         [ 7] 1154    cp #3
+   8069 38 30         [12] 1155    jr c, _mcl_v_nm1                  ;; empty or P1 → mismatch
+   806B E5            [11] 1156    push hl                           ;; [ptr1, ptr0, BC_outer]
+   806C 09            [11] 1157    add hl, bc                        ;; HL = ptr2
+   806D 7E            [ 7] 1158    ld a, (hl)
+   806E FE 03         [ 7] 1159    cp #3
+   8070 38 28         [12] 1160    jr c, _mcl_v_nm2                  ;; mismatch
+   8072 18 17         [12] 1161    jr _mcl_v_match
+                           1162 
+   8074                    1163 _mcl_v_p1:
+                           1164    ;; P1 colour: v1 and v2 must be in {1,2}
+   8074 E5            [11] 1165    push hl                           ;; [ptr0, BC_outer]
+   8075 01 06 00      [10] 1166    ld bc, #GRID_COLS
+   8078 09            [11] 1167    add hl, bc                        ;; HL = ptr1
+   8079 7E            [ 7] 1168    ld a, (hl)
+   807A B7            [ 4] 1169    or a
+   807B 28 1E         [12] 1170    jr z, _mcl_v_nm1                  ;; empty
+   807D FE 03         [ 7] 1171    cp #3
+   807F 30 1A         [12] 1172    jr nc, _mcl_v_nm1                 ;; P2 → mismatch
+   8081 E5            [11] 1173    push hl                           ;; [ptr1, ptr0, BC_outer]
+   8082 09            [11] 1174    add hl, bc                        ;; HL = ptr2
+   8083 7E            [ 7] 1175    ld a, (hl)
+   8084 B7            [ 4] 1176    or a
+   8085 28 13         [12] 1177    jr z, _mcl_v_nm2                  ;; empty
+   8087 FE 03         [ 7] 1178    cp #3
+   8089 30 0F         [12] 1179    jr nc, _mcl_v_nm2                 ;; P2 → mismatch
+                           1180 
+   808B                    1181 _mcl_v_match:
+                           1182    ;; HL = ptr2; stack = [ptr1, ptr0, BC_outer]
+   808B CD DA 7F      [17] 1183    call _mrl_process_kitten          ;; v2
+   808E E1            [10] 1184    pop hl                            ;; HL = ptr1
+   808F 7E            [ 7] 1185    ld a, (hl)
+   8090 CD DA 7F      [17] 1186    call _mrl_process_kitten          ;; v1
+   8093 E1            [10] 1187    pop hl                            ;; HL = ptr0
+   8094 7E            [ 7] 1188    ld a, (hl)
+   8095 CD DA 7F      [17] 1189    call _mrl_process_kitten          ;; v0
+   8098 18 02         [12] 1190    jr _mcl_v_next
+                           1191 
+   809A                    1192 _mcl_v_nm2:
+   809A E1            [10] 1193    pop hl                            ;; pop ptr1
+   809B                    1194 _mcl_v_nm1:
+   809B E1            [10] 1195    pop hl                            ;; pop ptr0
+   809C                    1196 _mcl_v_next:
+   809C C1            [10] 1197    pop bc
+   809D 04            [ 4] 1198    inc b
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 128.
+Hexadecimal [16-Bits]
+
+
+
+   809E 78            [ 4] 1199    ld a, b
+   809F FE 04         [ 7] 1200    cp #(GRID_ROWS - 2)
+   80A1 38 A7         [12] 1201    jr c, _mcl_v_rowloop
+                           1202 
+   80A3 0C            [ 4] 1203    inc c
+   80A4 79            [ 4] 1204    ld a, c
+   80A5 FE 06         [ 7] 1205    cp #GRID_COLS
+   80A7 38 9F         [12] 1206    jr c, _mcl_v_colloop
+                           1207 
+   80A9 C9            [10] 1208    ret
+                           1209 
+                           1210 ;;-----------------------------------------------------------------
+                           1211 ;;
+                           1212 ;; _match_declare_winner
+                           1213 ;;
+                           1214 ;;  Shows "PLAYER X WINS!" window (waits for any key, restores bg)
+                           1215 ;;  and sets _match_cancelled = 1 so the game loop returns to menu.
+                           1216 ;;  Input:  A = winning player (1 = P1, 2 = P2)
+                           1217 ;;  Output: -
+                           1218 ;;  Modified: AF, BC, DE, HL
+                           1219 ;;
+   80AA                    1220 _match_declare_winner:
+   80AA F5            [11] 1221    push af                           ;; save winner number (macro clobbers AF)
+   0537                    1222    m_msg_w_background 3
+   80AB 26 03         [ 7]    1     ld h, #(3)                         ;;
+   80AD 2E 03         [ 7]    2     ld l, #(3)                         ;;
+   80AF CD 37 84      [17]    3     call cpct_px2byteM0_asm             ;;
+   80B2 08            [ 4]    4     ex af, af'                          ;;
+   80B3 7D            [ 4]    5     ld a, l                             ;;
+   80B4 08            [ 4]    6     ex af, af'                          ;;
+   80B5 1E 06         [ 7] 1223    ld e, #6
+   80B7 16 4E         [ 7] 1224    ld d, #78
+   80B9 06 23         [ 7] 1225    ld b, #35
+   80BB 0E 32         [ 7] 1226    ld c, #50
+   80BD F1            [10] 1227    pop af                            ;; restore winner number
+   80BE FE 02         [ 7] 1228    cp #2
+   80C0 28 07         [12] 1229    jr z, _mdw_p2
+   80C2 3E 01         [ 7] 1230    ld a, #1
+   80C4 21 20 87      [10] 1231    ld hl, #_match_p1_wins_msg
+   80C7 18 05         [12] 1232    jr _mdw_show
+   80C9                    1233 _mdw_p2:
+   80C9 3E 01         [ 7] 1234    ld a, #1
+   80CB 21 33 87      [10] 1235    ld hl, #_match_p2_wins_msg
+   80CE                    1236 _mdw_show:
+   80CE CD D2 69      [17] 1237    call sys_messages_show            ;; blocks until key pressed, restores bg
+   80D1 3E 01         [ 7] 1238    ld a, #1
+   80D3 32 04 87      [13] 1239    ld (_match_cancelled), a          ;; signal game loop to return to menu
+   80D6 C9            [10] 1240    ret
+                           1241 
+                           1242 ;;-----------------------------------------------------------------
+                           1243 ;;
+                           1244 ;; _match_check_cat_lines
+                           1245 ;;
+                           1246 ;;  Scans every row and column for 3 consecutive cats of the same
+                           1247 ;;  colour. If found, calls _match_declare_winner for that player.
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 129.
+Hexadecimal [16-Bits]
+
+
+
+                           1248 ;;  BOARD_P1_CAT=1 (odd) → P1 wins; BOARD_P2_CAT=3 (odd) → P2 wins.
+                           1249 ;;
+                           1250 ;;  Horizontal windows: col 0..3 in each row (0..5)
+                           1251 ;;  Vertical   windows: row 0..3 in each col (0..5)
+                           1252 ;;
+                           1253 ;;  Input:  -
+                           1254 ;;  Output: -
+                           1255 ;;  Modified: AF, BC, DE, HL
+                           1256 ;;
+   80D7                    1257 _match_check_cat_lines:
+                           1258    ;; === Horizontal scan ===
+   80D7 06 00         [ 7] 1259    ld b, #0                          ;; B = row (0..5)
+   80D9                    1260 _mccl_h_rowloop:
+   80D9 0E 00         [ 7] 1261    ld c, #0                          ;; C = col window start (0..3)
+   80DB                    1262 _mccl_h_colloop:
+   80DB C5            [11] 1263    push bc
+                           1264 
+   80DC 78            [ 4] 1265    ld a, b
+   80DD 87            [ 4] 1266    add a, a                          ;; row*2
+   80DE 87            [ 4] 1267    add a, a                          ;; row*4
+   80DF 80            [ 4] 1268    add a, b                          ;; row*5
+   80E0 80            [ 4] 1269    add a, b                          ;; row*6
+   80E1 81            [ 4] 1270    add a, c
+   80E2 21 E0 86      [10] 1271    ld hl, #_match_board
+   80E5 16 00         [ 7] 1272    ld d, #0
+   80E7 5F            [ 4] 1273    ld e, a
+   80E8 19            [11] 1274    add hl, de                        ;; HL = &board[row][col]
+                           1275 
+   80E9 7E            [ 7] 1276    ld a, (hl)
+   80EA 57            [ 4] 1277    ld d, a                           ;; D = v0
+   80EB FE 01         [ 7] 1278    cp #BOARD_P1_CAT
+   80ED 28 04         [12] 1279    jr z, _mccl_h_chk
+   80EF FE 03         [ 7] 1280    cp #BOARD_P2_CAT
+   80F1 20 19         [12] 1281    jr nz, _mccl_h_next
+   80F3                    1282 _mccl_h_chk:
+   80F3 23            [ 6] 1283    inc hl
+   80F4 7E            [ 7] 1284    ld a, (hl)
+   80F5 BA            [ 4] 1285    cp d
+   80F6 20 14         [12] 1286    jr nz, _mccl_h_next
+   80F8 23            [ 6] 1287    inc hl
+   80F9 7E            [ 7] 1288    ld a, (hl)
+   80FA BA            [ 4] 1289    cp d
+   80FB 20 0F         [12] 1290    jr nz, _mccl_h_next
+                           1291    ;; Match: 3 cats in a row
+   80FD C1            [10] 1292    pop bc
+   80FE 3E 01         [ 7] 1293    ld a, #1                          ;; default P1 wins (P1_CAT=1)
+   8100 7A            [ 4] 1294    ld a, d
+   8101 FE 03         [ 7] 1295    cp #BOARD_P2_CAT
+   8103 3E 01         [ 7] 1296    ld a, #1
+   8105 20 02         [12] 1297    jr nz, _mccl_declare
+   8107 3E 02         [ 7] 1298    ld a, #2
+   8109                    1299 _mccl_declare:
+   8109 C3 AA 80      [10] 1300    jp _match_declare_winner          ;; no return; sets _match_cancelled
+   810C                    1301 _mccl_h_next:
+   810C C1            [10] 1302    pop bc
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 130.
+Hexadecimal [16-Bits]
+
+
+
+   810D 0C            [ 4] 1303    inc c
+   810E 79            [ 4] 1304    ld a, c
+   810F FE 04         [ 7] 1305    cp #(GRID_COLS - 2)
+   8111 38 C8         [12] 1306    jr c, _mccl_h_colloop
+   8113 04            [ 4] 1307    inc b
+   8114 78            [ 4] 1308    ld a, b
+   8115 FE 06         [ 7] 1309    cp #GRID_ROWS
+   8117 38 C0         [12] 1310    jr c, _mccl_h_rowloop
+                           1311 
+                           1312    ;; === Vertical scan ===
+   8119 0E 00         [ 7] 1313    ld c, #0                          ;; C = col (0..5)
+   811B                    1314 _mccl_v_colloop:
+   811B 06 00         [ 7] 1315    ld b, #0                          ;; B = row window start (0..3)
+   811D                    1316 _mccl_v_rowloop:
+   811D C5            [11] 1317    push bc
+                           1318 
+   811E 78            [ 4] 1319    ld a, b
+   811F 87            [ 4] 1320    add a, a
+   8120 87            [ 4] 1321    add a, a
+   8121 80            [ 4] 1322    add a, b
+   8122 80            [ 4] 1323    add a, b
+   8123 81            [ 4] 1324    add a, c
+   8124 21 E0 86      [10] 1325    ld hl, #_match_board
+   8127 16 00         [ 7] 1326    ld d, #0
+   8129 5F            [ 4] 1327    ld e, a
+   812A 19            [11] 1328    add hl, de                        ;; HL = &board[row][col]
+                           1329 
+   812B 7E            [ 7] 1330    ld a, (hl)
+   812C 57            [ 4] 1331    ld d, a                           ;; D = v0
+   812D FE 01         [ 7] 1332    cp #BOARD_P1_CAT
+   812F 28 04         [12] 1333    jr z, _mccl_v_chk
+   8131 FE 03         [ 7] 1334    cp #BOARD_P2_CAT
+   8133 20 20         [12] 1335    jr nz, _mccl_v_next
+                           1336 
+   8135                    1337 _mccl_v_chk:
+   8135 E5            [11] 1338    push hl                           ;; [ptr0, BC_outer]
+   8136 01 06 00      [10] 1339    ld bc, #GRID_COLS
+   8139 09            [11] 1340    add hl, bc                        ;; HL = ptr1
+   813A 7E            [ 7] 1341    ld a, (hl)
+   813B BA            [ 4] 1342    cp d
+   813C 20 16         [12] 1343    jr nz, _mccl_v_nm1
+   813E E5            [11] 1344    push hl                           ;; [ptr1, ptr0, BC_outer]
+   813F 09            [11] 1345    add hl, bc                        ;; HL = ptr2
+   8140 7E            [ 7] 1346    ld a, (hl)
+   8141 BA            [ 4] 1347    cp d
+   8142 20 0F         [12] 1348    jr nz, _mccl_v_nm2
+                           1349    ;; Match
+   8144 E1            [10] 1350    pop hl                            ;; pop ptr1
+   8145 E1            [10] 1351    pop hl                            ;; pop ptr0
+   8146 C1            [10] 1352    pop bc                            ;; restore outer BC
+   8147 7A            [ 4] 1353    ld a, d
+   8148 FE 03         [ 7] 1354    cp #BOARD_P2_CAT
+   814A 3E 01         [ 7] 1355    ld a, #1
+   814C 20 02         [12] 1356    jr nz, _mccl_v_declare
+   814E 3E 02         [ 7] 1357    ld a, #2
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 131.
+Hexadecimal [16-Bits]
+
+
+
+   8150                    1358 _mccl_v_declare:
+   8150 C3 AA 80      [10] 1359    jp _match_declare_winner
+   8153                    1360 _mccl_v_nm2:
+   8153 E1            [10] 1361    pop hl                            ;; pop ptr1
+   8154                    1362 _mccl_v_nm1:
+   8154 E1            [10] 1363    pop hl                            ;; pop ptr0
+   8155                    1364 _mccl_v_next:
+   8155 C1            [10] 1365    pop bc
+   8156 04            [ 4] 1366    inc b
+   8157 78            [ 4] 1367    ld a, b
+   8158 FE 04         [ 7] 1368    cp #(GRID_ROWS - 2)
+   815A 38 C1         [12] 1369    jr c, _mccl_v_rowloop
+                           1370 
+   815C 0C            [ 4] 1371    inc c
+   815D 79            [ 4] 1372    ld a, c
+   815E FE 06         [ 7] 1373    cp #GRID_COLS
+   8160 38 B9         [12] 1374    jr c, _mccl_v_colloop
+                           1375 
+   8162 C9            [10] 1376    ret
+                           1377 
+                           1378 ;;-----------------------------------------------------------------
+                           1379 ;;
+                           1380 ;; _match_check_no_pieces
+                           1381 ;;
+                           1382 ;;  Called after each placement. Checks whether the next player has
+                           1383 ;;  no cats and no kittens in reserve. If so, the opposite player
+                           1384 ;;  wins via _match_declare_winner.
+                           1385 ;;  Input:  _match_state = next player (0=P1, 1=P2, already toggled)
+                           1386 ;;  Output: -
+                           1387 ;;  Modified: AF, IX
+                           1388 ;;
+   8163                    1389 _match_check_no_pieces:
+   8163 3A 05 87      [13] 1390    ld a, (_match_state)
+   8166 B7            [ 4] 1391    or a
+   8167 20 06         [12] 1392    jr nz, _mcnp_p2
+   8169 DD 21 D3 86   [14] 1393    ld ix, #man_match_player1
+   816D 18 04         [12] 1394    jr _mcnp_chk
+   816F                    1395 _mcnp_p2:
+   816F DD 21 D9 86   [14] 1396    ld ix, #man_match_player2
+   8173                    1397 _mcnp_chk:
+   8173 DD 7E 04      [19] 1398    ld a, Player_cats(ix)
+   8176 B7            [ 4] 1399    or a
+   8177 C0            [11] 1400    ret nz                            ;; still has cats
+   8178 DD 7E 05      [19] 1401    ld a, Player_kittens(ix)
+   817B B7            [ 4] 1402    or a
+   817C C0            [11] 1403    ret nz                            ;; still has kittens
+                           1404 
+                           1405    ;; state=0 (P1 out) → P2 wins; state=1 (P2 out) → P1 wins
+                           1406    ;; winner = (state XOR 1) + 1: state=0→2, state=1→1
+   817D 3A 05 87      [13] 1407    ld a, (_match_state)
+   8180 EE 01         [ 7] 1408    xor #1
+   8182 3C            [ 4] 1409    inc a
+   8183 C3 AA 80      [10] 1410    jp _match_declare_winner
+                           1411 
+                           1412 ;;-----------------------------------------------------------------
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 132.
+Hexadecimal [16-Bits]
+
+
+
+                           1413 ;;
+                           1414 ;; man_match_init
+                           1415 ;;
+                           1416 ;;  Initializes the match: reads num_players from menu, resets
+                           1417 ;;  player structs, clears board, initialises cursor and state,
+                           1418 ;;  then draws the full screen.
+                           1419 ;;  Input:
+                           1420 ;;  Output:
+                           1421 ;;  Modified: AF, BC, DE, HL
+                           1422 ;;
+   8186                    1423 man_match_init::
+                           1424    ;; store number of players from menu selection
+   8186 3A 8F 87      [13] 1425    ld a, (man_menu_confirmed)        ;; 1 = ONE PLAYER, 2 = TWO PLAYERS
+   8189 32 DF 86      [13] 1426    ld (man_match_num_players), a
+                           1427 
+                           1428    ;; init player 1
+   818C 21 D3 86      [10] 1429    ld hl, #man_match_player1
+   818F CD 74 7B      [17] 1430    call _match_init_player
+                           1431 
+                           1432    ;; init player 2
+   8192 21 D9 86      [10] 1433    ld hl, #man_match_player2
+   8195 CD 74 7B      [17] 1434    call _match_init_player
+                           1435 
+                           1436    ;; clear board (36 bytes) using ldir memset pattern
+   8198 21 E0 86      [10] 1437    ld hl, #_match_board
+   819B 11 E1 86      [10] 1438    ld de, #(_match_board + 1)
+   819E 01 23 00      [10] 1439    ld bc, #35
+   81A1 36 00         [10] 1440    ld (hl), #BOARD_EMPTY
+   81A3 ED B0         [21] 1441    ldir
+                           1442 
+                           1443    ;; initialise cursor, turn state and cancel flag
+   81A5 AF            [ 4] 1444    xor a
+   81A6 32 04 87      [13] 1445    ld (_match_cancelled), a
+   81A9 32 05 87      [13] 1446    ld (_match_state), a
+   81AC 32 06 87      [13] 1447    ld (_cursor_col), a
+   81AF 32 07 87      [13] 1448    ld (_cursor_row), a
+   81B2 3E 01         [ 7] 1449    ld a, #PIECE_KITTEN               ;; start with kitten selected
+   81B4 32 08 87      [13] 1450    ld (_cursor_piece), a
+   81B7 AF            [ 4] 1451    xor a
+   81B8 32 09 87      [13] 1452    ld (_turn_debounce), a
+                           1453 
+                           1454    ;; draw full screen: static elements once, then grid + board + cursor + HUD
+   81BB CD 8E 76      [17] 1455    call sys_render_draw_screen
+   81BE CD 09 7D      [17] 1456    call _match_redraw_all
+   81C1 CD AC 7B      [17] 1457    call man_match_draw_hud
+                           1458 
+   81C4 C9            [10] 1459    ret
+                           1460 
+                           1461 ;;-----------------------------------------------------------------
+                           1462 ;;
+                           1463 ;; man_match_update
+                           1464 ;;
+                           1465 ;;  Main match update, called every frame while playing.
+                           1466 ;;  Input:
+                           1467 ;;  Output:
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 133.
+Hexadecimal [16-Bits]
+
+
+
+                           1468 ;;  Modified: AF, BC, DE, HL
+                           1469 ;;
+   81C5                    1470 man_match_update::
+   81C5 CD C1 7D      [17] 1471    call _match_handle_input
+                           1472 
+   81C8 C9            [10] 1473    ret
