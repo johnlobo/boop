@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make)",
+      "Bash(git -C /config/workspace/boop status)",
+      "Bash(git -C /config/workspace/boop diff src/man/game.s src/man/menu.s)",
+      "Bash(git -C /config/workspace/boop diff --cached)",
+      "Bash(git -C /config/workspace/boop log --oneline -5)",
+      "Bash(git -C /config/workspace/boop add src/man/menu.s src/man/game.s src/man/help.h.s src/man/help.s assets/bg/Grid.png assets/bg/grid.png)",
+      "Bash(git -C:*)"
+    ]
+  }
+}

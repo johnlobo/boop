@@ -1,0 +1,1 @@
+make recode && cp -f ./boop.dsk ../../www/gamez
