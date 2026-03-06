@@ -61,7 +61,9 @@ _cursor_row:    .db 0   ;; 0 .. GRID_ROWS-1
 _cursor_piece:  .db 0   ;; PIECE_CAT or PIECE_KITTEN
 _turn_debounce: .db 0   ;; 1 while a key is held (same pattern as menu.s)
 
-_match_cancel_msg: .asciz " ABANDON MATCH? (Y/N)"
+_match_cancel_msg:  .asciz " ABANDON MATCH? (Y/N)"
+_match_p1_wins_msg: .asciz "    PLAYER 1 WINS!"
+_match_p2_wins_msg: .asciz "    PLAYER 2 WINS!"
 
 ;;
 ;; Direction table for boop: 8 (dr, dc) pairs (signed bytes, 0xFF = -1)
@@ -513,12 +515,34 @@ _mpp_do_place:
    inc a                             ;; A = state*2 + piece + 1
    ld (hl), a                        ;; write to board
 
-   ;; Boop: if a kitten was placed, push neighboring kittens
+   ;; Boop: kittens push neighboring kittens; cats push kittens and cats
    ld a, (_cursor_piece)
    or a
-   jr z, _mpp_no_boop                ;; PIECE_CAT = 0, skip
+   jr z, _mpp_boop_cat               ;; PIECE_CAT = 0
    call _match_boop
-_mpp_no_boop:
+   jr _mpp_do_check
+_mpp_boop_cat:
+   call _match_boop_cat
+_mpp_do_check:
+   call _match_check_lines           ;; check for 3 same-color pieces in a row
+
+   ;; After boop + line resolution: check if placing player has no pieces left
+   ;; (boop may have ejected their own pieces back; lines may have converted some)
+   ld a, (_match_state)              ;; still = placing player (not yet toggled)
+   or a
+   jr nz, _mpp_pe_p2
+   ld ix, #man_match_player1
+   jr _mpp_pe_chk
+_mpp_pe_p2:
+   ld ix, #man_match_player2
+_mpp_pe_chk:
+   ld a, Player_cats(ix)
+   or a
+   jr nz, _mpp_pe_done
+   ld a, Player_kittens(ix)
+   or a
+   jr z, _mpp_pe_out                 ;; 0 cats and 0 kittens → opponent wins
+_mpp_pe_done:
 
    ;; Toggle state, reset piece selection to kitten
    ld a, (_match_state)
@@ -527,9 +551,30 @@ _mpp_no_boop:
    ld a, #PIECE_KITTEN
    ld (_cursor_piece), a
 
+   ;; Move cursor to top corner for next player's turn
+   ;; P1 -> top-left (col 0, row 0), P2 -> top-right (col 5, row 0)
+   xor a
+   ld (_cursor_row), a
+   ld a, (_match_state)
+   or a
+   jr z, _mpp_cursor_p1
+   ld a, #(GRID_COLS - 1)
+_mpp_cursor_p1:
+   ld (_cursor_col), a
+
    call _match_redraw_all
    call man_match_draw_hud
+   call _match_check_cat_lines       ;; check 3 cats in a row → winner
    ret
+
+_mpp_pe_out:
+   ;; Placing player is out of pieces after resolution → redraw, opponent wins
+   call _match_redraw_all
+   call man_match_draw_hud
+   ld a, (_match_state)              ;; placing player: 0=P1, 1=P2
+   xor #1
+   inc a                             ;; winner: state=0→2(P2), state=1→1(P1)
+   jp _match_declare_winner
 
 ;;-----------------------------------------------------------------
 ;;
@@ -821,6 +866,548 @@ _mb_next_dir:
    dec b
    jp nz, _mb_dir_loop
    ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_boop_cat
+;;
+;;  Called after placing a cat at (_cursor_row, _cursor_col).
+;;  For each of 8 neighbor directions: if the neighbor cell holds
+;;  any piece (kitten or cat), it is pushed one cell further away.
+;;  If the destination is off-grid the piece is removed from the
+;;  board and returned to its owner's reserve (kittens or cats).
+;;  If the destination is occupied the piece stays in place.
+;;  Input:  _cursor_row, _cursor_col = placed cat position
+;;  Output:
+;;  Modified: AF, BC, DE, HL, IX, IY
+;;
+_match_boop_cat:
+   ld iy, #_boop_dir_table
+   ld b, #8                          ;; 8 directions to check
+
+_mbc_dir_loop:
+   push bc                           ;; save loop counter
+
+   ;; -- compute neighbor row: nr = cursor_row + dr --
+   ld a, (_cursor_row)
+   add a, 0(iy)
+   jp m, _mbc_next_dir               ;; nr < 0 → out of bounds
+   ld d, a                           ;; D = nr
+   cp #GRID_ROWS
+   jr nc, _mbc_next_dir              ;; nr >= 6 → out of bounds
+
+   ;; -- compute neighbor col: nc = cursor_col + dc --
+   ld a, (_cursor_col)
+   add a, 1(iy)
+   jp m, _mbc_next_dir               ;; nc < 0 → out of bounds
+   ld e, a                           ;; E = nc
+   cp #GRID_COLS
+   jr nc, _mbc_next_dir              ;; nc >= 6 → out of bounds
+
+   ;; -- look up board[nr][nc] --
+   ld a, d
+   add a, a                          ;; row*2
+   add a, a                          ;; row*4
+   add a, d                          ;; row*5
+   add a, d                          ;; row*6
+   add a, e
+   ld hl, #_match_board
+   ld c, a
+   ld b, #0
+   add hl, bc                        ;; HL = &board[nr][nc]
+
+   ld a, (hl)
+   or a
+   jr z, _mbc_next_dir               ;; empty → nothing to push
+
+_mbc_is_piece:
+   ;; A = piece value (1-4); HL = source cell; D=nr, E=nc
+   push hl                           ;; save source cell ptr
+   push af                           ;; save piece board value
+
+   ;; -- destination = neighbor + same delta --
+   ld a, d
+   add a, 0(iy)                      ;; dest_row = nr + dr
+   ld d, a
+   ld a, e
+   add a, 1(iy)                      ;; dest_col = nc + dc
+   ld e, a
+
+   ;; -- destination bounds check --
+   bit 7, d
+   jr nz, _mbc_dest_out              ;; dest_row negative
+   ld a, d
+   cp #GRID_ROWS
+   jr nc, _mbc_dest_out              ;; dest_row >= 6
+   bit 7, e
+   jr nz, _mbc_dest_out              ;; dest_col negative
+   ld a, e
+   cp #GRID_COLS
+   jr nc, _mbc_dest_out              ;; dest_col >= 6
+
+   ;; -- destination in bounds: check if empty --
+   ld a, d
+   add a, a                          ;; row*2
+   add a, a                          ;; row*4
+   add a, d                          ;; row*5
+   add a, d                          ;; row*6
+   add a, e
+   ld hl, #_match_board
+   ld c, a
+   ld b, #0
+   add hl, bc                        ;; HL = &board[dest_row][dest_col]
+
+   ld a, (hl)
+   or a
+   jr nz, _mbc_dest_blocked          ;; occupied → piece stays
+
+   ;; -- move piece to empty destination --
+   pop af
+   ld (hl), a                        ;; write piece to destination
+   pop hl                            ;; source cell ptr
+   ld (hl), #BOARD_EMPTY
+   jr _mbc_next_dir
+
+_mbc_dest_blocked:
+   pop af                            ;; balance stack
+   pop hl
+   jr _mbc_next_dir
+
+_mbc_dest_out:
+   ;; piece pushed off-grid: remove from board, return to owner's reserve
+   pop af                            ;; piece board value (1-4)
+   pop hl                            ;; source cell ptr
+   ld (hl), #BOARD_EMPTY
+   ;; owner: values 1,2 = P1; values 3,4 = P2
+   cp #3
+   jr nc, _mbc_eject_p2
+   ld ix, #man_match_player1
+   jr _mbc_eject_inc
+_mbc_eject_p2:
+   ld ix, #man_match_player2
+_mbc_eject_inc:
+   ;; type: odd value = cat, even value = kitten
+   bit 0, a
+   jr z, _mbc_eject_kitten           ;; even → kitten
+   inc Player_cats(ix)
+   jr _mbc_next_dir
+_mbc_eject_kitten:
+   inc Player_kittens(ix)
+
+_mbc_next_dir:
+   inc iy
+   inc iy                            ;; advance past (dr, dc) pair
+   pop bc                            ;; restore loop counter
+   dec b
+   jp nz, _mbc_dir_loop
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _mrl_process_kitten
+;;
+;;  For a single board cell: if it holds a kitten (even value),
+;;  clears it and gives the owner +1 cat. If it holds a cat (odd),
+;;  does nothing (cats remain in place).
+;;  Input:  HL = board cell pointer
+;;          A  = cell value (must be non-zero)
+;;  Output: -
+;;  Modified: AF, IX
+;;
+_mrl_process_kitten:
+   bit 0, a                          ;; odd = cat → nothing to do
+   ret nz
+   ;; even = kitten: clear cell and award 1 cat to owner
+   ld (hl), #BOARD_EMPTY
+   cp #BOARD_P2_KITTEN
+   jr z, _mpk_p2
+   ld ix, #man_match_player1
+   jr _mpk_add
+_mpk_p2:
+   ld ix, #man_match_player2
+_mpk_add:
+   inc Player_cats(ix)
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_check_lines
+;;
+;;  After any placement + boop, scans every row and column for 3
+;;  consecutive same-colour pieces (any mix of cats and kittens of
+;;  the same player). For each match:
+;;    - kittens are removed from the board; owner gets +1 cat each
+;;    - cats are left in place
+;;  Both players are checked. Called for both kitten and cat placement.
+;;
+;;  Horizontal windows: col 0..3 in each row (0..5)
+;;  Vertical   windows: row 0..3 in each col (0..5)
+;;
+;;  Input:  -
+;;  Output: -
+;;  Modified: AF, BC, DE, HL, IX
+;;
+_match_check_lines:
+   ;; === Horizontal scan ===
+   ld b, #0                          ;; B = row (0..5)
+_mcl_h_rowloop:
+   ld c, #0                          ;; C = col window start (0..3)
+_mcl_h_colloop:
+   push bc                           ;; save row/col
+
+   ;; Compute HL = &board[row][col]
+   ld a, b
+   add a, a                          ;; row*2
+   add a, a                          ;; row*4
+   add a, b                          ;; row*5
+   add a, b                          ;; row*6
+   add a, c
+   ld hl, #_match_board
+   ld d, #0
+   ld e, a
+   add hl, de                        ;; HL = &board[row][col]
+
+   ld a, (hl)
+   or a
+   jr z, _mcl_h_next                 ;; empty → skip
+   ld d, a                           ;; D = v0
+   cp #3
+   jr nc, _mcl_h_v0_p2               ;; v0 >= 3 → P2 colour
+
+   ;; P1 colour (v0 in {1,2}): v1 and v2 must be in {1,2}
+   inc hl
+   ld a, (hl)
+   or a
+   jr z, _mcl_h_next                 ;; empty
+   cp #3
+   jr nc, _mcl_h_next                ;; P2 piece → mismatch
+   inc hl
+   ld a, (hl)
+   or a
+   jr z, _mcl_h_next                 ;; empty
+   cp #3
+   jr nc, _mcl_h_next                ;; P2 piece → mismatch
+   jr _mcl_h_match
+
+_mcl_h_v0_p2:
+   ;; P2 colour (v0 in {3,4}): v1 and v2 must be >= 3
+   inc hl
+   ld a, (hl)
+   cp #3
+   jr c, _mcl_h_next                 ;; empty or P1 → mismatch
+   inc hl
+   ld a, (hl)
+   cp #3
+   jr c, _mcl_h_next                 ;; mismatch
+
+_mcl_h_match:
+   ;; HL = ptr+2, A = v2, D = v0; process each cell
+   call _mrl_process_kitten          ;; v2
+   dec hl
+   ld a, (hl)
+   call _mrl_process_kitten          ;; v1
+   dec hl
+   ld a, (hl)
+   call _mrl_process_kitten          ;; v0
+_mcl_h_next:
+   pop bc
+   inc c
+   ld a, c
+   cp #(GRID_COLS - 2)
+   jr c, _mcl_h_colloop
+   inc b
+   ld a, b
+   cp #GRID_ROWS
+   jr c, _mcl_h_rowloop
+
+   ;; === Vertical scan ===
+   ld c, #0                          ;; C = col (0..5)
+_mcl_v_colloop:
+   ld b, #0                          ;; B = row window start (0..3)
+_mcl_v_rowloop:
+   push bc                           ;; save row/col
+
+   ;; Compute HL = &board[row][col]
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld d, #0
+   ld e, a
+   add hl, de                        ;; HL = &board[row][col]
+
+   ld a, (hl)
+   or a
+   jr z, _mcl_v_next                 ;; empty → skip
+   ld d, a                           ;; D = v0
+   cp #3
+   jr c, _mcl_v_p1                   ;; v0 < 3 → P1 colour
+
+   ;; P2 colour: v1 and v2 must be >= 3
+   push hl                           ;; [ptr0, BC_outer]
+   ld bc, #GRID_COLS
+   add hl, bc                        ;; HL = ptr1
+   ld a, (hl)
+   cp #3
+   jr c, _mcl_v_nm1                  ;; empty or P1 → mismatch
+   push hl                           ;; [ptr1, ptr0, BC_outer]
+   add hl, bc                        ;; HL = ptr2
+   ld a, (hl)
+   cp #3
+   jr c, _mcl_v_nm2                  ;; mismatch
+   jr _mcl_v_match
+
+_mcl_v_p1:
+   ;; P1 colour: v1 and v2 must be in {1,2}
+   push hl                           ;; [ptr0, BC_outer]
+   ld bc, #GRID_COLS
+   add hl, bc                        ;; HL = ptr1
+   ld a, (hl)
+   or a
+   jr z, _mcl_v_nm1                  ;; empty
+   cp #3
+   jr nc, _mcl_v_nm1                 ;; P2 → mismatch
+   push hl                           ;; [ptr1, ptr0, BC_outer]
+   add hl, bc                        ;; HL = ptr2
+   ld a, (hl)
+   or a
+   jr z, _mcl_v_nm2                  ;; empty
+   cp #3
+   jr nc, _mcl_v_nm2                 ;; P2 → mismatch
+
+_mcl_v_match:
+   ;; HL = ptr2; stack = [ptr1, ptr0, BC_outer]
+   call _mrl_process_kitten          ;; v2
+   pop hl                            ;; HL = ptr1
+   ld a, (hl)
+   call _mrl_process_kitten          ;; v1
+   pop hl                            ;; HL = ptr0
+   ld a, (hl)
+   call _mrl_process_kitten          ;; v0
+   jr _mcl_v_next
+
+_mcl_v_nm2:
+   pop hl                            ;; pop ptr1
+_mcl_v_nm1:
+   pop hl                            ;; pop ptr0
+_mcl_v_next:
+   pop bc
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)
+   jr c, _mcl_v_rowloop
+
+   inc c
+   ld a, c
+   cp #GRID_COLS
+   jr c, _mcl_v_colloop
+
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_declare_winner
+;;
+;;  Shows "PLAYER X WINS!" window (waits for any key, restores bg)
+;;  and sets _match_cancelled = 1 so the game loop returns to menu.
+;;  Input:  A = winning player (1 = P1, 2 = P2)
+;;  Output: -
+;;  Modified: AF, BC, DE, HL
+;;
+_match_declare_winner:
+   push af                           ;; save winner number (macro clobbers AF)
+   m_msg_w_background 3
+   ld e, #6
+   ld d, #78
+   ld b, #35
+   ld c, #50
+   pop af                            ;; restore winner number
+   cp #2
+   jr z, _mdw_p2
+   ld a, #1
+   ld hl, #_match_p1_wins_msg
+   jr _mdw_show
+_mdw_p2:
+   ld a, #1
+   ld hl, #_match_p2_wins_msg
+_mdw_show:
+   call sys_messages_show            ;; blocks until key pressed, restores bg
+   ld a, #1
+   ld (_match_cancelled), a          ;; signal game loop to return to menu
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_check_cat_lines
+;;
+;;  Scans every row and column for 3 consecutive cats of the same
+;;  colour. If found, calls _match_declare_winner for that player.
+;;  BOARD_P1_CAT=1 (odd) → P1 wins; BOARD_P2_CAT=3 (odd) → P2 wins.
+;;
+;;  Horizontal windows: col 0..3 in each row (0..5)
+;;  Vertical   windows: row 0..3 in each col (0..5)
+;;
+;;  Input:  -
+;;  Output: -
+;;  Modified: AF, BC, DE, HL
+;;
+_match_check_cat_lines:
+   ;; === Horizontal scan ===
+   ld b, #0                          ;; B = row (0..5)
+_mccl_h_rowloop:
+   ld c, #0                          ;; C = col window start (0..3)
+_mccl_h_colloop:
+   push bc
+
+   ld a, b
+   add a, a                          ;; row*2
+   add a, a                          ;; row*4
+   add a, b                          ;; row*5
+   add a, b                          ;; row*6
+   add a, c
+   ld hl, #_match_board
+   ld d, #0
+   ld e, a
+   add hl, de                        ;; HL = &board[row][col]
+
+   ld a, (hl)
+   ld d, a                           ;; D = v0
+   cp #BOARD_P1_CAT
+   jr z, _mccl_h_chk
+   cp #BOARD_P2_CAT
+   jr nz, _mccl_h_next
+_mccl_h_chk:
+   inc hl
+   ld a, (hl)
+   cp d
+   jr nz, _mccl_h_next
+   inc hl
+   ld a, (hl)
+   cp d
+   jr nz, _mccl_h_next
+   ;; Match: 3 cats in a row
+   pop bc
+   ld a, #1                          ;; default P1 wins (P1_CAT=1)
+   ld a, d
+   cp #BOARD_P2_CAT
+   ld a, #1
+   jr nz, _mccl_declare
+   ld a, #2
+_mccl_declare:
+   jp _match_declare_winner          ;; no return; sets _match_cancelled
+_mccl_h_next:
+   pop bc
+   inc c
+   ld a, c
+   cp #(GRID_COLS - 2)
+   jr c, _mccl_h_colloop
+   inc b
+   ld a, b
+   cp #GRID_ROWS
+   jr c, _mccl_h_rowloop
+
+   ;; === Vertical scan ===
+   ld c, #0                          ;; C = col (0..5)
+_mccl_v_colloop:
+   ld b, #0                          ;; B = row window start (0..3)
+_mccl_v_rowloop:
+   push bc
+
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld d, #0
+   ld e, a
+   add hl, de                        ;; HL = &board[row][col]
+
+   ld a, (hl)
+   ld d, a                           ;; D = v0
+   cp #BOARD_P1_CAT
+   jr z, _mccl_v_chk
+   cp #BOARD_P2_CAT
+   jr nz, _mccl_v_next
+
+_mccl_v_chk:
+   push hl                           ;; [ptr0, BC_outer]
+   ld bc, #GRID_COLS
+   add hl, bc                        ;; HL = ptr1
+   ld a, (hl)
+   cp d
+   jr nz, _mccl_v_nm1
+   push hl                           ;; [ptr1, ptr0, BC_outer]
+   add hl, bc                        ;; HL = ptr2
+   ld a, (hl)
+   cp d
+   jr nz, _mccl_v_nm2
+   ;; Match
+   pop hl                            ;; pop ptr1
+   pop hl                            ;; pop ptr0
+   pop bc                            ;; restore outer BC
+   ld a, d
+   cp #BOARD_P2_CAT
+   ld a, #1
+   jr nz, _mccl_v_declare
+   ld a, #2
+_mccl_v_declare:
+   jp _match_declare_winner
+_mccl_v_nm2:
+   pop hl                            ;; pop ptr1
+_mccl_v_nm1:
+   pop hl                            ;; pop ptr0
+_mccl_v_next:
+   pop bc
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)
+   jr c, _mccl_v_rowloop
+
+   inc c
+   ld a, c
+   cp #GRID_COLS
+   jr c, _mccl_v_colloop
+
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_check_no_pieces
+;;
+;;  Called after each placement. Checks whether the next player has
+;;  no cats and no kittens in reserve. If so, the opposite player
+;;  wins via _match_declare_winner.
+;;  Input:  _match_state = next player (0=P1, 1=P2, already toggled)
+;;  Output: -
+;;  Modified: AF, IX
+;;
+_match_check_no_pieces:
+   ld a, (_match_state)
+   or a
+   jr nz, _mcnp_p2
+   ld ix, #man_match_player1
+   jr _mcnp_chk
+_mcnp_p2:
+   ld ix, #man_match_player2
+_mcnp_chk:
+   ld a, Player_cats(ix)
+   or a
+   ret nz                            ;; still has cats
+   ld a, Player_kittens(ix)
+   or a
+   ret nz                            ;; still has kittens
+
+   ;; state=0 (P1 out) → P2 wins; state=1 (P2 out) → P1 wins
+   ;; winner = (state XOR 1) + 1: state=0→2, state=1→1
+   ld a, (_match_state)
+   xor #1
+   inc a
+   jp _match_declare_winner
 
 ;;-----------------------------------------------------------------
 ;;

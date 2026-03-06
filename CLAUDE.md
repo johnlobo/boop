@@ -96,7 +96,15 @@ Six interrupt handlers (`int_handler1`–`int_handler6`) rotate each interrupt, 
 
 3. **Out-of-bounds ejection** — if the push would move a kitten outside the 6×6 grid, the kitten is removed from the board and the **owner's kitten count is incremented** (it is returned to that player's reserve).
 
-4. **Cats are not affected** — only kittens (`BOARD_P1_KITTEN` / `BOARD_P2_KITTEN`) are pushed; cats (`BOARD_P1_CAT` / `BOARD_P2_CAT`) are immovable and ignore the boop.
+4. **Piece interactions** — kittens boop only neighboring kittens; cats are immune to kittens. When a **cat** is placed it boops all neighboring pieces (both kittens and cats). Ejected kittens return to the owner's kitten reserve; ejected cats return to the owner's cat reserve. Kitten boop: `_match_boop`; cat boop: `_match_boop_cat`. Piece owner: values 1–2 = P1, 3–4 = P2. Piece type: odd value = cat, even value = kitten.
+
+5. **Three-in-a-row conversion** — after any placement and boop, the board is scanned for 3 consecutive same-colour pieces (any mix of cats and kittens of the same player) in any row or column. For each match: kittens in the line are removed from the board and the owner gains +1 cat per kitten; cats in the line stay in place. Triggered for both kitten and cat placement. Implemented in `_match_check_lines` + `_mrl_process_kitten` in `match.s`.
+
+6. **Cat three-in-a-row win** — after each placement, the board is scanned for 3 consecutive cats of the same colour in any row or column. If found, that player wins immediately. `BOARD_P1_CAT=1` → P1 wins; `BOARD_P2_CAT=3` → P2 wins. Implemented in `_match_check_cat_lines` in `match.s`.
+
+7. **No-pieces win** — after boop and line-check resolution (but before toggling the turn), if the placing player has 0 cats AND 0 kittens in reserve, the match ends and the opponent wins. This accounts for pieces that may have been ejected back to the reserve during boop. Inline in `_match_place_piece` at `_mpp_pe_chk` / `_mpp_pe_out`.
+
+Both win conditions call `_match_declare_winner` (A=1 P1, A=2 P2), which shows a "PLAYER X WINS!" window, waits for any key, then sets `_match_cancelled = 1` to return to menu.
 
 ### CPCtelera Calling Conventions
 
