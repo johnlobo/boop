@@ -122,6 +122,16 @@ _sgu_goto_help:
 
 _sgu_playing:
    call man_match_update
+
+   ;; Check if the player abandoned the match
+   ld a, (_match_cancelled)
+   or a
+   ret z
+
+   ;; Transition back to menu
+   xor a
+   ld (_game_state), a               ;; GAME_STATE_MENU = 0
+   call man_menu_init
    ret
 
 _sgu_help:
