@@ -7,7 +7,13 @@
       "Bash(git -C /config/workspace/boop diff --cached)",
       "Bash(git -C /config/workspace/boop log --oneline -5)",
       "Bash(git -C /config/workspace/boop add src/man/menu.s src/man/game.s src/man/help.h.s src/man/help.s assets/bg/Grid.png assets/bg/grid.png)",
-      "Bash(git -C:*)"
+      "Bash(git -C:*)",
+      "Bash(echo $CPCT_PATH)",
+      "Read(//opt/**)",
+      "Bash(git add CLAUDE.md src/man/game.s src/man/match.h.s src/man/match.s src/sys/messages.s boop.cdt boop.dsk boop.sna obj/)",
+      "Bash(git add CLAUDE.md src/man/game.s src/man/match.h.s src/man/match.s src/sys/messages.s boop.cdt boop.dsk boop.sna)",
+      "Bash(git commit:*)",
+      "Bash(git push)"
     ]
   }
 }
