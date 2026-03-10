@@ -5351,7 +5351,7 @@ Hexadecimal [16-Bits]
                              30 ;;
                              31 .area _DATA
                              32 
-   85E4                      33 aux_txt:: .ds 20
+   870B                      33 aux_txt:: .ds 20
                              34 
                              35 
                              36 ;;
@@ -5369,7 +5369,7 @@ Hexadecimal [16-Bits]
                              48 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
    77E1                      49 sys_text_reset_aux_txt::
    77E1 06 14         [ 7]   50     ld b, #20
-   77E3 21 E4 85      [10]   51     ld hl, #aux_txt
+   77E3 21 0B 87      [10]   51     ld hl, #aux_txt
    77E6                      52 _tr_loop:
    77E6 36 00         [10]   53     ld (hl), #0
    77E8 23            [ 6]   54     inc hl
@@ -5568,7 +5568,7 @@ Hexadecimal [16-Bits]
    7879 DD E1         [14]  223     pop ix
    787B D1            [10]  224     pop de
    787C 21 00 01      [10]  225     ld hl, #transparency_table
-   787F CD 59 85      [17]  226     call cpct_drawSpriteMaskedAlignedTable_asm
+   787F CD 80 86      [17]  226     call cpct_drawSpriteMaskedAlignedTable_asm
    7882 C9            [10]  227     ret
    7883 00 00               228 _color_ptr: .dw 0x0000
                             229 
@@ -5854,7 +5854,7 @@ Hexadecimal [16-Bits]
    792E 16 0F         [ 7]  416     ld d, #15                               ;; Calculate in DE the replacement patern
                      0150   417 COLOR_REP = . +1
    7930 1E 00         [ 7]  418     ld e, #0                                ;;
-   7932 CD 97 83      [17]  419     call cpct_pens2pixelPatternPairM0_asm   ;;
+   7932 CD BE 84      [17]  419     call cpct_pens2pixelPatternPairM0_asm   ;;
    7935 EB            [ 4]  420     ex de, hl                               ;; move replacement patern to hl
                             421     
    7936 F1            [10]  422     pop af                                  ;; retrieve sprite address

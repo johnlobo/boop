@@ -5342,7 +5342,7 @@ Hexadecimal [16-Bits]
                              63 ;;
    7676                      64 sys_render_init::
    7676 0E 00         [ 7]   65     ld c,#0                                 ;; Set video mode
-   7678 CD 22 84      [17]   66     call cpct_setVideoMode_asm              ;;
+   7678 CD 49 85      [17]   66     call cpct_setVideoMode_asm              ;;
                              67     
                              68     ;; Palette: pen → colour (firmware index)
                              69     ;;  0=Black(0)        1=White(13)       2=Bright Blue(2)   3=Red(3)
@@ -5356,14 +5356,14 @@ Hexadecimal [16-Bits]
 
 
 
-   7681 CD C0 82      [17]   75     call cpct_setPalette_asm                ;;
+   7681 CD E7 83      [17]   75     call cpct_setPalette_asm                ;;
                              76     ;;cpctm_setBorder_asm HW_BLACK            ;; Set Border
    001A                      77     cpctm_setBorder_asm HW_WHITE            ;; Set Border
                               1    .radix h
    001A                       2    cpctm_setBorder_raw_asm \HW_WHITE ;; [28] Macro that does the job, but requires a number value to be passed
                               1    .globl cpct_setPALColour_asm
    7684 21 10 00      [10]    2    ld   hl, #0x010         ;; [3]  H=Hardware value of desired colour, L=Border INK (16)
-   7687 CD DF 82      [17]    3    call cpct_setPALColour_asm  ;; [25] Set Palette colour of the border
+   7687 CD 06 84      [17]    3    call cpct_setPALColour_asm  ;; [25] Set Palette colour of the border
                               3    .radix d
                              78 
                              79     ;;call sys_render_clear_back_buffer
@@ -5387,21 +5387,21 @@ Hexadecimal [16-Bits]
    7691 0E 2C         [ 7]   96     ld c, #BG_HEADER_W
    7693 06 14         [ 7]   97     ld b, #BG_HEADER_H
    7695 21 70 59      [10]   98     ld hl, #_bg_header
-   7698 CD E9 82      [17]   99     call cpct_drawSprite_asm
+   7698 CD 10 84      [17]   99     call cpct_drawSprite_asm
                             100 
    0031                     101     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 0, 50  ;; left basket
    769B 11 E0 D1      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (50 / 8) + 2048 * (50 & 7) + 0   ;; [3] REG16 = screenPtr
    769E 0E 12         [ 7]  102     ld c, #S_BASKET_W
    76A0 06 4A         [ 7]  103     ld b, #S_BASKET_H
    76A2 21 E0 5C      [10]  104     ld hl, #_s_basket
-   76A5 CD E9 82      [17]  105     call cpct_drawSprite_asm
+   76A5 CD 10 84      [17]  105     call cpct_drawSprite_asm
                             106 
    003E                     107     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 62, 50  ;; right basket
    76A8 11 1E D2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (50 / 8) + 2048 * (50 & 7) + 62   ;; [3] REG16 = screenPtr
    76AB 0E 12         [ 7]  108     ld c, #S_BASKET_W
    76AD 06 4A         [ 7]  109     ld b, #S_BASKET_H
    76AF 21 E0 5C      [10]  110     ld hl, #_s_basket
-   76B2 CD E9 82      [17]  111     call cpct_drawSprite_asm
+   76B2 CD 10 84      [17]  111     call cpct_drawSprite_asm
                             112 
    004B                     113     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 4, 68  ;; P1 cat
    76B5 11 84 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 4   ;; [3] REG16 = screenPtr
@@ -5416,7 +5416,7 @@ Hexadecimal [16-Bits]
 
 
 
-   76C4 CD 59 85      [17]  118     call cpct_drawSpriteMaskedAlignedTable_asm
+   76C4 CD 80 86      [17]  118     call cpct_drawSpriteMaskedAlignedTable_asm
                             119 
    005D                     120     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 9, 68  ;; P1 catty
    76C7 11 89 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 9   ;; [3] REG16 = screenPtr
@@ -5426,7 +5426,7 @@ Hexadecimal [16-Bits]
    76CD DD 26 11              1    .db #0xDD, #0x26, S_CATTY_H  ;; Opcode for ld ixh, Value
    76D0 01 9A 63      [10]  123     ld bc, #_s_catty_0
    76D3 21 00 01      [10]  124     ld hl, #transparency_table
-   76D6 CD 59 85      [17]  125     call cpct_drawSpriteMaskedAlignedTable_asm
+   76D6 CD 80 86      [17]  125     call cpct_drawSpriteMaskedAlignedTable_asm
                             126 
    006F                     127     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 66, 68  ;; P2 cat
    76D9 11 C2 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 66   ;; [3] REG16 = screenPtr
@@ -5436,7 +5436,7 @@ Hexadecimal [16-Bits]
    0078                     130     ld__ixh S_CAT_H
    76E2 DD 26 11              1    .db #0xDD, #0x26, S_CAT_H  ;; Opcode for ld ixh, Value
    76E5 21 00 01      [10]  131     ld hl, #transparency_table
-   76E8 CD 59 85      [17]  132     call cpct_drawSpriteMaskedAlignedTable_asm
+   76E8 CD 80 86      [17]  132     call cpct_drawSpriteMaskedAlignedTable_asm
                             133 
    0081                     134     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 71, 68  ;; P2 catty
    76EB 11 C7 E2      [10]    1    ld DE, #CPCT_VMEM_START_ASM + 80 * (68 / 8) + 2048 * (68 & 7) + 71   ;; [3] REG16 = screenPtr
@@ -5446,7 +5446,7 @@ Hexadecimal [16-Bits]
    76F1 DD 26 11              1    .db #0xDD, #0x26, S_CATTY_H  ;; Opcode for ld ixh, Value
    76F4 01 EF 63      [10]  137     ld bc, #_s_catty_1
    76F7 21 00 01      [10]  138     ld hl, #transparency_table
-   76FA CD 59 85      [17]  139     call cpct_drawSpriteMaskedAlignedTable_asm
+   76FA CD 80 86      [17]  139     call cpct_drawSpriteMaskedAlignedTable_asm
                             140 
    76FD CD 01 77      [17]  141     call sys_render_draw_grid
                             142 
@@ -5467,7 +5467,7 @@ Hexadecimal [16-Bits]
    7704 0E 2C         [ 7]  156     ld c, #BG_GRID_W
    7706 06 94         [ 7]  157     ld b, #BG_GRID_H
    7708 21 00 40      [10]  158     ld hl, #_bg_grid
-   770B CD E9 82      [17]  159     call cpct_drawSprite_asm
+   770B CD 10 84      [17]  159     call cpct_drawSprite_asm
                             160 
    770E C9            [10]  161     ret
                             162 

@@ -4,17 +4,18 @@ Hexadecimal [16-Bits]
 Symbol Table
 
     .__.$$$.=  2710 L   |     .__.ABS.=  0000 G   |     .__.CPU.=  0000 L
-    .__.H$L.=  0000 L   |     BOARD_EM=  0000     |     BOARD_P1=  0001 
-    BOARD_P1=  0002     |     BOARD_P2=  0003     |     BOARD_P2=  0004 
-    CURSOR_C=  003C     |     GRID_CEL=  0018     |     GRID_CEL=  0007 
-    GRID_COL=  0006     |     GRID_FIR=  0013     |     GRID_FIR=  0024 
-    GRID_ROW=  0006     |     HUD_P1_C=  0005     |     HUD_P1_K=  000A 
-    HUD_P2_C=  0043     |     HUD_P2_K=  0048     |     HUD_Y   =  0059 
-    MATCH_ST=  0000     |     MATCH_ST=  0001     |     PIECE_CA=  0000 
-    PIECE_KI=  0001     |     Player_c=  0004     |     Player_k=  0005 
-    Player_s=  0000     |     _match_c   **** GX  |     man_matc   **** GX
+    .__.H$L.=  0000 L   |     BLOCKED_=  00F0     |     BOARD_EM=  0000 
+    BOARD_P1=  0001     |     BOARD_P1=  0002     |     BOARD_P2=  0003 
+    BOARD_P2=  0004     |     CURSOR_C=  003C     |     GRID_CEL=  0018 
+    GRID_CEL=  0007     |     GRID_COL=  0006     |     GRID_FIR=  0013 
+    GRID_FIR=  0024     |     GRID_ROW=  0006     |     HUD_P1_C=  0005 
+    HUD_P1_K=  000A     |     HUD_P2_C=  0043     |     HUD_P2_K=  0048 
+    HUD_Y   =  0059     |     MATCH_ST=  0000     |     MATCH_ST=  0001 
+    PIECE_CA=  0000     |     PIECE_KI=  0001     |     Player_c=  0004 
+    Player_k=  0005     |     Player_s=  0000     |     _match_c   **** GX
     man_matc   **** GX  |     man_matc   **** GX  |     man_matc   **** GX
-    man_matc   **** GX  |     man_matc   **** GX  |     sizeof_P=  0006 
+    man_matc   **** GX  |     man_matc   **** GX  |     man_matc   **** GX
+    sizeof_P=  0006 
 
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 2.
 Hexadecimal [16-Bits]

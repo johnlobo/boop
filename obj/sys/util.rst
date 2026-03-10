@@ -5255,7 +5255,7 @@ Hexadecimal [16-Bits]
                              27 .area _DATA
                              28 
                              29 
-   85F8 20 20 20 20 20 20    30 string_buffer:: .asciz "          "
+   871F 20 20 20 20 20 20    30 string_buffer:: .asciz "          "
         20 20 20 20 00
                              31 ;; Registros
                      0001    32 H_CHARACTERS = 01
@@ -5444,7 +5444,7 @@ Hexadecimal [16-Bits]
    79D5                     200 sys_util_get_random_number::
    79D5 3C            [ 4]  201   inc a                               ;; Increment a to make the modulus calculation work
    79D6 32 E0 79      [13]  202   ld (#random_max_number), a
-   79D9 CD 04 85      [17]  203   call cpct_getRandom_mxor_u8_asm
+   79D9 CD 2B 86      [17]  203   call cpct_getRandom_mxor_u8_asm
    79DC 7D            [ 4]  204   ld a, l                             ;; Calculates a pseudo modulus of max number
    79DD 26 00         [ 7]  205   ld h,#0                             ;; Load hl with the random number
                      0060   206 random_max_number = .+1
@@ -5469,7 +5469,7 @@ Hexadecimal [16-Bits]
                             225 ;;
    79EC                     226 sys_util_delay::
    79EC C5            [11]  227   push bc
-   79ED CD 4C 85      [17]  228   call cpct_waitVSYNCStart_asm
+   79ED CD 73 86      [17]  228   call cpct_waitVSYNCStart_asm
    79F0 C1            [10]  229   pop bc
    79F1 10 F9         [13]  230   djnz sys_util_delay
    79F3 C9            [10]  231   ret

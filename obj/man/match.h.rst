@@ -88,18 +88,19 @@ Hexadecimal [16-Bits]
                              78 ;;   Both pixels = pen 6 → byte bits [7..0] = 0011 1100 = 0x3C
                              79 ;;------------------------------------------------------------------------------
                      003C    80 CURSOR_COLOR         = 0x3C
-                             81 
-                             82 ;;------------------------------------------------------------------------------
-                             83 ;; Global variables
-                             84 ;;------------------------------------------------------------------------------
-                             85 .globl man_match_player1
-                             86 .globl man_match_player2
-                             87 .globl man_match_num_players      ;; 1 or 2
-                             88 .globl _match_cancelled           ;; 1 when player confirmed abandon
-                             89 
-                             90 ;;------------------------------------------------------------------------------
-                             91 ;; Global routines
-                             92 ;;------------------------------------------------------------------------------
-                             93 .globl man_match_init
-                             94 .globl man_match_update
-                             95 .globl man_match_draw_hud
+                     00F0    81 BLOCKED_CURSOR_COLOR = 0xF0  ;; pen 3 (Red) both pixels in Mode 0 → blocked-toggle flash
+                             82 
+                             83 ;;------------------------------------------------------------------------------
+                             84 ;; Global variables
+                             85 ;;------------------------------------------------------------------------------
+                             86 .globl man_match_player1
+                             87 .globl man_match_player2
+                             88 .globl man_match_num_players      ;; 1 or 2
+                             89 .globl _match_cancelled           ;; 1 when player confirmed abandon
+                             90 
+                             91 ;;------------------------------------------------------------------------------
+                             92 ;; Global routines
+                             93 ;;------------------------------------------------------------------------------
+                             94 .globl man_match_init
+                             95 .globl man_match_update
+                             96 .globl man_match_draw_hud

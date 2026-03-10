@@ -78,6 +78,7 @@ GRID_ROWS            = 6
 ;;   Both pixels = pen 6 → byte bits [7..0] = 0011 1100 = 0x3C
 ;;------------------------------------------------------------------------------
 CURSOR_COLOR         = 0x3C
+BLOCKED_CURSOR_COLOR = 0xF0  ;; pen 3 (Red) both pixels in Mode 0 → blocked-toggle flash
 
 ;;------------------------------------------------------------------------------
 ;; Global variables

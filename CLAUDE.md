@@ -18,6 +18,8 @@ Requires the `CPCT_PATH` environment variable pointing to the CPCtelera installa
 
 To run in an emulator: `cpct_winape -as -f` (Windows/Linux) or `cpct_rvm -as -f` (macOS).
 
+**Version string**: bump `_game_loaded_string` in `src/man/game.s` after every change. Currently **V.016**. This is mandatory — always increment before finishing any task.
+
 ## Architecture
 
 ### Source Layout
@@ -40,9 +42,10 @@ src/
 - **util** - 8-bit multiply (`sys_util_h_times_e`), 16-bit divide (`sys_util_hl_div_c`), BCD arithmetic, RNG, frame delay, CRTC fade/shake (`sys_util_fadeIn`/`fadeOut`/`temblor`).
 
 **man/ modules** (each has a `.h.s` header + `.s` implementation):
-- **game** (`sys_game_init` / `sys_game_update`) - Top-level state machine: `GAME_STATE_MENU=0` / `GAME_STATE_PLAYING=1`. Waits on `man_menu_confirmed` to transition from menu to match.
+- **game** (`sys_game_init` / `sys_game_update`) - Top-level state machine: `GAME_STATE_MENU=0` / `GAME_STATE_PLAYING=1` / `GAME_STATE_HELP=2`. Waits on `man_menu_confirmed` to transition from menu to match.
 - **menu** (`man_menu_init` / `man_menu_update` / `man_menu_draw`) - Menu navigation; exposes `man_menu_selected` and `man_menu_confirmed`.
 - **match** (`man_match_init` / `man_match_update` / `man_match_draw_hud`) - Turn-based 6×6 board game. Manages `man_match_player1`/`player2` structs and `man_match_num_players`.
+- **help** (`man_help_init` / `man_help_update`) - Help/rules screen; exposes `man_help_done` (set to 1 when user exits).
 
 ### Code Conventions
 
@@ -80,7 +83,7 @@ Six interrupt handlers (`int_handler1`–`int_handler6`) rotate each interrupt, 
 `BOARD_EMPTY=0`, `BOARD_P1_CAT=1`, `BOARD_P1_KITTEN=2`, `BOARD_P2_CAT=3`, `BOARD_P2_KITTEN=4`
 
 **Grid geometry** (defined in `match.h.s`):
-- First cell: X=22 bytes, Y=35 px
+- First cell: X=19 bytes, Y=36 px
 - Cell pitch: 7 bytes wide × 24 px tall
 - Dimensions: 6 cols × 6 rows
 - Cursor color: `CURSOR_COLOR = 0x3C` (pen 6 — bright yellow — both pixels in Mode 0)
@@ -106,6 +109,17 @@ Six interrupt handlers (`int_handler1`–`int_handler6`) rotate each interrupt, 
 
 Both win conditions call `_match_declare_winner` (A=1 P1, A=2 P2), which shows a "PLAYER X WINS!" window, waits for any key, then sets `_match_cancelled = 1` to return to menu.
 
+### Boop Animation & Turn Announcement
+
+**Boop animation** (`_match_boop_animate` in `match.s`) — replaces the bare `_match_boop`/`_match_boop_cat` calls with a 3-frame visual sequence:
+1. **Frame 0**: piece placed, board drawn, 4-frame delay (pre-boop snapshot saved to `_boop_anim_before`)
+2. **Frame 1**: boop executed, destination cells cleared into `_boop_transit_buf` (16 bytes, up to 8 entries of offset+value), board redrawn with sources gone and destinations empty, 3-frame delay
+3. **Frame 2**: destinations restored in board; caller then redraws
+
+`_boop_transit_cnt` tracks the number of valid entries in `_boop_transit_buf`.
+
+**Turn announcement** (`_match_show_turn_message`) — called as a tail call at end of `man_match_init` (P1 starts) and at end of `_match_place_piece` (after each move, unless `_match_cancelled`). Shows "PLAYER X TURN" in an auto-dismissing window (2 seconds, `A=2` mode): orange background for P1 (pen 5), blue background for P2 (pen 2).
+
 ### CPCtelera Calling Conventions
 
 - `cpct_getScreenPtr_asm`: DE=VMEM_START, C=X(bytes), B=Y(px) → HL=addr; clobbers AF,BC,HL
@@ -114,3 +128,29 @@ Both win conditions call `_match_declare_winner` (A=1 P1, A=2 P2), which shows a
 - `cpct_isKeyPressed_asm`: HL=key_constant → A≠0 if pressed; clobbers AF
 - `cpct_px2byteM0_asm`: H=left_pen, L=right_pen → A=encoded byte
 - Macros: `ld__ixl n`, `ld__ixh n` — load IXL/IXH immediate; `cpctm_screenPtr_asm DE, BASE, X, Y` — compile-time fixed screen ptr
+
+### sys_messages_show Calling Convention
+
+```
+Input: A=wait_flag (1=block until keypress, auto-restores background on return),
+       DE=x/y coord, BC=h/w of window, HL=pointer to message string,
+       AF'=window background colour (set via m_msg_w_background before other regs)
+Modified: AF, HL, DE, BC
+```
+
+**Critical**: `m_msg_w_background BK` (defined in `common.h.s`) clobbers **AF and HL** — it calls `cpct_px2byteM0_asm` and stores the result in `AF'`. Always invoke this macro *first*, then load E, D, B, C, A, HL. If a value must survive the macro call, wrap it with `push af` / `pop af`.
+
+### Struct Definition Macros (common.h.s)
+
+```asm
+BeginStruct Foo          ; Foo_offset = 0
+Field Foo, bar, 2        ; Foo_bar = 0, advances offset by 2
+Field Foo, baz, 1        ; Foo_baz = 2
+EndStruct Foo            ; sizeof_Foo = 3
+```
+
+### Match Cancellation Flow
+
+`_match_cancelled` (byte in `match.h.s`) is the signal from match back to the game loop:
+- Set to `1` by `_match_declare_winner` after the win/loss window is dismissed.
+- Polled each frame by `man_match_update`; when set, it returns and `man_game_update` transitions back to `GAME_STATE_MENU`.

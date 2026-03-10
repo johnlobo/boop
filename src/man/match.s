@@ -21,6 +21,7 @@
 .include "sys/render.h.s"
 .include "sys/input.h.s"
 .include "sys/messages.h.s"
+.include "sys/util.h.s"
 
 .module man_match
 
@@ -61,9 +62,18 @@ _cursor_row:    .db 0   ;; 0 .. GRID_ROWS-1
 _cursor_piece:  .db 0   ;; PIECE_CAT or PIECE_KITTEN
 _turn_debounce: .db 0   ;; 1 while a key is held (same pattern as menu.s)
 
+;;
+;; Boop animation buffers
+;;
+_boop_anim_before: .ds 36     ;; pre-boop board snapshot (36 cells)
+_boop_transit_buf: .ds 16     ;; destinations in-transit: 8 × (offset byte, value byte)
+_boop_transit_cnt: .db 0      ;; number of valid entries in _boop_transit_buf
+
 _match_cancel_msg:  .asciz " ABANDON MATCH? (Y/N)"
 _match_p1_wins_msg: .asciz "    PLAYER 1 WINS!"
 _match_p2_wins_msg: .asciz "    PLAYER 2 WINS!"
+_match_p1_turn_msg: .asciz "PLAYER 1 TURN"
+_match_p2_turn_msg: .asciz "PLAYER 2 TURN"
 
 ;;
 ;; Direction table for boop: 8 (dr, dc) pairs (signed bytes, 0xFF = -1)
@@ -515,15 +525,8 @@ _mpp_do_place:
    inc a                             ;; A = state*2 + piece + 1
    ld (hl), a                        ;; write to board
 
-   ;; Boop: kittens push neighboring kittens; cats push kittens and cats
-   ld a, (_cursor_piece)
-   or a
-   jr z, _mpp_boop_cat               ;; PIECE_CAT = 0
-   call _match_boop
-   jr _mpp_do_check
-_mpp_boop_cat:
-   call _match_boop_cat
-_mpp_do_check:
+   ;; Animate boop: frame0=placed, frame1=in-transit, frame2=destinations filled
+   call _match_boop_animate
    call _match_check_lines           ;; check for 3 same-color pieces in a row
 
    ;; After boop + line resolution: check if placing player has no pieces left
@@ -544,14 +547,40 @@ _mpp_pe_chk:
    jr z, _mpp_pe_out                 ;; 0 cats and 0 kittens → opponent wins
 _mpp_pe_done:
 
-   ;; Toggle state, reset piece selection to kitten
+   ;; Toggle state, reset piece selection to kitten (or cat if no kittens left)
    ld a, (_match_state)
    xor #1
    ld (_match_state), a
+   or a
+   jr nz, _mpp_init_p2
+   ld ix, #man_match_player1
+   jr _mpp_init_piece
+_mpp_init_p2:
+   ld ix, #man_match_player2
+_mpp_init_piece:
    ld a, #PIECE_KITTEN
+   ld b, a
+   ld a, Player_kittens(ix)
+   or a
+   jr nz, _mpp_init_done
+   ld b, #PIECE_CAT                  ;; no kittens → default to cat
+_mpp_init_done:
+   ld a, b
    ld (_cursor_piece), a
 
-   ;; Move cursor to top corner for next player's turn
+   ;; Redraw final board state (line conversions visible), without cursor
+   call sys_render_draw_grid
+   call _match_draw_board
+   call man_match_draw_hud
+   call _match_check_cat_lines       ;; check 3 cats in a row → winner
+   ld a, (_match_cancelled)
+   or a
+   ret nz                            ;; winner declared, skip turn message
+
+   ;; Show turn message before cursor moves to next player's starting corner
+   call _match_show_turn_message
+
+   ;; Now move cursor to top corner for next player's turn
    ;; P1 -> top-left (col 0, row 0), P2 -> top-right (col 5, row 0)
    xor a
    ld (_cursor_row), a
@@ -564,7 +593,6 @@ _mpp_cursor_p1:
 
    call _match_redraw_all
    call man_match_draw_hud
-   call _match_check_cat_lines       ;; check 3 cats in a row → winner
    ret
 
 _mpp_pe_out:
@@ -609,7 +637,7 @@ _mhi_check_keys:
    dec a
    ld (_cursor_row), a
    call _match_redraw_all
-   jr _mhi_set_debounce
+   jp _mhi_set_debounce
 
 _mhi_check_down:
    ld hl, #Key_CursorDown
@@ -621,7 +649,7 @@ _mhi_check_down:
    inc a
    ld (_cursor_row), a
    call _match_redraw_all
-   jr _mhi_set_debounce
+   jp _mhi_set_debounce
 
 _mhi_check_left:
    ld hl, #Key_CursorLeft
@@ -633,7 +661,7 @@ _mhi_check_left:
    dec a
    ld (_cursor_col), a
    call _match_redraw_all
-   jr _mhi_set_debounce
+   jp _mhi_set_debounce
 
 _mhi_check_right:
    ld hl, #Key_CursorRight
@@ -651,9 +679,48 @@ _mhi_check_space:
    ld hl, #Key_Space
    call cpct_isKeyPressed_asm
    jr z, _mhi_check_enter
+   ;; Determine current player struct
+   ld a, (_match_state)
+   or a
+   jr nz, _mhi_sp_p2
+   ld ix, #man_match_player1
+   jr _mhi_sp_check
+_mhi_sp_p2:
+   ld ix, #man_match_player2
+_mhi_sp_check:
+   ;; Check whether the target piece type has pieces available
    ld a, (_cursor_piece)
-   xor #1                            ;; toggle 0<->1
+   cp #PIECE_CAT                     ;; currently on CAT?
+   jr z, _mhi_sp_chk_kitten          ;; yes → trying to switch to KITTEN, check kittens
+   ;; currently on KITTEN → trying to switch to CAT
+   ld a, Player_cats(ix)
+   or a
+   jr z, _mhi_sp_blocked             ;; 0 cats → flash red and block
+   jr _mhi_sp_do_toggle
+_mhi_sp_chk_kitten:
+   ld a, Player_kittens(ix)
+   or a
+   jr z, _mhi_sp_blocked             ;; 0 kittens → flash red and block
+_mhi_sp_do_toggle:
+   ld a, (_cursor_piece)
+   xor #1
    ld (_cursor_piece), a
+   call _match_redraw_all
+   jr _mhi_set_debounce
+_mhi_sp_blocked:
+   ;; Flash cursor red for ~quarter second to signal blocked toggle
+   ld a, (_cursor_col)
+   ld c, a
+   ld a, (_cursor_row)
+   ld b, a
+   call _match_col_row_to_screen_addr  ;; DE = cursor screen address
+   inc de                              ;; same 1-byte offset as normal cursor draw
+   ld a, #BLOCKED_CURSOR_COLOR
+   ld c, #CURSOR_W
+   ld b, #CURSOR_H
+   call cpct_drawSolidBox_asm
+   ld b, #13                           ;; ~quarter second (13 frames at 50Hz)
+   call sys_util_delay
    call _match_redraw_all
    jr _mhi_set_debounce
 
@@ -733,6 +800,101 @@ _mcc_yes:
 
 _mcc_no:
    call sys_messages_restore_message_background
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_boop_animate
+;;
+;;  Animates the boop in 3 visual frames:
+;;    Frame 0: piece placed, all others still at original positions (pre-boop)
+;;    Frame 1: boop sources cleared, destinations empty (in-transit)
+;;    Frame 2: pieces restored at boop destinations (post-boop)
+;;  Reads _cursor_piece to dispatch kitten vs cat boop.
+;;  Input:  _cursor_piece, _cursor_row, _cursor_col (board already updated with placed piece)
+;;  Output: _match_board in post-boop state
+;;  Modified: AF, BC, DE, HL, IX, IY
+;;
+_match_boop_animate:
+   ;; Frame 0: show piece placed, before any boop
+   call _match_redraw_all
+   ld b, #4
+   call sys_util_delay
+
+   ;; Save pre-boop board (before boop clears source cells)
+   ld hl, #_match_board
+   ld de, #_boop_anim_before
+   ld bc, #36
+   ldir
+
+   ;; Execute boop (board → post-boop state)
+   ld a, (_cursor_piece)
+   or a
+   jr z, _mba_cat
+   call _match_boop
+   jr _mba_after_boop
+_mba_cat:
+   call _match_boop_cat
+
+_mba_after_boop:
+   ;; Scan all 36 cells to find destinations:
+   ;; destination = empty in pre-boop AND non-empty in post-boop board
+   ;; Save each to transit buffer, then clear from board → intermediate state
+   xor a
+   ld (_boop_transit_cnt), a
+   ld hl, #_boop_anim_before         ;; pre-boop snapshot
+   ld de, #_match_board              ;; post-boop (current board)
+   ld ix, #_boop_transit_buf
+   ld b, #36                         ;; cell count
+   ld c, #0                          ;; cell index (0..35)
+_mba_scan:
+   ld a, (hl)
+   or a
+   jr nz, _mba_scan_next             ;; was non-empty before → not a destination
+   ld a, (de)
+   or a
+   jr z, _mba_scan_next              ;; still empty → not a destination
+   ;; Found a destination: save offset + value, clear cell in board
+   ld 0(ix), c                       ;; board offset
+   ld 1(ix), a                       ;; piece value
+   inc ix
+   inc ix
+   ld a, (_boop_transit_cnt)
+   inc a
+   ld (_boop_transit_cnt), a
+   xor a
+   ld (de), a                        ;; clear destination → intermediate state
+_mba_scan_next:
+   inc hl
+   inc de
+   inc c
+   dec b
+   jr nz, _mba_scan
+
+   ;; Frame 1: show intermediate (sources gone, destinations not yet filled)
+   call _match_redraw_all
+   ld b, #3
+   call sys_util_delay
+
+   ;; Restore destinations → post-boop state
+   ld a, (_boop_transit_cnt)
+   or a
+   ret z                             ;; nothing to restore (all ejected or no boop)
+   ld b, a                           ;; loop counter
+   ld ix, #_boop_transit_buf
+_mba_restore:
+   push bc                           ;; save B (loop counter) and C (unused)
+   ld c, 0(ix)                       ;; board cell offset (0..35)
+   ld b, #0
+   ld hl, #_match_board
+   add hl, bc                        ;; HL = &board[offset]
+   ld a, 1(ix)                       ;; piece value
+   ld (hl), a
+   pop bc                            ;; restore loop counter in B
+   inc ix
+   inc ix
+   dec b
+   jr nz, _mba_restore
    ret
 
 ;;-----------------------------------------------------------------
@@ -1241,6 +1403,44 @@ _mdw_show:
 
 ;;-----------------------------------------------------------------
 ;;
+;; _match_show_turn_message
+;;
+;;  Shows "PLAYER X TURN" window (auto-dismisses after 2s,
+;;  then auto-restores background). Orange bg for P1, blue for P2.
+;;  Input:  _match_state (0=P1, 1=P2)
+;;  Output: -
+;;  Modified: AF, BC, DE, HL
+;;
+_match_show_turn_message:
+   ld a, (_match_state)
+   or a
+   jr nz, _mstm_p2
+   ;; P1: orange background
+   m_msg_w_background 5
+   ld b, #25                         ;; ~0.5 second delay before showing
+   call sys_util_delay
+   ld e, #6
+   ld d, #78
+   ld b, #22
+   ld c, #50
+   ld a, #2
+   ld hl, #_match_p1_turn_msg
+   jp sys_messages_show              ;; tail call: auto-dismisses after delay, restores bg
+_mstm_p2:
+   ;; P2: bright blue background
+   m_msg_w_background 2
+   ld b, #25                         ;; ~0.5 second delay before showing
+   call sys_util_delay
+   ld e, #6
+   ld d, #78
+   ld b, #22
+   ld c, #50
+   ld a, #2
+   ld hl, #_match_p2_turn_msg
+   jp sys_messages_show              ;; tail call: auto-dismisses after delay, restores bg
+
+;;-----------------------------------------------------------------
+;;
 ;; _match_check_cat_lines
 ;;
 ;;  Scans every row and column for 3 consecutive cats of the same
@@ -1455,8 +1655,7 @@ man_match_init::
    call sys_render_draw_screen
    call _match_redraw_all
    call man_match_draw_hud
-
-   ret
+   jp _match_show_turn_message       ;; tail call: announce Player 1 starts
 
 ;;-----------------------------------------------------------------
 ;;

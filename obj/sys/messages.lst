@@ -5710,7 +5710,7 @@ Hexadecimal [16-Bits]
    00C9 3E 0A         [ 7]  246     ld a, #10                       ;; B = y + 10
    00CB 18 02         [12]  247     jr y_coord
    00CD                     248 no_wait4key:
-   00CD 3E 0F         [ 7]  249     ld a, #15                       ;; B = y + 15
+   00CD 3E 07         [ 7]  249     ld a, #7                        ;; B = y + 7  (centered in 22px single-line window)
    00CF                     250 y_coord:
    00CF 80            [ 4]  251     add b                           ;;
    00D0 47            [ 4]  252     ld b, a                         ;;

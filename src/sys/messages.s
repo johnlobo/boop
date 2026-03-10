@@ -246,7 +246,7 @@ sys_messages_show::
     ld a, #10                       ;; B = y + 10
     jr y_coord
 no_wait4key:
-    ld a, #15                       ;; B = y + 15
+    ld a, #7                        ;; B = y + 7  (centered in 22px single-line window)
 y_coord:
     add b                           ;;
     ld b, a                         ;;

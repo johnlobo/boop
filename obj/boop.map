@@ -21,22 +21,22 @@ Area                                    Addr        Size        Decimal Bytes (A
      00000000  s__CABS                         
      00000000  s__DABS                         
      00000100  l__ABS0                         
-     000001D4  l__DATA                         
+     00000225  l__DATA                         
      00004000  s__CODE                         
-     000045BD  l__CODE                         
-     000085BD  s__DATA                         
-     00008791  s__GSFINAL                      
-     00008791  s__GSINIT                       
-     00008791  s__HOME                         
-     00008791  s__INITIALIZED                  
-     00008791  s__INITIALIZER                  
+     000046E4  l__CODE                         
+     000086E4  s__DATA                         
+     00008909  s__GSFINAL                      
+     00008909  s__GSINIT                       
+     00008909  s__HOME                         
+     00008909  s__INITIALIZED                  
+     00008909  s__INITIALIZER                  
 
 ASxxxx Linker V03.00 + NoICE + sdld,  page 2.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_CODE                               00004000    000045BD =       17853. bytes (REL,CON)
+_CODE                               00004000    000046E4 =       18148. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
@@ -95,7 +95,7 @@ Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_CODE                               00004000    000045BD =       17853. bytes (REL,CON)
+_CODE                               00004000    000046E4 =       18148. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
@@ -127,81 +127,81 @@ _CODE                               00004000    000045BD =       17853. bytes (R
      00007B5B  man_help_init                      cpct_keyboard
      00007B66  man_help_update                    cpct_keyboard
      00007BAC  man_match_draw_hud                 cpct_keyboard
-     00008186  man_match_init                     cpct_keyboard
-     000081C5  man_match_update                   cpct_keyboard
-     000081C9  man_menu_draw                      cpct_keyboard
-     0000820B  man_menu_init                      cpct_keyboard
-     0000821C  man_menu_update                    cpct_keyboard
-     00008277  _cpct_setInterruptHandler          cpct_firmware
-     00008277  cpct_setInterruptHandler_asm       cpct_firmware
-     00008288  cpct_safeInterruptHandlerHook      cpct_firmware
-     0000829E  cpct_getScreenToSprite_asm         cpct_sprites
-     000082C0  cpct_setPalette_asm                cpct_video
-     000082D3  _cpct_isKeyPressed                 cpct_keyboard
-     000082D3  cpct_isKeyPressed_asm              cpct_keyboard
-     000082DF  cpct_setPALColour_asm              cpct_video
-     000082E9  cpct_drawSprite_asm                cpct_sprites
-     00008389  _cpct_keyboardStatusBuffer         cpct_keyboard
-     00008393  cpct_waitHalts_asm                 cpct_memutils
-     00008397  cpct_pens2pixelPatternPairM0_asm   cpct_sprites
-     000083A5  _cpct_setSeed_mxor                 cpct_random
-     000083A5  cpct_setSeed_mxor_asm              cpct_random
-     000083AD  _cpct_isAnyKeyPressed              cpct_keyboard
-     000083AD  cpct_isAnyKeyPressed_asm           cpct_keyboard
-     000083BA  _cpct_scanKeyboard_if              cpct_keyboard
-     000083BA  cpct_scanKeyboard_if_asm           cpct_keyboard
+     000082AB  man_match_init                     cpct_keyboard
+     000082EC  man_match_update                   cpct_keyboard
+     000082F0  man_menu_draw                      cpct_keyboard
+     00008332  man_menu_init                      cpct_keyboard
+     00008343  man_menu_update                    cpct_keyboard
+     0000839E  _cpct_setInterruptHandler          cpct_firmware
+     0000839E  cpct_setInterruptHandler_asm       cpct_firmware
+     000083AF  cpct_safeInterruptHandlerHook      cpct_firmware
+     000083C5  cpct_getScreenToSprite_asm         cpct_sprites
+     000083E7  cpct_setPalette_asm                cpct_video
+     000083FA  _cpct_isKeyPressed                 cpct_keyboard
+     000083FA  cpct_isKeyPressed_asm              cpct_keyboard
+     00008406  cpct_setPALColour_asm              cpct_video
+     00008410  cpct_drawSprite_asm                cpct_sprites
+     000084B0  _cpct_keyboardStatusBuffer         cpct_keyboard
+     000084BA  cpct_waitHalts_asm                 cpct_memutils
+     000084BE  cpct_pens2pixelPatternPairM0_asm   cpct_sprites
+     000084CC  _cpct_setSeed_mxor                 cpct_random
+     000084CC  cpct_setSeed_mxor_asm              cpct_random
+     000084D4  _cpct_isAnyKeyPressed              cpct_keyboard
+     000084D4  cpct_isAnyKeyPressed_asm           cpct_keyboard
+     000084E1  _cpct_scanKeyboard_if              cpct_keyboard
+     000084E1  cpct_scanKeyboard_if_asm           cpct_keyboard
 ASxxxx Linker V03.00 + NoICE + sdld,  page 4.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_CODE                               00004000    000045BD =       17853. bytes (REL,CON)
+_CODE                               00004000    000046E4 =       18148. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     00008422  cpct_setVideoMode_asm              cpct_video
-     0000842F  _cpct_waitVSYNC                    cpct_video
-     0000842F  cpct_waitVSYNC_asm                 cpct_video
-     00008437  cpct_px2byteM0_asm                 cpct_sprites
-     00008451  _cpct_disableFirmware              cpct_firmware
-     00008451  _cpct_removeInterruptHandler       cpct_firmware
-     00008451  cpct_disableFirmware_asm           cpct_firmware
-     00008451  cpct_removeInterruptHandler_asm    cpct_firmware
-     00008461  cpct_drawSolidBox_asm              cpct_sprites
-     00008504  _cpct_getRandom_mxor_u8            cpct_random
-     00008504  cpct_getRandom_mxor_u8_asm         cpct_random
-     00008505  cpct_randomIdx_mxor_u8             cpct_random
-     00008529  _cpct_mode_rom_status              cpct_firmware
-     0000852A  cpct_pen2twoPixelM0_table          cpct_sprites
-     0000853A  cpct_getScreenPtr_asm              cpct_video
-     0000854C  _cpct_waitVSYNCStart               cpct_video
-     0000854C  cpct_waitVSYNCStart_asm            cpct_video
-     00008559  cpct_drawSpriteMaskedAlignedTabl   cpct_sprites
-     00008586  _cpct_mxor32_seed                  cpct_random
-     0000858A  _cpct_nextRandom_mxor_u32          cpct_random
-     0000858A  cpct_nextRandom_mxor_u32_asm       cpct_random
-     000085AD  dc_mode0_ct                        cpct_strings
+     00008549  cpct_setVideoMode_asm              cpct_video
+     00008556  _cpct_waitVSYNC                    cpct_video
+     00008556  cpct_waitVSYNC_asm                 cpct_video
+     0000855E  cpct_px2byteM0_asm                 cpct_sprites
+     00008578  _cpct_disableFirmware              cpct_firmware
+     00008578  _cpct_removeInterruptHandler       cpct_firmware
+     00008578  cpct_disableFirmware_asm           cpct_firmware
+     00008578  cpct_removeInterruptHandler_asm    cpct_firmware
+     00008588  cpct_drawSolidBox_asm              cpct_sprites
+     0000862B  _cpct_getRandom_mxor_u8            cpct_random
+     0000862B  cpct_getRandom_mxor_u8_asm         cpct_random
+     0000862C  cpct_randomIdx_mxor_u8             cpct_random
+     00008650  _cpct_mode_rom_status              cpct_firmware
+     00008651  cpct_pen2twoPixelM0_table          cpct_sprites
+     00008661  cpct_getScreenPtr_asm              cpct_video
+     00008673  _cpct_waitVSYNCStart               cpct_video
+     00008673  cpct_waitVSYNCStart_asm            cpct_video
+     00008680  cpct_drawSpriteMaskedAlignedTabl   cpct_sprites
+     000086AD  _cpct_mxor32_seed                  cpct_random
+     000086B1  _cpct_nextRandom_mxor_u32          cpct_random
+     000086B1  cpct_nextRandom_mxor_u32_asm       cpct_random
+     000086D4  dc_mode0_ct                        cpct_strings
 ASxxxx Linker V03.00 + NoICE + sdld,  page 5.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_DATA                               000085BD    000001D4 =         468. bytes (REL,CON)
+_DATA                               000086E4    00000225 =         549. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     000085BD  sys_input_key_actions              input_system
-     000085CB  _window_data                       messages_system
-     000085E3  nInterrupt                         system_system
-     000085E4  aux_txt                            text_manager
-     000085F8  string_buffer                      sys_util
-     00008619  man_help_done                      cpct_keyboard
-     000086D3  man_match_player1                  cpct_keyboard
-     000086D9  man_match_player2                  cpct_keyboard
-     000086DF  man_match_num_players              cpct_keyboard
-     00008704  _match_cancelled                   cpct_keyboard
-     0000878E  man_menu_selected                  cpct_keyboard
-     0000878F  man_menu_confirmed                 cpct_keyboard
+     000086E4  sys_input_key_actions              input_system
+     000086F2  _window_data                       messages_system
+     0000870A  nInterrupt                         system_system
+     0000870B  aux_txt                            text_manager
+     0000871F  string_buffer                      sys_util
+     00008740  man_help_done                      cpct_keyboard
+     000087FA  man_match_player1                  cpct_keyboard
+     00008800  man_match_player2                  cpct_keyboard
+     00008806  man_match_num_players              cpct_keyboard
+     0000882B  _match_cancelled                   cpct_keyboard
+     00008906  man_menu_selected                  cpct_keyboard
+     00008907  man_menu_confirmed                 cpct_keyboard
 ASxxxx Linker V03.00 + NoICE + sdld,  page 6.
 Hexadecimal  [32-Bits]
 

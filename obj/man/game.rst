@@ -171,21 +171,22 @@ Hexadecimal [16-Bits]
                              78 ;;   Both pixels = pen 6 → byte bits [7..0] = 0011 1100 = 0x3C
                              79 ;;------------------------------------------------------------------------------
                      003C    80 CURSOR_COLOR         = 0x3C
-                             81 
-                             82 ;;------------------------------------------------------------------------------
-                             83 ;; Global variables
-                             84 ;;------------------------------------------------------------------------------
-                             85 .globl man_match_player1
-                             86 .globl man_match_player2
-                             87 .globl man_match_num_players      ;; 1 or 2
-                             88 .globl _match_cancelled           ;; 1 when player confirmed abandon
-                             89 
-                             90 ;;------------------------------------------------------------------------------
-                             91 ;; Global routines
-                             92 ;;------------------------------------------------------------------------------
-                             93 .globl man_match_init
-                             94 .globl man_match_update
-                             95 .globl man_match_draw_hud
+                     00F0    81 BLOCKED_CURSOR_COLOR = 0xF0  ;; pen 3 (Red) both pixels in Mode 0 → blocked-toggle flash
+                             82 
+                             83 ;;------------------------------------------------------------------------------
+                             84 ;; Global variables
+                             85 ;;------------------------------------------------------------------------------
+                             86 .globl man_match_player1
+                             87 .globl man_match_player2
+                             88 .globl man_match_num_players      ;; 1 or 2
+                             89 .globl _match_cancelled           ;; 1 when player confirmed abandon
+                             90 
+                             91 ;;------------------------------------------------------------------------------
+                             92 ;; Global routines
+                             93 ;;------------------------------------------------------------------------------
+                             94 .globl man_match_init
+                             95 .globl man_match_update
+                             96 .globl man_match_draw_hud
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 6.
 Hexadecimal [16-Bits]
 
@@ -5597,11 +5598,11 @@ Hexadecimal [16-Bits]
                              38 ;;
                              39 .area _DATA
                              40 
-   8603 00                   41 _game_state:         .db 0
-   8604 20 47 41 4D 45 20    42 _game_loaded_string: .asciz " GAME LOADED - V.003"
+   872A 00                   41 _game_state:         .db 0
+   872B 20 47 41 4D 45 20    42 _game_loaded_string: .asciz " GAME LOADED - V.016"
         4C 4F 41 44 45 44
         20 2D 20 56 2E 30
-        30 33 00
+        31 36 00
                              43 
                              44 ;;
                              45 ;; Start of _CODE area
@@ -5623,7 +5624,7 @@ Hexadecimal [16-Bits]
    0003                      61    m_msg_w_background 3
    7A6F 26 03         [ 7]    1     ld h, #(3)                         ;;
    7A71 2E 03         [ 7]    2     ld l, #(3)                         ;;
-   7A73 CD 37 84      [17]    3     call cpct_px2byteM0_asm             ;;
+   7A73 CD 5E 85      [17]    3     call cpct_px2byteM0_asm             ;;
    7A76 08            [ 4]    4     ex af, af'                          ;;
    7A77 7D            [ 4]    5     ld a, l                             ;;
    7A78 08            [ 4]    6     ex af, af'                          ;;
@@ -5632,11 +5633,11 @@ Hexadecimal [16-Bits]
    7A7D 06 2C         [ 7]   64    ld b, #44                           ;; h
    7A7F 0E 3C         [ 7]   65    ld c, #60                           ;; w
    7A81 3E 01         [ 7]   66    ld a, #1                            ;; wait for a key
-   7A83 21 04 86      [10]   67    ld hl, #_game_loaded_string         ;; message
+   7A83 21 2B 87      [10]   67    ld hl, #_game_loaded_string         ;; message
    7A86 CD D2 69      [17]   68    call sys_messages_show
                              69 
                              70    ;; set random seed using hl from message show
-   7A89 CD A5 83      [17]   71    call cpct_setSeed_mxor_asm
+   7A89 CD CC 84      [17]   71    call cpct_setSeed_mxor_asm
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 109.
 Hexadecimal [16-Bits]
 
@@ -5645,8 +5646,8 @@ Hexadecimal [16-Bits]
                              72 
                              73    ;; Start in menu state
    7A8C AF            [ 4]   74    xor a
-   7A8D 32 03 86      [13]   75    ld (_game_state), a
-   7A90 CD 0B 82      [17]   76    call man_menu_init
+   7A8D 32 2A 87      [13]   75    ld (_game_state), a
+   7A90 CD 32 83      [17]   76    call man_menu_init
                              77 
    7A93 C9            [10]   78    ret
                              79 
@@ -5660,9 +5661,9 @@ Hexadecimal [16-Bits]
                              87 ;;  Modified: AF, BC, DE, HL
                              88 ;;
    7A94                      89 sys_game_update::
-   7A94 CD 2F 84      [17]   90    call cpct_waitVSYNC_asm
+   7A94 CD 56 85      [17]   90    call cpct_waitVSYNC_asm
                              91 
-   7A97 3A 03 86      [13]   92    ld a, (_game_state)
+   7A97 3A 2A 87      [13]   92    ld a, (_game_state)
    7A9A B7            [ 4]   93    or a
    7A9B 28 06         [12]   94    jr z, _sgu_menu
    7A9D FE 01         [ 7]   95    cp #GAME_STATE_PLAYING
@@ -5670,10 +5671,10 @@ Hexadecimal [16-Bits]
    7AA1 18 2E         [12]   97    jr _sgu_help
                              98 
    7AA3                      99 _sgu_menu:
-   7AA3 CD 1C 82      [17]  100    call man_menu_update
+   7AA3 CD 43 83      [17]  100    call man_menu_update
                             101 
                             102    ;; Check if player confirmed a selection
-   7AA6 3A 8F 87      [13]  103    ld a, (man_menu_confirmed)
+   7AA6 3A 07 89      [13]  103    ld a, (man_menu_confirmed)
    7AA9 B7            [ 4]  104    or a
    7AAA C8            [11]  105    ret z                               ;; not confirmed yet, stay in menu
                             106 
@@ -5683,18 +5684,18 @@ Hexadecimal [16-Bits]
                             110 
                             111    ;; Transition to playing: init match (reads selection, resets players, draws screen)
    7AAF 3E 01         [ 7]  112    ld a, #GAME_STATE_PLAYING
-   7AB1 32 03 86      [13]  113    ld (_game_state), a
-   7AB4 CD 86 81      [17]  114    call man_match_init
+   7AB1 32 2A 87      [13]  113    ld (_game_state), a
+   7AB4 CD AB 82      [17]  114    call man_match_init
    7AB7 C9            [10]  115    ret
                             116 
    7AB8                     117 _sgu_goto_help:
    7AB8 3E 02         [ 7]  118    ld a, #GAME_STATE_HELP
-   7ABA 32 03 86      [13]  119    ld (_game_state), a
+   7ABA 32 2A 87      [13]  119    ld (_game_state), a
    7ABD CD 5B 7B      [17]  120    call man_help_init
    7AC0 C9            [10]  121    ret
                             122 
    7AC1                     123 _sgu_playing:
-   7AC1 CD C5 81      [17]  124    call man_match_update
+   7AC1 CD EC 82      [17]  124    call man_match_update
                             125 
                             126    ;; Check if the player abandoned the match
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180), page 110.
@@ -5702,25 +5703,25 @@ Hexadecimal [16-Bits]
 
 
 
-   7AC4 3A 04 87      [13]  127    ld a, (_match_cancelled)
+   7AC4 3A 2B 88      [13]  127    ld a, (_match_cancelled)
    7AC7 B7            [ 4]  128    or a
    7AC8 C8            [11]  129    ret z
                             130 
                             131    ;; Transition back to menu
    7AC9 AF            [ 4]  132    xor a
-   7ACA 32 03 86      [13]  133    ld (_game_state), a               ;; GAME_STATE_MENU = 0
-   7ACD CD 0B 82      [17]  134    call man_menu_init
+   7ACA 32 2A 87      [13]  133    ld (_game_state), a               ;; GAME_STATE_MENU = 0
+   7ACD CD 32 83      [17]  134    call man_menu_init
    7AD0 C9            [10]  135    ret
                             136 
    7AD1                     137 _sgu_help:
    7AD1 CD 66 7B      [17]  138    call man_help_update
                             139 
                             140    ;; Return to menu when done
-   7AD4 3A 19 86      [13]  141    ld a, (man_help_done)
+   7AD4 3A 40 87      [13]  141    ld a, (man_help_done)
    7AD7 B7            [ 4]  142    or a
    7AD8 C8            [11]  143    ret z                               ;; not done yet, stay on help screen
                             144 
    7AD9 AF            [ 4]  145    xor a
-   7ADA 32 03 86      [13]  146    ld (_game_state), a
-   7ADD CD 0B 82      [17]  147    call man_menu_init
+   7ADA 32 2A 87      [13]  146    ld (_game_state), a
+   7ADD CD 32 83      [17]  147    call man_menu_init
    7AE0 C9            [10]  148    ret

@@ -5356,7 +5356,7 @@ Hexadecimal [16-Bits]
                              27 ;;
                              28 .area _DATA
                              29 
-   85E3 00                   30 nInterrupt:: .db 0
+   870A 00                   30 nInterrupt:: .db 0
                              31 
                              32 ;;
                              33 ;; Start of _CODE area
@@ -5382,7 +5382,7 @@ Hexadecimal [16-Bits]
    7774 36 C9         [10]   53 	ld (hl), #0xc9
    000E                      54    m_reset_nInterrupt                           ;; reset number of interruption
    7776 AF            [ 4]    1     xor a
-   7777 32 E3 85      [13]    2     ld (nInterrupt), a 
+   7777 32 0A 87      [13]    2     ld (nInterrupt), a 
    777A C9            [10]   55 	ret
                              56 
                              57 
@@ -5395,11 +5395,11 @@ Hexadecimal [16-Bits]
    777B                      64 int_handler1:
                              65    ;;cpctm_setBorder_asm HW_WHITE
    0013                      66    m_inc_nInterrupt                                ;;increment the number of interruption
-   777B 3A E3 85      [13]    1     ld a, (nInterrupt)
+   777B 3A 0A 87      [13]    1     ld a, (nInterrupt)
    777E 3C            [ 4]    2     inc a
-   777F 32 E3 85      [13]    3     ld (nInterrupt), a 
+   777F 32 0A 87      [13]    3     ld (nInterrupt), a 
    7782 21 89 77      [10]   67 	ld hl, #int_handler2
-   7785 CD 77 82      [17]   68  	call cpct_setInterruptHandler_asm	
+   7785 CD 9E 83      [17]   68  	call cpct_setInterruptHandler_asm	
    7788 C9            [10]   69 	ret
                              70 
                              71 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -5417,15 +5417,15 @@ Hexadecimal [16-Bits]
                              78    ;;cpctm_setBorder_asm HW_RED
                              79 
    0021                      80    m_inc_nInterrupt                                ;;increment the number of interruption
-   7789 3A E3 85      [13]    1     ld a, (nInterrupt)
+   7789 3A 0A 87      [13]    1     ld a, (nInterrupt)
    778C 3C            [ 4]    2     inc a
-   778D 32 E3 85      [13]    3     ld (nInterrupt), a 
+   778D 32 0A 87      [13]    3     ld (nInterrupt), a 
                              81 
-   7790 CD BA 83      [17]   82 	call cpct_scanKeyboard_if_asm
+   7790 CD E1 84      [17]   82 	call cpct_scanKeyboard_if_asm
                              83 
                              84 
    7793 21 9A 77      [10]   85 	ld hl, #int_handler3
-   7796 CD 77 82      [17]   86    call cpct_setInterruptHandler_asm
+   7796 CD 9E 83      [17]   86    call cpct_setInterruptHandler_asm
    7799 C9            [10]   87 	ret
                              88 
                              89 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -5438,12 +5438,12 @@ Hexadecimal [16-Bits]
                              96    ;;cpctm_setBorder_asm HW_GREEN
                              97 
    0032                      98    m_inc_nInterrupt                                ;;increment the number of interruption
-   779A 3A E3 85      [13]    1     ld a, (nInterrupt)
+   779A 3A 0A 87      [13]    1     ld a, (nInterrupt)
    779D 3C            [ 4]    2     inc a
-   779E 32 E3 85      [13]    3     ld (nInterrupt), a 
+   779E 32 0A 87      [13]    3     ld (nInterrupt), a 
                              99 
    77A1 21 A8 77      [10]  100 	ld hl, #int_handler4
-   77A4 CD 77 82      [17]  101    call cpct_setInterruptHandler_asm
+   77A4 CD 9E 83      [17]  101    call cpct_setInterruptHandler_asm
    77A7 C9            [10]  102 	ret
                             103 
                             104 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -5456,12 +5456,12 @@ Hexadecimal [16-Bits]
                             111    ;;cpctm_setBorder_asm HW_BLUE
                             112 
    0040                     113    m_inc_nInterrupt                                ;;increment the number of interruption
-   77A8 3A E3 85      [13]    1     ld a, (nInterrupt)
+   77A8 3A 0A 87      [13]    1     ld a, (nInterrupt)
    77AB 3C            [ 4]    2     inc a
-   77AC 32 E3 85      [13]    3     ld (nInterrupt), a 
+   77AC 32 0A 87      [13]    3     ld (nInterrupt), a 
                             114 
    77AF 21 B6 77      [10]  115 	ld hl, #int_handler5
-   77B2 CD 77 82      [17]  116    call cpct_setInterruptHandler_asm
+   77B2 CD 9E 83      [17]  116    call cpct_setInterruptHandler_asm
    77B5 C9            [10]  117 	ret
                             118 
                             119 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -5479,9 +5479,9 @@ Hexadecimal [16-Bits]
                             126    ;;cpctm_setBorder_asm HW_ORANGE
                             127 
    004E                     128    m_inc_nInterrupt
-   77B6 3A E3 85      [13]    1     ld a, (nInterrupt)
+   77B6 3A 0A 87      [13]    1     ld a, (nInterrupt)
    77B9 3C            [ 4]    2     inc a
-   77BA 32 E3 85      [13]    3     ld (nInterrupt), a 
+   77BA 32 0A 87      [13]    3     ld (nInterrupt), a 
                             129 
                             130 ;;  ld a, (music_switch)
                             131 ;;  or a
@@ -5501,7 +5501,7 @@ Hexadecimal [16-Bits]
                             145 ;;  exx
    77BD                     146 int_handler5_exit:
    77BD 21 C4 77      [10]  147 	ld hl, #int_handler6
-   77C0 CD 77 82      [17]  148    call cpct_setInterruptHandler_asm
+   77C0 CD 9E 83      [17]  148    call cpct_setInterruptHandler_asm
    77C3 C9            [10]  149 	ret
                             150 
                             151 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -5515,10 +5515,10 @@ Hexadecimal [16-Bits]
                             159 
    005C                     160    m_reset_nInterrupt
    77C4 AF            [ 4]    1     xor a
-   77C5 32 E3 85      [13]    2     ld (nInterrupt), a 
+   77C5 32 0A 87      [13]    2     ld (nInterrupt), a 
                             161 
    77C8 21 7B 77      [10]  162 	ld hl, #int_handler1
-   77CB CD 77 82      [17]  163    call cpct_setInterruptHandler_asm
+   77CB CD 9E 83      [17]  163    call cpct_setInterruptHandler_asm
    77CE C9            [10]  164 	ret
                             165 
                             166 
@@ -5537,13 +5537,13 @@ Hexadecimal [16-Bits]
                             174 ;;  Destroyed: af, bc,de, hl
                             175 ;;
    77CF                     176 sys_system_disable_firmware::
-   77CF CD 51 84      [17]  177    call cpct_disableFirmware_asm
+   77CF CD 78 85      [17]  177    call cpct_disableFirmware_asm
    77D2 21 7B 77      [10]  178    ld hl, #int_handler1
-   77D5 CD 2F 84      [17]  179    call cpct_waitVSYNC_asm
+   77D5 CD 56 85      [17]  179    call cpct_waitVSYNC_asm
    77D8 76            [ 4]  180    halt
    77D9 76            [ 4]  181    halt
-   77DA CD 2F 84      [17]  182    call cpct_waitVSYNC_asm
-   77DD CD 77 82      [17]  183    call cpct_setInterruptHandler_asm
+   77DA CD 56 85      [17]  182    call cpct_waitVSYNC_asm
+   77DD CD 9E 83      [17]  183    call cpct_setInterruptHandler_asm
                             184    
    77E0 C9            [10]  185    ret
                             186 
