@@ -39,7 +39,7 @@ GAME_STATE_HELP    = 2
 .area _DATA
 
 _game_state:         .db 0
-_game_loaded_string: .asciz " GAME LOADED - V.016"
+_game_loaded_string: .asciz " GAME LOADED - V.024"
 
 ;;
 ;; Start of _CODE area

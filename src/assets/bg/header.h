@@ -3,8 +3,8 @@
 #define _ASSETS_BG_HEADER_H_
 
 #include <types.h>
-#define BG_HEADER_W 44
-#define BG_HEADER_H 20
-extern const u8 bg_header[44 * 20];
+#define BG_HEADER_W 28
+#define BG_HEADER_H 16
+extern const u8 bg_header[28 * 16];
 
 #endif

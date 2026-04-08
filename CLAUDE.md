@@ -18,6 +18,8 @@ Requires the `CPCT_PATH` environment variable pointing to the CPCtelera installa
 
 To run in an emulator: `cpct_winape -as -f` (Windows/Linux) or `cpct_rvm -as -f` (macOS).
 
+VSCode tasks for `make`, `clean`, `cleanall`, and `run` are configured in [.vscode/tasks.json](.vscode/tasks.json).
+
 **Version string**: bump `_game_loaded_string` in `src/man/game.s` after every change. Currently **V.016**. This is mandatory — always increment before finishing any task.
 
 ## Architecture
@@ -34,7 +36,7 @@ src/
 ```
 
 **sys/ modules** (each has a `.h.s` header + `.s` implementation):
-- **render** - Video init (mode, palette, border), screen clear, sprite drawing, `drawSpriteMaskedAlignedColorizeM0` for color-replaced masked sprites. Has a logical double-buffer (front/back tracked by `sys_render_front_buffer`/`sys_render_back_buffer`).
+- **render** - Video init (mode, palette, border), screen clear, sprite drawing, `drawSpriteMaskedAlignedColorizeM0` for color-replaced masked sprites. Has a logical double-buffer (front/back tracked by `sys_render_front_buffer`/`sys_render_back_buffer`). `sys_render_draw_screen` draws the full static chrome (header, baskets, cat/catty icons, grid); `sys_render_draw_grid` redraws only the grid background — use this when refreshing the board without touching the HUD.
 - **system** - Firmware disable, chain of 6 interrupt handlers cycling per frame; handler 2 scans keyboard.
 - **input** - Keyboard dispatch table, wait-for-key, `sys_input_getKeyPressed` for polled reads.
 - **messages** - Windowed message overlay with background save/restore via 3000-byte `message_buffer`.
@@ -87,9 +89,23 @@ Six interrupt handlers (`int_handler1`–`int_handler6`) rotate each interrupt, 
 - Cell pitch: 7 bytes wide × 24 px tall
 - Dimensions: 6 cols × 6 rows
 - Cursor color: `CURSOR_COLOR = 0x3C` (pen 6 — bright yellow — both pixels in Mode 0)
+- Blocked cursor: `BLOCKED_CURSOR_COLOR = 0xF0` (pen 3 — red) — flashed when Space is pressed but the target piece type has 0 remaining
 
 **Player struct** (offsets in `match.h.s`):
 `score` 4 bytes BCD (0), `cats` 1 (4), `kittens` 1 (5); `sizeof_Player = 6`
+
+**Initial reserve**: `MATCH_INITIAL_CATS = 0`, `MATCH_INITIAL_KITTENS = 8` — each player starts with 0 cats and 8 kittens in reserve.
+
+### Keyboard Controls (during match)
+
+| Key | Action |
+|-----|--------|
+| Cursor arrows | Move cursor on the 6×6 grid |
+| Space | Toggle `_cursor_piece` between `PIECE_KITTEN` (1) and `PIECE_CAT` (0); flashes red and blocks if the target piece type has 0 in reserve |
+| Enter/Return | Place the selected piece at the cursor position (`_match_place_piece`) |
+| Escape | Open "ABANDON MATCH? (Y/N)" dialog; Y sets `_match_cancelled=1`, N/Esc resumes |
+
+**`_cursor_piece` state**: starts each turn as `PIECE_KITTEN` (or forced to `PIECE_CAT` if the active player has 0 kittens). Board value = `_match_state * 2 + _cursor_piece + 1`.
 
 ### Kitten Placement Rules
 

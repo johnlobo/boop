@@ -15,6 +15,7 @@
 ;;-------------------------------------------------------------------------------
 
 .include "sys/render.h.s"
+.include "sys/text.h.s"
 .include "cpctelera.h.s"
 .include "common.h.s"
 
@@ -28,9 +29,14 @@
 ;;
 .area _DATA
 
+;; Key-hint strings drawn below the board grid
+;; Grid ends at y=179 (origin 32 + height 148 - 1), two lines fit in y=181..199
+_hint_line1: .asciz "ARROWS - MOVE / ENTER - PLACE CAT"
+_hint_line2: .asciz "SPACE - CHANGE CAT TYPE"
+
 ;;
 ;; Start of _CODE area
-;; 
+;;
 .area _CODE
 
 ;;====================================================
@@ -73,8 +79,8 @@ sys_render_init::
     ld hl, #_g_palette0                     ;; Set palette
     ld de, #16                              ;;
     call cpct_setPalette_asm                ;;
-    ;;cpctm_setBorder_asm HW_BLACK            ;; Set Border
-    cpctm_setBorder_asm HW_WHITE            ;; Set Border
+    cpctm_setBorder_asm HW_BLACK            ;; Set Border
+    ;;cpctm_setBorder_asm HW_WHITE            ;; Set Border
 
     ;;call sys_render_clear_back_buffer
     call sys_render_clear_buffer
@@ -90,13 +96,38 @@ sys_render_init::
 ;;  Output: 
 ;;  Modified: AF, BC, DE, HL
 ;;
-sys_render_draw_screen::
-
-    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 18, 7  ;; Get pointer to video memory for drawing the screen (36x10 tiles)
+;;-----------------------------------------------------------------
+;;
+;; sys_render_draw_header
+;;
+;;  Draws the header sprite centered at the top (X=26, Y=2),
+;;  colorized pen1(white) → pen7(yellow).
+;;  Input:
+;;  Output:
+;;  Modified: AF, BC, DE, HL, IX
+;;
+sys_render_draw_header::
+    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 26, 2
+    push de                                ;; save video memory ptr
+    ld d, #1                               ;; find pen 1 (white)
+    ld e, #7                               ;; replace with pen 7 (yellow)
+    call cpct_pens2pixelPatternPairM0_asm  ;; DE = (find_byte, replace_byte)
+    ex de, hl                              ;; HL = replace pattern
+    ld bc, #_bg_header
+    push bc
+    pop af                                 ;; AF = sprite ptr
+    pop de                                 ;; DE = video memory
     ld c, #BG_HEADER_W
     ld b, #BG_HEADER_H
-    ld hl, #_bg_header
-    call cpct_drawSprite_asm
+    push ix
+    ld ix, #transparency_table
+    call sys_render_drawSpriteMaskedAlignedColorizeM0_asm
+    pop ix
+    ret
+
+sys_render_draw_screen::
+
+    call sys_render_draw_header
 
     cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 0, 50  ;; left basket
     ld c, #S_BASKET_W
@@ -140,6 +171,19 @@ sys_render_draw_screen::
 
     call sys_render_draw_grid
 
+    ;; Key hints below the grid (grid ends at y=167, screen ends at y=199)
+    ;; Line 1: "ARROWS - MOVE / ENTER - PLACE CAT"  33 chars * 2 = 66 bytes  x=(80-66)/2=7  y=179
+    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 7, 179
+    ld hl, #_hint_line1
+    ld c, #3                          ;; Blue = subdued hint
+    call sys_text_draw_string
+
+    ;; Line 2: "SPACE - CHANGE CAT TYPE"  23 chars * 2 = 46 bytes  x=(80-46)/2=17  y=191
+    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 17, 191
+    ld hl, #_hint_line2
+    ld c, #3                          ;; Blue = subdued hint
+    call sys_text_draw_string
+
     ret
 
 ;;-----------------------------------------------------------------
@@ -152,7 +196,7 @@ sys_render_draw_screen::
 ;;  Modified: AF, BC, DE, HL
 ;;
 sys_render_draw_grid::
-    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 18, 32  ;; grid
+    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 18, 20  ;; grid
     ld c, #BG_GRID_W
     ld b, #BG_GRID_H
     ld hl, #_bg_grid

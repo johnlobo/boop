@@ -40,10 +40,17 @@
 .globl _s_big_numbers_07
 .globl _s_big_numbers_08
 .globl _s_big_numbers_09
+.globl _s_gatito_walking_0
+.globl _s_gatito_walking_1
+.globl _s_gatito_walking_2
+.globl _s_gatito_blue
+.globl _s_gatito_orange
+.globl _s_gato_blue
+.globl _s_gato_orange
 .globl _s_catty_0
 .globl _s_catty_1
-.globl _s_cat_0  
-.globl _s_cat_1  
+.globl _s_cat_0
+.globl _s_cat_1
 .globl _s_basket 
 .globl _bg_header
 .globl _bg_grid
@@ -86,6 +93,13 @@
 BUFFER_SIZE = 10
 ZERO_KEYS_ACTIVATED = #0xFF
 
+S_GATITO_W      = 5    ;; walking cat frame: 10px = 5 bytes
+S_GATITO_H      = 14
+S_GATITO_S_W    = 5    ;; small static cat: 9px = 4 bytes
+S_GATITO_S_H    = 14
+S_GATO_W        = 5    ;; big static cat: 10px = 5 bytes
+S_GATO_H        = 17
+
 S_CATTY_W = 5
 S_CATTY_H = 17
 S_CAT_W = 5
@@ -96,8 +110,8 @@ S_BASKET_H = 74
 BG_GRID_W = 44
 BG_GRID_H = 148
 
-BG_HEADER_W = 44
-BG_HEADER_H = 20    
+BG_HEADER_W = 28
+BG_HEADER_H = 16
 
 ;; Font constants
 FONT_WIDTH = 2

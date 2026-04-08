@@ -1651,7 +1651,8 @@ man_match_init::
    xor a
    ld (_turn_debounce), a
 
-   ;; draw full screen: static elements once, then grid + board + cursor + HUD
+   ;; draw full screen: clear first (menu leaves hint text at Y=175/187), then static chrome
+   call sys_render_clear_buffer
    call sys_render_draw_screen
    call _match_redraw_all
    call man_match_draw_hud

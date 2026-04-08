@@ -67,7 +67,7 @@ BOARD_P2_KITTEN      = 4
 ;;   GRID_COLS / ROWS  : grid dimensions
 ;;------------------------------------------------------------------------------
 GRID_FIRST_CELL_X    = 19   ;; byte 18 (bg origin) + 1 left border byte
-GRID_FIRST_CELL_Y    = 36   ;; px  32 (bg origin) + 4 px top gap
+GRID_FIRST_CELL_Y    = 24   ;; px  20 (bg origin) + 4 px top gap
 GRID_CELL_W          = 7    ;; byte pitch between cell origins (7 bytes = 4px gap)
 GRID_CELL_H          = 24   ;; px pitch between cell origins  (24 px)
 GRID_COLS            = 6
