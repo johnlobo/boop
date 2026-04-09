@@ -88,9 +88,20 @@ BLOCKED_CURSOR_COLOR = 0xF0  ;; pen 3 (Red) both pixels in Mode 0 → blocked-to
 .globl man_match_num_players      ;; 1 or 2
 .globl _match_cancelled           ;; 1 when player confirmed abandon
 
+;; Exported for AI module use
+.globl _match_board               ;; 36-byte row-major board array
+.globl _cursor_col                ;; current cursor column (0..5)
+.globl _cursor_row                ;; current cursor row    (0..5)
+.globl _cursor_piece              ;; PIECE_CAT or PIECE_KITTEN
+
 ;;------------------------------------------------------------------------------
 ;; Global routines
 ;;------------------------------------------------------------------------------
 .globl man_match_init
 .globl man_match_update
 .globl man_match_draw_hud
+
+;; Exported for AI module use
+.globl _match_place_piece         ;; place current cursor piece on board
+.globl _match_boop                ;; kitten boop (uses _cursor_row/_col)
+.globl _match_boop_cat            ;; cat boop    (uses _cursor_row/_col)

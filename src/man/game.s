@@ -18,6 +18,7 @@
 .include "man/menu.h.s"
 .include "man/match.h.s"
 .include "man/help.h.s"
+.include "man/ai.h.s"
 .include "cpctelera.h.s"
 .include "../common.h.s"
 .include "sys/render.h.s"
@@ -29,9 +30,10 @@
 ;;
 ;; Game state constants
 ;;
-GAME_STATE_MENU    = 0
-GAME_STATE_PLAYING = 1
-GAME_STATE_HELP    = 2
+GAME_STATE_MENU      = 0
+GAME_STATE_PLAYING   = 1
+GAME_STATE_HELP      = 2
+GAME_STATE_AI_SELECT = 3   ;; AI level picker (1-player only)
 
 ;;
 ;; Start of _DATA area
@@ -39,7 +41,7 @@ GAME_STATE_HELP    = 2
 .area _DATA
 
 _game_state:         .db 0
-_game_loaded_string: .asciz " GAME LOADED - V.024"
+_game_loaded_string: .asciz " GAME LOADED - V.028"
 
 ;;
 ;; Start of _CODE area
@@ -94,7 +96,9 @@ sys_game_update::
    jr z, _sgu_menu
    cp #GAME_STATE_PLAYING
    jr z, _sgu_playing
-   jr _sgu_help
+   cp #GAME_STATE_HELP
+   jr z, _sgu_help
+   jr _sgu_ai_select               ;; GAME_STATE_AI_SELECT = 3
 
 _sgu_menu:
    call man_menu_update
@@ -102,13 +106,23 @@ _sgu_menu:
    ;; Check if player confirmed a selection
    ld a, (man_menu_confirmed)
    or a
-   ret z                               ;; not confirmed yet, stay in menu
+   ret z                            ;; not confirmed yet, stay in menu
 
    ;; confirmed=3 means HELP was selected
    cp #3
    jr z, _sgu_goto_help
 
-   ;; Transition to playing: init match (reads selection, resets players, draws screen)
+   ;; confirmed=1 means ONE PLAYER → show AI level picker first
+   cp #1
+   jr nz, _sgu_goto_playing
+
+   ld a, #GAME_STATE_AI_SELECT
+   ld (_game_state), a
+   call man_ai_select_init
+   ret
+
+_sgu_goto_playing:
+   ;; TWO PLAYERS or returning from AI-select: start match directly
    ld a, #GAME_STATE_PLAYING
    ld (_game_state), a
    call man_match_init
@@ -118,6 +132,30 @@ _sgu_goto_help:
    ld a, #GAME_STATE_HELP
    ld (_game_state), a
    call man_help_init
+   ret
+
+_sgu_ai_select:
+   call man_ai_select_update
+
+   ld a, (man_ai_select_done)
+   or a
+   ret z                            ;; still choosing
+
+   cp #2
+   jr z, _sgu_ai_select_cancel      ;; ESC: back to menu
+
+   ;; Level confirmed → start match (man_menu_confirmed still = 1 = ONE PLAYER)
+   ld a, #GAME_STATE_PLAYING
+   ld (_game_state), a
+   call man_match_init
+   ret
+
+_sgu_ai_select_cancel:
+   ;; Player pressed ESC: go back to main menu
+   xor a
+   ld (_game_state), a
+   ld (man_menu_confirmed), a       ;; reset so menu doesn't auto-confirm again
+   call man_menu_init
    ret
 
 _sgu_playing:
@@ -130,7 +168,7 @@ _sgu_playing:
 
    ;; Transition back to menu
    xor a
-   ld (_game_state), a               ;; GAME_STATE_MENU = 0
+   ld (_game_state), a              ;; GAME_STATE_MENU = 0
    call man_menu_init
    ret
 
@@ -140,7 +178,7 @@ _sgu_help:
    ;; Return to menu when done
    ld a, (man_help_done)
    or a
-   ret z                               ;; not done yet, stay on help screen
+   ret z                            ;; not done yet, stay on help screen
 
    xor a
    ld (_game_state), a

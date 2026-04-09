@@ -20,6 +20,7 @@
 .include "sys/render.h.s"
 .include "sys/text.h.s"
 .include "sys/input.h.s"
+.include "sys/util.h.s"
 
 .module man_help
 
@@ -154,8 +155,10 @@ man_help_init::
    xor a
    ld (man_help_done), a
 
+   call sys_util_fadeOut
    call sys_render_clear_buffer
    call man_help_draw
+   call sys_util_fadeIn
 
    ret
 

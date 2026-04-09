@@ -43,10 +43,6 @@
 .globl _s_gatito_walking_0
 .globl _s_gatito_walking_1
 .globl _s_gatito_walking_2
-.globl _s_gatito_blue
-.globl _s_gatito_orange
-.globl _s_gato_blue
-.globl _s_gato_orange
 .globl _s_catty_0
 .globl _s_catty_1
 .globl _s_cat_0
@@ -82,6 +78,7 @@
 .globl cpct_pens2pixelPatternPairM0_asm
 .globl sys_render_drawSpriteMaskedAlignedColorizeM0_asm
 .globl cpct_getRandom_mxor_u8_asm
+.globl cpct_hflipSpriteM0_asm
 .globl cpct_px2byteM0_asm
 .globl cpct_setPALColour_asm
 
@@ -94,11 +91,7 @@ BUFFER_SIZE = 10
 ZERO_KEYS_ACTIVATED = #0xFF
 
 S_GATITO_W      = 5    ;; walking cat frame: 10px = 5 bytes
-S_GATITO_H      = 14
-S_GATITO_S_W    = 5    ;; small static cat: 9px = 4 bytes
-S_GATITO_S_H    = 14
-S_GATO_W        = 5    ;; big static cat: 10px = 5 bytes
-S_GATO_H        = 17
+S_GATITO_H      = 15
 
 S_CATTY_W = 5
 S_CATTY_H = 17

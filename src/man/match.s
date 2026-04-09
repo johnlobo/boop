@@ -16,6 +16,7 @@
 
 .include "man/match.h.s"
 .include "man/menu.h.s"
+.include "man/ai.h.s"
 .include "cpctelera.h.s"
 .include "../common.h.s"
 .include "sys/render.h.s"
@@ -50,16 +51,16 @@ man_match_num_players:: .db 1
 ;; Board: 6x6 cells, row-major [row*6 + col]
 ;; Values: 0=empty, 1=P1 cat, 2=P1 kitten, 3=P2 cat, 4=P2 kitten
 ;;
-_match_board: .ds 36
+_match_board:: .ds 36
 
 ;;
 ;; Turn / cursor state
 ;;
 _match_cancelled:: .db 0 ;; set to 1 when player confirms ESC → abandon match
 _match_state:      .db 0 ;; MATCH_STATE_P1 or MATCH_STATE_P2
-_cursor_col:    .db 0   ;; 0 .. GRID_COLS-1
-_cursor_row:    .db 0   ;; 0 .. GRID_ROWS-1
-_cursor_piece:  .db 0   ;; PIECE_CAT or PIECE_KITTEN
+_cursor_col::   .db 0   ;; 0 .. GRID_COLS-1  (exported for AI module)
+_cursor_row::   .db 0   ;; 0 .. GRID_ROWS-1  (exported for AI module)
+_cursor_piece:: .db 0   ;; PIECE_CAT or PIECE_KITTEN (exported for AI module)
 _turn_debounce: .db 0   ;; 1 while a key is held (same pattern as menu.s)
 
 ;;
@@ -460,7 +461,7 @@ _match_redraw_all:
 ;;  Output:
 ;;  Modified: AF, BC, DE, HL, IX
 ;;
-_match_place_piece:
+_match_place_piece::
    ;; Compute board index = row*6 + col
    ld a, (_cursor_row)
    ld b, a                           ;; B = row
@@ -912,7 +913,7 @@ _mba_restore:
 ;;  Output:
 ;;  Modified: AF, BC, DE, HL, IX, IY
 ;;
-_match_boop:
+_match_boop::
    ld iy, #_boop_dir_table
    ld b, #8                          ;; 8 directions to check
 
@@ -1043,7 +1044,7 @@ _mb_next_dir:
 ;;  Output:
 ;;  Modified: AF, BC, DE, HL, IX, IY
 ;;
-_match_boop_cat:
+_match_boop_cat::
    ld iy, #_boop_dir_table
    ld b, #8                          ;; 8 directions to check
 
@@ -1656,6 +1657,12 @@ man_match_init::
    call sys_render_draw_screen
    call _match_redraw_all
    call man_match_draw_hud
+   ;; 1-player: initialise AI evaluation state for the first P2 turn
+   ld a, (man_match_num_players)
+   cp #1
+   jr nz, _mmi_skip_ai
+   call man_ai_init
+_mmi_skip_ai:
    jp _match_show_turn_message       ;; tail call: announce Player 1 starts
 
 ;;-----------------------------------------------------------------
@@ -1668,6 +1675,16 @@ man_match_init::
 ;;  Modified: AF, BC, DE, HL
 ;;
 man_match_update::
-   call _match_handle_input
+   ;; 1-player mode: when it is P2's turn, delegate entirely to AI
+   ld a, (man_match_num_players)
+   cp #1
+   jr nz, _mmu_human
+   ld a, (_match_state)
+   cp #MATCH_STATE_P2
+   jr nz, _mmu_human
+   call man_ai_update
+   ret
 
+_mmu_human:
+   call _match_handle_input
    ret

@@ -20,6 +20,9 @@
 .include "sys/render.h.s"
 .include "sys/text.h.s"
 .include "sys/input.h.s"
+.include "sys/util.h.s"
+.include "sys/messages.h.s"
+
 
 .module man_menu
 
@@ -40,13 +43,15 @@ man_menu_confirmed:: .db 0      ;; 0 = not confirmed, 1 = ONE PLAYER, 2 = TWO PL
 _menu_key_debounce: .db 0       ;; 1 if a key was held last frame
 
 ;; Walking cat animation state
-_menu_anim_x:      .db 0        ;; current X position in bytes (0..75)
+_menu_anim_x:      .db 40        ;; current X position in bytes (0..75)
 _menu_anim_tick:   .db 0        ;; frame counter (0..MENU_ANIM_PERIOD-1)
 _menu_anim_phase:  .db 0        ;; walk cycle index (0..3)
 _menu_anim_state:  .db 0        ;; 0=WALKING, 1=STOPPED
+_menu_anim_dir:    .db 0        ;; 0=walking right, 1=walking left
 _menu_walk_steps:  .db 20       ;; X-moves remaining before stopping
 _menu_stop_timer:  .db 0        ;; stop units remaining (each unit = 4 frames)
 _menu_stop_subtick:.db 0        ;; 0..3 sub-tick to divide frames by 4
+_menu_flip_buf:    .ds 75  ;; buffer for flipped walking frame (S_GATITO_W * S_GATITO_H = 5*15)
 _menu_anim_sprites:              ;; sprite table: cycle = 0,1,2,1
     .dw _s_gatito_walking_0
     .dw _s_gatito_walking_1
@@ -70,38 +75,46 @@ _menu_anim_sprites:              ;; sprite table: cycle = 0,1,2,1
 man_menu_draw::
    call sys_render_draw_header             ;; title at top (X=26, Y=2, yellow)
 
-   ;; Cats between header (ends Y=17) and menu (starts Y=90), bottom-aligned at Y=62
-   ;; Layout: big-orange(5B) +2 small-blue(4B) +2 small-orange(4B) +2 big-blue(5B) = 24B
+   ;; Cats between header (ends Y=17) and menu (starts Y=90), bottom-aligned at Y=63
+   ;; All 17px tall. Layout: cat(5B) +2 catty(5B) +2 catty(5B) +2 cat(5B) = 24B
    ;; Centered: (80-24)/2=28  →  X=28, 35, 41, 47
-   ;; Big cats (17px tall): Y=46   Small cats (14px tall): Y=49
 
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 28, 46   ;; big orange cat
-   ld bc, #_s_gato_orange
-   ld__ixl S_GATO_W
-   ld__ixh S_GATO_H
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 28, 46   ;; cat orange (P1)
+   ld bc, #_s_cat_0
+   ld__ixl S_CAT_W
+   ld__ixh S_CAT_H
    ld hl, #transparency_table
    call cpct_drawSpriteMaskedAlignedTable_asm
 
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 35, 49   ;; small blue cat
-   ld bc, #_s_gatito_blue
-   ld__ixl S_GATITO_S_W
-   ld__ixh S_GATITO_S_H
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 35, 46   ;; catty blue (P2)
+   ld bc, #_s_catty_1
+   ld__ixl S_CATTY_W
+   ld__ixh S_CATTY_H
    ld hl, #transparency_table
    call cpct_drawSpriteMaskedAlignedTable_asm
 
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 41, 49   ;; small orange cat
-   ld bc, #_s_gatito_orange
-   ld__ixl S_GATITO_S_W
-   ld__ixh S_GATITO_S_H
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 41, 46   ;; catty orange (P1)
+   ld bc, #_s_catty_0
+   ld__ixl S_CATTY_W
+   ld__ixh S_CATTY_H
    ld hl, #transparency_table
    call cpct_drawSpriteMaskedAlignedTable_asm
 
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 47, 46   ;; big blue cat
-   ld bc, #_s_gato_blue
-   ld__ixl S_GATO_W
-   ld__ixh S_GATO_H
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 47, 46   ;; cat blue (P2)
+   ld bc, #_s_cat_1
+   ld__ixl S_CAT_W
+   ld__ixh S_CAT_H
    ld hl, #transparency_table
    call cpct_drawSpriteMaskedAlignedTable_asm
+
+  ;; Draw box under menu options
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 27, 84  ;; Get pointer to video memory for drawing the box in DE
+   ld a, #0xc0
+   ld c, #27
+   ld b, #54
+   ld l, #00
+   call sys_messages_draw_box
+
 
    ;; Draw option 1: ONE PLAYER  (x=31 bytes, y=90 px)
    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 31, 90  ;; Get pointer to video memory for drawing the first option of the menu
@@ -129,8 +142,8 @@ _draw_opt2_white:
 _draw_opt2:
    call sys_text_draw_string
 
-   ;; Draw option 3: HELP  (x=34 bytes, y=130 px)
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 34, 130  ;; Get pointer to video memory for drawing the third option of the menu
+   ;; Draw option 3: HELP  centered in box  x=29+(22-8)/2=36  y=122+(18-9)/2=126
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 36, 126
    ld hl, #_menu_opt3_string
    ld a, (man_menu_selected)
    cp #2
@@ -166,22 +179,26 @@ _draw_opt3:
 ;;  Modified: AF, BC, DE, HL
 ;;
 man_menu_init::
+   ld a, #30
+   ld (_menu_anim_x), a
    xor a
    ld (man_menu_selected), a
    ld (man_menu_confirmed), a
    ld (_menu_key_debounce), a
-   ld (_menu_anim_x), a
    ld (_menu_anim_tick), a
    ld (_menu_anim_phase), a
    ld (_menu_anim_state), a
+   ld (_menu_anim_dir), a
    ld (_menu_stop_subtick), a
    ld a, #20
    ld (_menu_walk_steps), a
    xor a
 
+   call sys_util_fadeOut
    call sys_render_clear_buffer
    call man_menu_draw
    call _menu_draw_gatito
+   call sys_util_fadeIn
 
    ret
 
@@ -194,8 +211,9 @@ man_menu_init::
 ;;  Output:
 ;;  Modified: AF, BC, DE, HL
 ;;
-MENU_CAT_Y       = 158  ;; Y position of the walking cat (px)
-MENU_ANIM_PERIOD = 16   ;; frames per animation step (~3 changes/sec at 50Hz)
+MENU_CAT_Y       = 152  ;; Y position of the walking cat (px)
+MENU_CAT_STOPPED_Y = 151  ;; stopped sprite is 1px higher (catty_0 is taller than walking frame)
+MENU_ANIM_PERIOD = 22   ;; frames per animation step (~3 changes/sec at 50Hz)
 
 man_menu_update::
    call _menu_update_gatito        ;; animate cat every frame
@@ -315,13 +333,33 @@ _mug_walk_step:
    ld (_menu_walk_steps), a
    jr z, _mug_stop                  ;; steps exhausted: stop
 
+   ;; Direction-aware X movement with edge bounce
+   ld a, (_menu_anim_dir)
+   or a
+   jr nz, _mug_move_left
+
+_mug_move_right:
    ld a, (_menu_anim_x)
+   cp #(80 - S_GATITO_W)            ;; at right edge?
+   jr z, _mug_reverse_to_left
    inc a
-   cp #(80 - S_GATITO_W + 1)        ;; wrap at right edge
-   jr c, _mug_x_ok
-   xor a
-_mug_x_ok:
    ld (_menu_anim_x), a
+   jr _mug_draw_walking
+_mug_reverse_to_left:
+   ld a, #1
+   ld (_menu_anim_dir), a
+   jr _mug_draw_walking
+
+_mug_move_left:
+   ld a, (_menu_anim_x)
+   or a                             ;; at left edge (X=0)?
+   jr z, _mug_reverse_to_right
+   dec a
+   ld (_menu_anim_x), a
+   jr _mug_draw_walking
+_mug_reverse_to_right:
+   xor a
+   ld (_menu_anim_dir), a
 
 _mug_draw_walking:
    jp _menu_draw_gatito              ;; tail call
@@ -354,15 +392,15 @@ _mug_stopped:
    ld (hl), a
    ret nz                            ;; still waiting
 
-   ;; Timer done → WALKING: erase stopped sprite, load random steps
+   ;; Timer done → WALKING: erase stopped sprite (catty_0, 17px tall), load random steps
    ld a, (_menu_anim_x)
    ld c, a
-   ld b, #MENU_CAT_Y
+   ld b, #MENU_CAT_STOPPED_Y
    ld de, #CPCT_VMEM_START_ASM
    call cpct_getScreenPtr_asm
    ex de, hl
-   ld b, #S_GATITO_H
-   ld c, #S_GATITO_W                ;; erase 5B to cover full walking width too
+   ld b, #S_CATTY_H
+   ld c, #S_CATTY_W                 ;; erase to cover full stopped sprite height
    xor a
    call cpct_drawSolidBox_asm
 
@@ -390,18 +428,18 @@ _mug_stopped:
 ;;
 ;; _menu_draw_gatito_stopped
 ;;
-;;  Draws _s_gatito_orange (small static cat) at current position.
+;;  Draws _s_catty_0 (stopped cat) at current position.
 ;;
 _menu_draw_gatito_stopped:
    ld a, (_menu_anim_x)
    ld c, a
-   ld b, #MENU_CAT_Y
+   ld b, #MENU_CAT_STOPPED_Y
    ld de, #CPCT_VMEM_START_ASM
    call cpct_getScreenPtr_asm
    ex de, hl                        ;; DE = destination
-   ld bc, #_s_gatito_orange
-   ld__ixl S_GATITO_S_W
-   ld__ixh S_GATITO_S_H
+   ld bc, #_s_catty_0
+   ld__ixl S_CATTY_W
+   ld__ixh S_CATTY_H
    ld hl, #transparency_table
    call cpct_drawSpriteMaskedAlignedTable_asm
    ret
@@ -420,17 +458,36 @@ _menu_draw_gatito:
    ex de, hl                        ;; DE = destination
    push de
 
-   ;; Look up sprite pointer for current phase
+   ;; Look up sprite pointer for current phase → HL = sprite ptr
    ld a, (_menu_anim_phase)
    add a, a                         ;; *2 (word size)
    ld c, a
    ld b, #0
    ld hl, #_menu_anim_sprites
-   add hl, bc                       ;; HL = &_menu_anim_sprites[phase]
+   add hl, bc
    ld__hl__hl_with_a                ;; HL = sprite ptr
-   ld b, h
-   ld c, l                          ;; BC = sprite ptr
 
+   ;; Check direction: going left → flip to buffer first
+   ld a, (_menu_anim_dir)
+   or a
+   jr z, _mdg_draw_direct
+
+   ;; Going left: copy sprite → _menu_flip_buf, flip in-place
+   ld de, #_menu_flip_buf
+   ld bc, #(S_GATITO_W * S_GATITO_H)
+   ldir                             ;; copy sprite data
+   ld hl, #_menu_flip_buf
+   ld c, #S_GATITO_W
+   ld b, #S_GATITO_H
+   call cpct_hflipSpriteM0_asm      ;; flip in-place
+   ld bc, #_menu_flip_buf
+   jr _mdg_do_draw
+
+_mdg_draw_direct:
+   ld b, h
+   ld c, l                          ;; BC = original sprite ptr
+
+_mdg_do_draw:
    ld__ixl S_GATITO_W
    ld__ixh S_GATITO_H
    pop de                           ;; DE = destination
