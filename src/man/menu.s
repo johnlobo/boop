@@ -40,8 +40,6 @@ _menu_hint2_string: .asciz "ENTER - SELECT"
 man_menu_selected::  .db 0      ;; 0 = ONE PLAYER, 1 = TWO PLAYERS, 2 = HELP
 man_menu_confirmed:: .db 0      ;; 0 = not confirmed, 1 = ONE PLAYER, 2 = TWO PLAYERS, 3 = HELP
 
-_menu_key_debounce: .db 0       ;; 1 if a key was held last frame
-
 ;; Walking cat animation state
 _menu_anim_x:      .db 40        ;; current X position in bytes (0..75)
 _menu_anim_tick:   .db 0        ;; frame counter (0..MENU_ANIM_PERIOD-1)
@@ -179,25 +177,25 @@ _draw_opt3:
 ;;  Modified: AF, BC, DE, HL
 ;;
 man_menu_init::
-   ld a, #30
+   ld a, #38
    ld (_menu_anim_x), a
    xor a
    ld (man_menu_selected), a
    ld (man_menu_confirmed), a
-   ld (_menu_key_debounce), a
    ld (_menu_anim_tick), a
    ld (_menu_anim_phase), a
-   ld (_menu_anim_state), a
    ld (_menu_anim_dir), a
    ld (_menu_stop_subtick), a
-   ld a, #20
-   ld (_menu_walk_steps), a
+   ld a, #1
+   ld (_menu_anim_state), a          ;; start STOPPED
+   ld a, #120
+   ld (_menu_stop_timer), a          ;; short initial pause before first walk
    xor a
 
    call sys_util_fadeOut
    call sys_render_clear_buffer
    call man_menu_draw
-   call _menu_draw_gatito
+   call _menu_draw_gatito_stopped
    call sys_util_fadeIn
 
    ret
@@ -216,67 +214,41 @@ MENU_CAT_STOPPED_Y = 151  ;; stopped sprite is 1px higher (catty_0 is taller tha
 MENU_ANIM_PERIOD = 22   ;; frames per animation step (~3 changes/sec at 50Hz)
 
 man_menu_update::
-   call _menu_update_gatito        ;; animate cat every frame
+   call _menu_update_gatito
+   jp sys_input_menu_update          ;; tail call: debounced input dispatch
 
-   ;; Debounce: if a key was held last frame, wait for full release
-   ld a, (_menu_key_debounce)
-   or a
-   jr z, _mmu_check_keys
-   call cpct_isAnyKeyPressed_asm
-   or a
-   ret nz                            ;; still held, do nothing this frame
-   xor a
-   ld (_menu_key_debounce), a
-   ret
+;;-----------------------------------------------------------------
+;; Menu input action routines — called by sys_input_menu_update
+;;-----------------------------------------------------------------
 
-_mmu_check_keys:
-   ;; Cursor Up: move selection up, wrapping 0 -> 2
-   ld hl, #Key_CursorUp
-   call cpct_isKeyPressed_asm
-   jr z, _mmu_check_down
+_menu_input_up::
    ld a, (man_menu_selected)
    or a
-   jr z, _mmu_up_wrap
+   jr z, _miu_up_wrap
    dec a
-   jr _mmu_up_done
-_mmu_up_wrap:
+   jr _miu_up_done
+_miu_up_wrap:
    ld a, #2
-_mmu_up_done:
+_miu_up_done:
    ld (man_menu_selected), a
-   call man_menu_draw
-   jr _mmu_set_debounce
+   jp man_menu_draw                  ;; tail call: redraw + ret to caller
 
-_mmu_check_down:
-   ;; Cursor Down: move selection down, wrapping 2 -> 0
-   ld hl, #Key_CursorDown
-   call cpct_isKeyPressed_asm
-   jr z, _mmu_check_enter
+_menu_input_down::
    ld a, (man_menu_selected)
    cp #2
-   jr z, _mmu_down_wrap
+   jr z, _miu_down_wrap
    inc a
-   jr _mmu_down_done
-_mmu_down_wrap:
+   jr _miu_down_done
+_miu_down_wrap:
    xor a
-_mmu_down_done:
+_miu_down_done:
    ld (man_menu_selected), a
-   call man_menu_draw
-   jr _mmu_set_debounce
+   jp man_menu_draw                  ;; tail call: redraw + ret to caller
 
-_mmu_check_enter:
-   ;; Enter: confirm current selection
-   ld hl, #Key_Return
-   call cpct_isKeyPressed_asm
-   jr z, _mmu_done
+_menu_input_confirm::
    ld a, (man_menu_selected)
-   inc a                             ;; 1 = ONE PLAYER, 2 = TWO PLAYERS
+   inc a                             ;; 1=ONE PLAYER, 2=TWO PLAYERS, 3=HELP
    ld (man_menu_confirmed), a
-
-_mmu_set_debounce:
-   ld a, #1
-   ld (_menu_key_debounce), a
-
-_mmu_done:
    ret
 
 ;;-----------------------------------------------------------------
@@ -405,6 +377,12 @@ _mug_stopped:
    call cpct_drawSolidBox_asm
 
    call cpct_getRandom_mxor_u8_asm
+   bit 0, l                         ;; check last bit: change direction?
+   jr z, _mug_resume_walk           ;; 0 → keep current direction
+   ld a, (_menu_anim_dir)
+   xor #1                           ;; 1 → flip direction
+   ld (_menu_anim_dir), a
+_mug_resume_walk:
    ld a, l
    and #7                           ;; 0..7
    add a, #20                       ;; 20..27 X-movements ≈ half-screen per stretch

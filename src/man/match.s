@@ -61,7 +61,6 @@ _match_state:      .db 0 ;; MATCH_STATE_P1 or MATCH_STATE_P2
 _cursor_col::   .db 0   ;; 0 .. GRID_COLS-1  (exported for AI module)
 _cursor_row::   .db 0   ;; 0 .. GRID_ROWS-1  (exported for AI module)
 _cursor_piece:: .db 0   ;; PIECE_CAT or PIECE_KITTEN (exported for AI module)
-_turn_debounce: .db 0   ;; 1 while a key is held (same pattern as menu.s)
 
 ;;
 ;; Boop animation buffers
@@ -606,144 +605,86 @@ _mpp_pe_out:
    jp _match_declare_winner
 
 ;;-----------------------------------------------------------------
-;;
-;; _match_handle_input
-;;
-;;  Reads directional keys, Space, and Enter each frame.
-;;  Identical debounce pattern to menu.s.
-;;  Input:
-;;  Output:
-;;  Modified: AF, BC, DE, HL
-;;
-_match_handle_input:
-   ;; Debounce: wait for full key release before accepting new input
-   ld a, (_turn_debounce)
-   or a
-   jr z, _mhi_check_keys
-   call cpct_isAnyKeyPressed_asm
-   or a
-   ret nz                            ;; key still held, do nothing
-   xor a
-   ld (_turn_debounce), a
-   ret
+;; Match input action routines — called by sys_input_match_update
+;;-----------------------------------------------------------------
 
-_mhi_check_keys:
-   ;; Cursor Up
-   ld hl, #Key_CursorUp
-   call cpct_isKeyPressed_asm
-   jr z, _mhi_check_down
+_match_input_up::
    ld a, (_cursor_row)
    or a
-   jr z, _mhi_check_down             ;; already at row 0
+   ret z                             ;; already at top
    dec a
    ld (_cursor_row), a
-   call _match_redraw_all
-   jp _mhi_set_debounce
+   jp _match_redraw_all              ;; tail call
 
-_mhi_check_down:
-   ld hl, #Key_CursorDown
-   call cpct_isKeyPressed_asm
-   jr z, _mhi_check_left
+_match_input_down::
    ld a, (_cursor_row)
    cp #(GRID_ROWS - 1)
-   jr z, _mhi_check_left             ;; already at last row
+   ret z                             ;; already at bottom
    inc a
    ld (_cursor_row), a
-   call _match_redraw_all
-   jp _mhi_set_debounce
+   jp _match_redraw_all
 
-_mhi_check_left:
-   ld hl, #Key_CursorLeft
-   call cpct_isKeyPressed_asm
-   jr z, _mhi_check_right
+_match_input_left::
    ld a, (_cursor_col)
    or a
-   jr z, _mhi_check_right            ;; already at col 0
+   ret z                             ;; already at left edge
    dec a
    ld (_cursor_col), a
-   call _match_redraw_all
-   jp _mhi_set_debounce
+   jp _match_redraw_all
 
-_mhi_check_right:
-   ld hl, #Key_CursorRight
-   call cpct_isKeyPressed_asm
-   jr z, _mhi_check_space
+_match_input_right::
    ld a, (_cursor_col)
    cp #(GRID_COLS - 1)
-   jr z, _mhi_check_space            ;; already at last col
+   ret z                             ;; already at right edge
    inc a
    ld (_cursor_col), a
-   call _match_redraw_all
-   jr _mhi_set_debounce
+   jp _match_redraw_all
 
-_mhi_check_space:
-   ld hl, #Key_Space
-   call cpct_isKeyPressed_asm
-   jr z, _mhi_check_enter
-   ;; Determine current player struct
+_match_input_space::
    ld a, (_match_state)
    or a
-   jr nz, _mhi_sp_p2
+   jr nz, _mis_p2
    ld ix, #man_match_player1
-   jr _mhi_sp_check
-_mhi_sp_p2:
+   jr _mis_check
+_mis_p2:
    ld ix, #man_match_player2
-_mhi_sp_check:
-   ;; Check whether the target piece type has pieces available
+_mis_check:
    ld a, (_cursor_piece)
-   cp #PIECE_CAT                     ;; currently on CAT?
-   jr z, _mhi_sp_chk_kitten          ;; yes → trying to switch to KITTEN, check kittens
-   ;; currently on KITTEN → trying to switch to CAT
+   cp #PIECE_CAT
+   jr z, _mis_chk_kitten
    ld a, Player_cats(ix)
    or a
-   jr z, _mhi_sp_blocked             ;; 0 cats → flash red and block
-   jr _mhi_sp_do_toggle
-_mhi_sp_chk_kitten:
+   jr z, _mis_blocked
+   jr _mis_do_toggle
+_mis_chk_kitten:
    ld a, Player_kittens(ix)
    or a
-   jr z, _mhi_sp_blocked             ;; 0 kittens → flash red and block
-_mhi_sp_do_toggle:
+   jr z, _mis_blocked
+_mis_do_toggle:
    ld a, (_cursor_piece)
    xor #1
    ld (_cursor_piece), a
-   call _match_redraw_all
-   jr _mhi_set_debounce
-_mhi_sp_blocked:
-   ;; Flash cursor red for ~quarter second to signal blocked toggle
+   jp _match_redraw_all
+_mis_blocked:
    ld a, (_cursor_col)
    ld c, a
    ld a, (_cursor_row)
    ld b, a
-   call _match_col_row_to_screen_addr  ;; DE = cursor screen address
-   inc de                              ;; same 1-byte offset as normal cursor draw
+   call _match_col_row_to_screen_addr
+   inc de
    ld a, #BLOCKED_CURSOR_COLOR
    ld c, #CURSOR_W
    ld b, #CURSOR_H
    call cpct_drawSolidBox_asm
-   ld b, #13                           ;; ~quarter second (13 frames at 50Hz)
+   ld b, #13
    call sys_util_delay
-   call _match_redraw_all
-   jr _mhi_set_debounce
+   jp _match_redraw_all
 
-_mhi_check_enter:
-   ld hl, #Key_Return
-   call cpct_isKeyPressed_asm
-   jr z, _mhi_check_esc
-   call _match_place_piece
-   jr _mhi_set_debounce
+_match_input_enter::
+   jp _match_place_piece             ;; tail call
 
-_mhi_check_esc:
-   ld hl, #Key_Esc
-   call cpct_isKeyPressed_asm
-   jr z, _mhi_done
-   call _match_confirm_cancel
-
-_mhi_set_debounce:
-   ld a, #1
-   ld (_turn_debounce), a
-
-_mhi_done:
-   ret
+_match_input_esc::
+   jp _match_confirm_cancel          ;; tail call
 
 ;;-----------------------------------------------------------------
 ;;
@@ -1649,9 +1590,6 @@ man_match_init::
    ld (_cursor_row), a
    ld a, #PIECE_KITTEN               ;; start with kitten selected
    ld (_cursor_piece), a
-   xor a
-   ld (_turn_debounce), a
-
    ;; draw full screen: clear first (menu leaves hint text at Y=175/187), then static chrome
    call sys_render_clear_buffer
    call sys_render_draw_screen
@@ -1686,5 +1624,4 @@ man_match_update::
    ret
 
 _mmu_human:
-   call _match_handle_input
-   ret
+   jp sys_input_match_update

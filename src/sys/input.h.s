@@ -30,6 +30,8 @@
 .globl sys_input_getKeyPressed
 
 .globl sys_input_update
+.globl sys_input_menu_update
+.globl sys_input_match_update
 
 ;;.globl sys_input_main_screen_keys
 ;;.globl sys_input_update

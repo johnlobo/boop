@@ -27,9 +27,37 @@
 ;;  any one of them for any purpose. Usually, compiler puts _DATA area contents
 ;;  right after _CODE area contents.
 ;;
+.globl _menu_input_up
+.globl _menu_input_down
+.globl _menu_input_confirm
+
+.globl _match_input_up
+.globl _match_input_down
+.globl _match_input_left
+.globl _match_input_right
+.globl _match_input_space
+.globl _match_input_enter
+.globl _match_input_esc
+
 .area _DATA
 
+_sys_input_debounce: .db 0      ;; 0=ready, 1=waiting for all keys to release
 
+sys_input_menu_key_actions::
+    .dw Key_CursorUp,    _menu_input_up
+    .dw Key_CursorDown,  _menu_input_down
+    .dw Key_Return,      _menu_input_confirm
+    .dw 0
+
+sys_input_match_key_actions::
+    .dw Key_CursorUp,    _match_input_up
+    .dw Key_CursorDown,  _match_input_down
+    .dw Key_CursorLeft,  _match_input_left
+    .dw Key_CursorRight, _match_input_right
+    .dw Key_Space,       _match_input_space
+    .dw Key_Return,      _match_input_enter
+    .dw Key_Esc,         _match_input_esc
+    .dw 0
 
 sys_input_key_actions::
     .dw Key_O,      sys_input_selected_left
@@ -256,14 +284,72 @@ first_key:
 
 ;;-----------------------------------------------------------------
 ;;
+;; sys_input_menu_update
+;;
+;;   Debounced input update for menu screens.
+;;   Scans sys_input_menu_key_actions, fires the FIRST matching key,
+;;   then arms debounce until all keys are released.
+;;  Input:  -
+;;  Output: -
+;;  Modified: AF, BC, HL, IY
+;;
+;;-----------------------------------------------------------------
+;;
+;; sys_input_debounced_update
+;;
+;;   Shared debounced table-dispatch core.
+;;   IY must point to a key-action table before calling.
+;;   Fires the FIRST matching key, arms debounce until all keys released.
+;;  Input:  IY = key-action table pointer
+;;  Output: -
+;;  Modified: AF, BC, HL, IY
+;;
+sys_input_debounced_update::
+    ld a, (_sys_input_debounce)
+    or a
+    jr z, _sidu_scan
+    call cpct_isAnyKeyPressed_asm
+    ret nz                          ;; still held → do nothing this frame
+    xor a
+    ld (_sys_input_debounce), a
+    ret                             ;; transition frame: cleared, no action yet
+_sidu_scan:
+    jr _sidu_first
+_sidu_loop:
+    ld bc, #4
+    add iy, bc
+_sidu_first:
+    ld l, 0(iy)
+    ld h, 1(iy)
+    ld a, l
+    or h
+    ret z                           ;; end of table → no key pressed
+    call cpct_isKeyPressed_asm
+    jr z, _sidu_loop
+    ld a, #1
+    ld (_sys_input_debounce), a
+    ld l, 2(iy)
+    ld h, 3(iy)
+    jp (hl)                         ;; tail-call action: its ret goes to original caller
+
+sys_input_menu_update::
+    ld iy, #sys_input_menu_key_actions
+    jp sys_input_debounced_update
+
+sys_input_match_update::
+    ld iy, #sys_input_match_key_actions
+    jp sys_input_debounced_update
+
+;;-----------------------------------------------------------------
+;;
 ;; sys_input_update
 ;;
 ;;   Initializes input
-;;  Input: 
+;;  Input:
 ;;  Output:
 ;;  Modified: iy, bc
 ;;
-sys_input_update::   
+sys_input_update::
     ld iy, #sys_input_key_actions
     call sys_input_generic_update
     ret
