@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Amstrad CPC game called **boop**, written in Z80 assembly using the **CPCtelera** game engine. It targets Mode 0 (160x200, 16 colors) and loads at memory address `0x4000`.
+This is an Amstrad CPC game called **boop**, written in Z80 assembly using the **CPCtelera** game engine. It targets Mode 0 (160x200, 16 colors). Memory layout: binary loads at `0x0100` (transparency table), code at `0x0200` (`Z80CODELOC` in `cfg/build_config.mk`), entry point (`_main`) linked at approximately `0x2BDF`.
 
 ## Build Commands
 
@@ -28,7 +28,7 @@ VSCode tasks for `make`, `clean`, `cleanall`, and `run` are configured in [.vsco
 
 ```
 src/
-  main.s          - Entry point (_main::), transparency table at 0x100, calls sys_game_init/update
+  main.s          - Entry point (_main::), 256-byte transparency table at absolute 0x0100, calls sys_game_init/update
   common.h.s      - Global .globl declarations, sprite refs, CPCtelera imports, constants, shared macros
   sys/            - Low-level system modules
   man/            - High-level game-logic modules
