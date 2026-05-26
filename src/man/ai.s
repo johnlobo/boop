@@ -194,16 +194,11 @@ _mau_delay_phase:
    ld (hl), a
    ret
 _mau_delay_done:
-   ;; Position cursor at top-right corner and show it
-   xor a
-   ld (_cursor_row), a
-   ld a, #5
-   ld (_cursor_col), a
+   ;; Cursor is already at (0,5) from _match_place_piece; just set piece type
    ld a, (_ai_best_piece)
    ld (_cursor_piece), a
-   call _match_draw_cursor
    ;; Switch to animation phase with initial step delay
-   ld a, #2
+   ld a, #4
    ld (_ai_anim_delay), a
    ld a, #2
    ld (_ai_think_phase), a
@@ -225,7 +220,7 @@ _mau_anim_step:
    ld (_ai_think_phase), a
    ret
 _mau_anim_cont:
-   ld a, #2
+   ld a, #4
    ld (_ai_anim_delay), a
    ret
 
@@ -277,6 +272,10 @@ _acs_col_moved:
    pop bc                     ;; B=old_row, C=old_col
    call _match_restore_cell
    call _match_draw_cursor
+   push af
+   ld a, #SFX_CURSOR
+   call sys_sound_play_sfx
+   pop af
    or #1                      ;; Z=0: step taken
    ret
 
@@ -297,6 +296,10 @@ _acs_row_moved:
    pop bc
    call _match_restore_cell
    call _match_draw_cursor
+   push af
+   ld a, #SFX_CURSOR
+   call sys_sound_play_sfx
+   pop af
    or #1
    ret
 
