@@ -20,7 +20,7 @@ To run in an emulator: `cpct_winape -as -f` (Windows/Linux) or `cpct_rvm -as -f`
 
 VSCode tasks for `make`, `clean`, `cleanall`, and `run` are configured in [.vscode/tasks.json](.vscode/tasks.json).
 
-**Version string**: bump `_game_loaded_string` in `src/man/game.s` after every change. Currently **V.042**. This is mandatory — always increment before finishing any task.
+**Version string**: bump `_game_loaded_string` in `src/man/game.s` after every change. Currently **V.047**. This is mandatory — always increment before finishing any task.
 
 ## Architecture
 
@@ -41,12 +41,13 @@ src/
 - **input** - Keyboard dispatch table, wait-for-key, `sys_input_getKeyPressed` for polled reads.
 - **messages** - Windowed message overlay with background save/restore via 3000-byte `message_buffer`.
 - **text** - Font rendering with 5-color swap table, string utilities, BCD number display using digit sprites.
-- **util** - 8-bit multiply (`sys_util_h_times_e`), 16-bit divide (`sys_util_hl_div_c`), BCD arithmetic, RNG, frame delay, CRTC fade/shake (`sys_util_fadeIn`/`fadeOut`/`temblor`).
+- **util** - 8-bit multiply (`sys_util_h_times_e`), 16-bit divide (`sys_util_hl_div_c`), BCD arithmetic, RNG, frame delay, CRTC fade/shake (`sys_util_fadeIn`/`fadeOut`/`temblor`). Fade routines use A=3 delay (≈250 ms each); `temblor` shakes the screen horizontally via CRTC R2.
 
 **man/ modules** (each has a `.h.s` header + `.s` implementation):
-- **game** (`sys_game_init` / `sys_game_update`) - Top-level state machine with four states: `GAME_STATE_MENU=0`, `GAME_STATE_PLAYING=1`, `GAME_STATE_HELP=2`, `GAME_STATE_AI_SELECT=3`. Menu confirmed=1 (ONE PLAYER) → AI_SELECT; confirmed=2 (TWO PLAYERS) → PLAYING directly; confirmed=3 → HELP. ESC on AI-select returns to menu.
+- **game** (`sys_game_init` / `sys_game_update`) - Top-level state machine with four states: `GAME_STATE_MENU=0`, `GAME_STATE_PLAYING=1`, `GAME_STATE_HELP=2`, `GAME_STATE_AI_SELECT=3`. Menu confirmed=1 (ONE PLAYER) → AI_SELECT (difficulty picker); confirmed=2 (TWO PLAYERS) → PLAYING directly; confirmed=3 → HELP. ESC on AI-select returns to menu.
 - **menu** (`man_menu_init` / `man_menu_update` / `man_menu_draw`) - Three-option menu (ONE PLAYER / TWO PLAYERS / HELP); `man_menu_confirmed` = 1/2/3 respectively. Includes a walking gatito animation (4-frame cycle, direction-aware horizontal flip via `cpct_hflipSpriteM0_asm`, random walk/stop lengths).
-- **match** (`man_match_init` / `man_match_update` / `man_match_draw_hud`) - Turn-based 6×6 board game. Manages `man_match_player1`/`player2` structs and `man_match_num_players`.
+- **menu_level** (`man_menu_level_init` / `man_menu_level_update`) - AI difficulty picker screen (extracted from ai.s). Shows 4 levels with corresponding `_s_catty_1`–`_s_catty_4` sprites. On confirm writes `man_ai_level`; `man_menu_level_done` = 1 (confirmed) or 2 (ESC/cancelled).
+- **match** (`man_match_init` / `man_match_update` / `man_match_draw_hud`) - Turn-based 6×6 board game. Manages `man_match_player1`/`player2` structs and `man_match_num_players`. P2 sprite pointers (`_p2_cat_ptr`, `_p2_catty_ptr`) are patched at init to match the selected AI difficulty color (`_s_cat_1`–`_s_cat_4`). Cursor arrows skip occupied cells (scan loop in `_match_input_up/down/left/right`). `_match_restore_cell` and `_match_draw_cursor` are exported (`::`+`.globl`) for use by ai.s.
 - **help** (`man_help_init` / `man_help_update`) - Help/rules screen; exposes `man_help_done` (set to 1 when user exits).
 
 ### Code Conventions
@@ -175,7 +176,7 @@ EndStruct Foo            ; sizeof_Foo = 3
 
 Single-player opponent; always plays as **Player 2** (blue cats). Active when `man_match_num_players == 1` and it is P2's turn.
 
-**Difficulty levels** (`man_ai_level` 0–4):
+**Difficulty levels** (`man_ai_level` 0–3, set by `menu_level.s`):
 
 | Level | Name | Behaviour |
 |-------|------|-----------|
@@ -187,7 +188,8 @@ Single-player opponent; always plays as **Player 2** (blue cats). Active when `m
 **Per-turn evaluation loop** (spread across frames, `AI_EVAL_CELLS_PER_FRAME = 4`):
 1. **Phase 0** — scan every empty cell, scoring kitten and cat placements via `_ai_score_one_candidate`. Evaluates 4 cells/frame; short-circuits immediately on a winning-move sentinel (score 255).
 2. **Phase 1** — post-eval delay (personality "think time", profile `delay_frames`).
-3. **Phase 2** — execute `_match_place_piece` with the best-found move, then `man_ai_init` to reset.
+3. **Phase 2** — cursor animation: `_ai_cursor_step` moves the cursor one cell per call (column first, then row), restoring the previous cell and drawing the cursor at the new position. Step delay = 4 frames (~80 ms/step); plays `SFX_CURSOR` on each step. Starts at the top-right corner (row=0, col=5). Returns Z=1 when target is reached → moves to Phase 3.
+4. **Phase 3** — execute `_match_place_piece` with the best-found move, then `man_ai_init` to reset.
 
 **Scoring heuristic** (weights from the active profile in `_ai_profiles`):
 - **Defense** (`W_defense`): reduction in P1 adjacent cat-pairs after simulation.
@@ -204,4 +206,4 @@ Single-player opponent; always plays as **Player 2** (blue cats). Active when `m
 **Integration points:**
 - `man_ai_init` — called from `man_match_init` and after each AI move; resets phase, eval position, and sets a random fallback move.
 - `man_ai_update` — called every frame from `man_match_update` when `num_players==1` and `_match_state == MATCH_STATE_P2`.
-- `man_ai_select_init` / `man_ai_select_update` — AI level picker screen driven by `game.s` in `GAME_STATE_AI_SELECT`; sets `man_ai_select_done` to 1 (confirmed) or 2 (ESC/cancelled).
+- Difficulty picker is in `menu_level.s` (not ai.s); `game.s` calls `man_menu_level_init`/`man_menu_level_update` in `GAME_STATE_AI_SELECT`.
