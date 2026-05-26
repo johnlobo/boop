@@ -17,19 +17,18 @@
 ;;------------------------------------------------------------------------------
 ;; AI module: single-player opponent for boop.
 ;;
-;; The AI always plays as Player 2 (blue cats).
+;; The AI always plays as Player 2. Difficulty level is chosen via
+;; menu_level.s and stored in man_ai_level before man_ai_init is called.
 ;;
-;; Difficulty levels (man_ai_level 0-4):
+;; Difficulty levels (man_ai_level 0-3):
 ;;   0 = GATITO TIMIDO   - random, kitten-first, slow to play
 ;;   1 = GATO JUGUETON   - slight positional awareness
-;;   2 = GATA LISTA      - detects wins and threats
-;;   3 = GATO ASTUTO     - defensive + offensive balance
-;;   4 = MAESTRO FELINO  - full heuristic, fast
+;;   2 = GATA ASTUTA     - defensive + offensive balance
+;;   3 = MAESTRO FELINO  - full heuristic, fast
 ;;
-;; Integration in match.s / game.s:
+;; Integration:
 ;;   man_match_update calls man_ai_update when num_players==1 AND P2's turn.
 ;;   man_match_init calls man_ai_init after setting up the board.
-;;   game.s handles GAME_STATE_AI_SELECT (new state between menu and match).
 ;;------------------------------------------------------------------------------
 
 ;;------------------------------------------------------------------------------
@@ -47,14 +46,10 @@ AI_WIN_SENTINEL    = 255   ;; score used when a winning move is found
 ;;------------------------------------------------------------------------------
 ;; Public data
 ;;------------------------------------------------------------------------------
-.globl man_ai_level           ;; byte 0-4: current AI difficulty
-.globl man_ai_select_done     ;; byte: 1 when player confirmed level, 2 = cancelled
-.globl man_ai_select_selected ;; byte 0-4: currently highlighted option in select screen
+.globl man_ai_level           ;; byte 0-3: current AI difficulty (set by menu_level)
 
 ;;------------------------------------------------------------------------------
 ;; Public routines
 ;;------------------------------------------------------------------------------
 .globl man_ai_init            ;; call before each AI turn (resets eval state)
 .globl man_ai_update          ;; call every frame when it is P2's turn (1-player)
-.globl man_ai_select_init     ;; draw AI level-selection screen
-.globl man_ai_select_update   ;; handle input on AI level-selection screen

@@ -16,7 +16,7 @@
 
 .module system_system
 
-;;.include "sys/audio.h.s"
+.include "sys/sound.h.s"
 .include "system.h.s"
 .include "common.h.s"
 .include "cpctelera.h.s"
@@ -127,22 +127,22 @@ int_handler5:
 
    m_inc_nInterrupt
 
-;;  ld a, (music_switch)
-;;  or a
-;;  jr z, int_handler5_exit
-;;  exx
-;;  ex af', af  
-;;  push af
-;;  push bc
-;;  push de
-;;  push hl
-;;  call PLY_AKG_PLAY
-;;  pop hl
-;;  pop de
-;;  pop bc
-;;  pop af
-;;  ex af', af  
-;;  exx
+   ld a, (_snd_music_active)
+   or a
+   jr z, int_handler5_exit
+   exx
+   ex af, af'
+   push af
+   push bc
+   push de
+   push hl
+   call _PLY_AKG_PLAY
+   pop hl
+   pop de
+   pop bc
+   pop af
+   ex af, af'
+   exx
 int_handler5_exit:
 	ld hl, #int_handler6
    call cpct_setInterruptHandler_asm

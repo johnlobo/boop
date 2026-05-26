@@ -19,6 +19,7 @@
 .include "man/match.h.s"
 .include "man/help.h.s"
 .include "man/ai.h.s"
+.include "man/menu_level.h.s"
 .include "cpctelera.h.s"
 .include "../common.h.s"
 .include "sys/render.h.s"
@@ -41,7 +42,7 @@ GAME_STATE_AI_SELECT = 3   ;; AI level picker (1-player only)
 .area _DATA
 
 _game_state:         .db 0
-_game_loaded_string: .asciz " GAME LOADED - V.032"
+_game_loaded_string: .asciz " GAME LOADED - V.044"
 
 ;;
 ;; Start of _CODE area
@@ -59,6 +60,7 @@ _game_loaded_string: .asciz " GAME LOADED - V.032"
 ;;
 sys_game_init::
    call sys_render_init
+   call sys_sound_init
 
    m_msg_w_background 3
    ld e, #6                            ;; x
@@ -118,13 +120,14 @@ _sgu_menu:
 
    ld a, #GAME_STATE_AI_SELECT
    ld (_game_state), a
-   call man_ai_select_init
+   call man_menu_level_init
    ret
 
 _sgu_goto_playing:
    ;; TWO PLAYERS or returning from AI-select: start match directly
    ld a, #GAME_STATE_PLAYING
    ld (_game_state), a
+   call sys_sound_start_music
    call man_match_init
    ret
 
@@ -135,9 +138,9 @@ _sgu_goto_help:
    ret
 
 _sgu_ai_select:
-   call man_ai_select_update
+   call man_menu_level_update
 
-   ld a, (man_ai_select_done)
+   ld a, (man_menu_level_done)
    or a
    ret z                            ;; still choosing
 
@@ -147,6 +150,7 @@ _sgu_ai_select:
    ;; Level confirmed → start match (man_menu_confirmed still = 1 = ONE PLAYER)
    ld a, #GAME_STATE_PLAYING
    ld (_game_state), a
+   call sys_sound_start_music
    call man_match_init
    ret
 
@@ -169,6 +173,7 @@ _sgu_playing:
    ;; Transition back to menu
    xor a
    ld (_game_state), a              ;; GAME_STATE_MENU = 0
+   call sys_sound_stop
    call man_menu_init
    ret
 

@@ -30,26 +30,12 @@
 ;;------------------------------------------------------------------------------
 AI_EVAL_CELLS_PER_FRAME = 4
 
-;;------------------------------------------------------------------------------
-;; Y positions for the AI-select screen options (20 px spacing)
-;;------------------------------------------------------------------------------
-AI_SELECT_OPT_Y0 = 70
-AI_SELECT_OPT_Y1 = 90
-AI_SELECT_OPT_Y2 = 110
-AI_SELECT_OPT_Y3 = 130
-AI_SELECT_OPT_Y4 = 150
-AI_SELECT_TITLE_Y = 20
-AI_SELECT_HINT1_Y = 175
-AI_SELECT_HINT2_Y = 187
-
 ;;==============================================================================
 ;; DATA
 ;;==============================================================================
 .area _DATA
 
-man_ai_level::          .db 0   ;; 0-4: difficulty chosen at select screen
-man_ai_select_done::    .db 0   ;; 1=confirmed, 2=cancelled (ESC)
-man_ai_select_selected::.db 0   ;; 0-4: highlighted row in select screen
+man_ai_level::          .db 0   ;; 0-3: difficulty chosen at level-select screen
 
 ;;------------------------------------------------------------------------------
 ;; Per-turn evaluation state
@@ -85,20 +71,16 @@ _ai_p2_backup:     .ds 6
 ;; Temporary count variable shared by all pair/line counting functions
 _ai_pair_count:    .db 0
 
-;; Select-screen key debounce
-_ai_sel_debounce:  .db 0
-
 ;;------------------------------------------------------------------------------
-;; Profile table: 5 profiles × AI_PROFILE_SIZE(6) bytes
+;; Profile table: 4 profiles × AI_PROFILE_SIZE(6) bytes
 ;;   delay, W_defense, W_align, W_center, W_kitten, rand_mask
 ;;   Weights chosen so worst-case non-win score stays under 200 (< 255 sentinel)
 ;;------------------------------------------------------------------------------
 _ai_profiles:
    .db 50,  0,  0,  0,  3, #0x1F   ;; 0: GATITO TIMIDO  (random + kitten preference)
    .db 40,  5,  3,  1,  3, #0x0F   ;; 1: GATO JUGUETON  (slight positional)
-   .db 30, 12,  6,  2,  6, #0x07   ;; 2: GATA LISTA     (win/block aware)
-   .db 20, 18, 10,  3, 10, #0x03   ;; 3: GATO ASTUTO    (balanced)
-   .db 10, 20, 15,  4, 15, #0x01   ;; 4: MAESTRO FELINO (full heuristic)
+   .db 20, 18, 10,  3, 10, #0x03   ;; 2: GATA ASTUTA    (balanced)
+   .db 10, 20, 15,  4, 15, #0x01   ;; 3: MAESTRO FELINO (full heuristic)
 
 ;;------------------------------------------------------------------------------
 ;; Center-bonus lookup table (36 bytes, index = row*6 + col, value 0..3)
@@ -111,26 +93,6 @@ _ai_center_table:
    .db 0, 1, 2, 2, 1, 0   ;; row 4
    .db 0, 0, 1, 1, 0, 0   ;; row 5
 
-;;------------------------------------------------------------------------------
-;; AI-select screen strings
-;;------------------------------------------------------------------------------
-_ai_sel_title:  .asciz "CHOOSE OPPONENT"
-_ai_sel_hint1:  .asciz "ARROWS - MOVE"
-_ai_sel_hint2:  .asciz "ENTER - SELECT"
-_ai_sel_esc:    .asciz "ESC - BACK"
-
-_ai_name_0:  .asciz "GATITO TIMIDO"
-_ai_name_1:  .asciz "GATO JUGUETON"
-_ai_name_2:  .asciz "GATA LISTA"
-_ai_name_3:  .asciz "GATO ASTUTO"
-_ai_name_4:  .asciz "MAESTRO FELINO"
-
-_ai_name_ptrs:
-   .dw _ai_name_0
-   .dw _ai_name_1
-   .dw _ai_name_2
-   .dw _ai_name_3
-   .dw _ai_name_4
 
 ;;==============================================================================
 ;; CODE
@@ -1036,215 +998,3 @@ _am6_loop:
    sub #6
    jr _am6_loop
 
-;;==============================================================================
-;; AI LEVEL SELECT SCREEN
-;;==============================================================================
-
-;;-----------------------------------------------------------------
-;;
-;; man_ai_select_init
-;;
-;;  Clears the screen and draws the AI level selection screen.
-;;  Input:  -
-;;  Output: man_ai_select_done=0, man_ai_select_selected=0
-;;  Modified: AF, BC, DE, HL
-;;
-man_ai_select_init::
-   xor a
-   ld (man_ai_select_done), a
-   ld (man_ai_select_selected), a
-   ld (_ai_sel_debounce), a
-
-   call sys_render_clear_buffer
-   call sys_render_draw_header
-   call _ai_select_draw
-   ret
-
-;;-----------------------------------------------------------------
-;;
-;; _ai_select_draw
-;;
-;;  Draws all 5 opponent names; selected one in yellow, others white.
-;;  Input:  man_ai_select_selected
-;;  Output: -
-;;  Modified: AF, BC, DE, HL
-;;
-_ai_select_draw:
-   ;; Title
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 26, AI_SELECT_TITLE_Y
-   ld hl, #_ai_sel_title
-   ld c, #1                          ;; yellow
-   call sys_text_draw_string
-
-   ;; Draw each of the 5 options
-   ld b, #0        ;; option index
-_asd_loop:
-   ;; Compute Y position: AI_SELECT_OPT_Y0 + b*20
-   ld a, b
-   add a, a        ;; *2
-   add a, a        ;; *4
-   add a, b        ;; *5? no... 20 = 16+4
-   ;; Y = 70 + b*20: compute as b*16 + b*4 + 70
-   ld c, a         ;; C = b*5 (scratch)... let me just use a multiply
-   ;; b*20 = b*16 + b*4
-   ld a, b
-   add a, a        ;; *2
-   add a, a        ;; *4
-   ld c, a         ;; C = b*4
-   add a, a        ;; *8
-   add a, a        ;; *16
-   add a, c        ;; *20
-   add a, #AI_SELECT_OPT_Y0
-   ld e, a         ;; E = Y (for cpctm_screenPtr_asm... but that's a compile-time macro)
-
-   ;; We need a runtime screen address. Use cpct_getScreenPtr_asm.
-   ;; C = X (byte), B = Y (px) → HL = screen addr
-   push bc         ;; save option index in B
-   ld b, a         ;; B = Y
-   ld c, #27       ;; X = 27 bytes (centered)
-   ld de, #CPCT_VMEM_START_ASM
-   call cpct_getScreenPtr_asm
-   ex de, hl       ;; DE = screen addr
-
-   ;; Look up name string pointer
-   pop bc          ;; restore B = option index
-   push bc
-   ld a, b
-   add a, a        ;; *2 (word index)
-   ld hl, #_ai_name_ptrs
-   ld c, a
-   ld b, #0
-   add hl, bc
-   ld c, (hl)
-   inc hl
-   ld b, (hl)      ;; BC = name string pointer
-   ld h, b
-   ld l, c         ;; HL = name string pointer
-
-   pop bc          ;; restore B = option index
-   push bc
-   ld a, (man_ai_select_selected)
-   cp b
-   jr nz, _asd_white
-   ld c, #1        ;; yellow = selected
-   jr _asd_draw
-_asd_white:
-   ld c, #0        ;; white = unselected
-_asd_draw:
-   call sys_text_draw_string
-
-   pop bc
-   inc b
-   ld a, b
-   cp #5
-   jr c, _asd_loop
-
-   ;; Hint lines
-   ld c, #27
-   ld b, #AI_SELECT_HINT1_Y
-   ld de, #CPCT_VMEM_START_ASM
-   call cpct_getScreenPtr_asm
-   ex de, hl
-   ld hl, #_ai_sel_hint1
-   ld c, #3
-   call sys_text_draw_string
-
-   ld c, #29
-   ld b, #AI_SELECT_HINT2_Y
-   ld de, #CPCT_VMEM_START_ASM
-   call cpct_getScreenPtr_asm
-   ex de, hl
-   ld hl, #_ai_sel_hint2
-   ld c, #3
-   call sys_text_draw_string
-
-   ld c, #32
-   ld b, #(AI_SELECT_HINT2_Y + 12)
-   ld de, #CPCT_VMEM_START_ASM
-   call cpct_getScreenPtr_asm
-   ex de, hl
-   ld hl, #_ai_sel_esc
-   ld c, #3
-   call sys_text_draw_string
-
-   ret
-
-;;-----------------------------------------------------------------
-;;
-;; man_ai_select_update
-;;
-;;  Handles input on the AI level selection screen.
-;;  Input:  -
-;;  Output: man_ai_select_done: 1=confirmed, 2=cancelled
-;;          man_ai_level set to selected option when confirmed
-;;  Modified: AF, BC, DE, HL
-;;
-man_ai_select_update::
-   ;; Debounce: wait for full key release
-   ld a, (_ai_sel_debounce)
-   or a
-   jr z, _masu_check_keys
-   call cpct_isAnyKeyPressed_asm
-   or a
-   ret nz
-   xor a
-   ld (_ai_sel_debounce), a
-   ret
-
-_masu_check_keys:
-   ;; Cursor Up
-   ld hl, #Key_CursorUp
-   call cpct_isKeyPressed_asm
-   jr z, _masu_check_down
-   ld a, (man_ai_select_selected)
-   or a
-   jr z, _masu_up_wrap
-   dec a
-   jr _masu_up_done
-_masu_up_wrap:
-   ld a, #4
-_masu_up_done:
-   ld (man_ai_select_selected), a
-   call _ai_select_draw
-   jr _masu_debounce
-
-_masu_check_down:
-   ld hl, #Key_CursorDown
-   call cpct_isKeyPressed_asm
-   jr z, _masu_check_enter
-   ld a, (man_ai_select_selected)
-   cp #4
-   jr z, _masu_down_wrap
-   inc a
-   jr _masu_down_done
-_masu_down_wrap:
-   xor a
-_masu_down_done:
-   ld (man_ai_select_selected), a
-   call _ai_select_draw
-   jr _masu_debounce
-
-_masu_check_enter:
-   ld hl, #Key_Return
-   call cpct_isKeyPressed_asm
-   jr z, _masu_check_esc
-   ;; Confirm: copy selected to man_ai_level, signal done
-   ld a, (man_ai_select_selected)
-   ld (man_ai_level), a
-   ld a, #1
-   ld (man_ai_select_done), a
-   jr _masu_debounce
-
-_masu_check_esc:
-   ld hl, #Key_Esc
-   call cpct_isKeyPressed_asm
-   jr z, _masu_done
-   ;; Cancel: signal caller to return to menu
-   ld a, #2
-   ld (man_ai_select_done), a
-
-_masu_debounce:
-   ld a, #1
-   ld (_ai_sel_debounce), a
-_masu_done:
-   ret

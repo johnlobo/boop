@@ -19,6 +19,7 @@
 .include "man/ai.h.s"
 .include "cpctelera.h.s"
 .include "../common.h.s"
+.include "sys/sound.h.s"
 .include "sys/render.h.s"
 .include "sys/input.h.s"
 .include "sys/messages.h.s"
@@ -66,6 +67,14 @@ _cursor_piece:: .db 0   ;; PIECE_CAT or PIECE_KITTEN (exported for AI module)
 ;; Boop animation buffers
 ;;
 _boop_anim_before: .ds 36     ;; pre-boop board snapshot (36 cells)
+
+;;
+;; Temp state for _match_restore_cell (row-by-row grid restore)
+;;
+_mrc_src:  .dw 0              ;; current source row ptr (in _bg_grid data)
+_mrc_dst:  .dw 0              ;; current dest row ptr (in screen memory)
+_mrc_col:  .db 0              ;; saved col for piece redraw
+_mrc_row:  .db 0              ;; saved row for piece redraw
 _boop_transit_buf: .ds 16     ;; destinations in-transit: 8 × (offset byte, value byte)
 _boop_transit_cnt: .db 0      ;; number of valid entries in _boop_transit_buf
 
@@ -113,8 +122,25 @@ _big_num_ptrs:
 _board_sprite_ptrs:
    .dw _s_cat_0
    .dw _s_catty_0
+   .dw _s_cat_1      ;; P2 cat   — patched at init by man_match_init
+   .dw _s_catty_1    ;; P2 catty — patched at init by man_match_init
+
+;; P2 sprite tables indexed by AI level (0-3 → sprites 1-4)
+_p2_cat_sprites:
    .dw _s_cat_1
+   .dw _s_cat_2
+   .dw _s_cat_3
+   .dw _s_cat_4
+
+_p2_catty_sprites:
    .dw _s_catty_1
+   .dw _s_catty_2
+   .dw _s_catty_3
+   .dw _s_catty_4
+
+;; Mutable P2 sprite pointers — set by man_match_init, used by HUD and cursor
+_p2_cat_ptr:   .dw _s_cat_1
+_p2_catty_ptr: .dw _s_catty_1
 
 ;;
 ;; Start of _CODE area
@@ -211,14 +237,18 @@ man_match_draw_hud::
    call cpct_drawSpriteMaskedAlignedTable_asm
 
    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 66, 68  ;; P2 cat
-   ld bc, #_s_cat_1
+   ld hl, (_p2_cat_ptr)
+   ld b, h
+   ld c, l
    ld__ixl S_CAT_W
    ld__ixh S_CAT_H
    ld hl, #transparency_table
    call cpct_drawSpriteMaskedAlignedTable_asm
 
    cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 71, 68  ;; P2 catty
-   ld bc, #_s_catty_1
+   ld hl, (_p2_catty_ptr)
+   ld b, h
+   ld c, l
    ld__ixl S_CATTY_W
    ld__ixh S_CATTY_H
    ld hl, #transparency_table
@@ -422,10 +452,14 @@ _mdc_p2:
    ld a, (_cursor_piece)
    or a
    jr nz, _mdc_p2_kitten
-   ld bc, #_s_cat_1
+   ld hl, (_p2_cat_ptr)
+   ld b, h
+   ld c, l
    jr _mdc_draw_sprite
 _mdc_p2_kitten:
-   ld bc, #_s_catty_1
+   ld hl, (_p2_catty_ptr)
+   ld b, h
+   ld c, l
 
 _mdc_draw_sprite:
    ld__ixl S_CAT_W
@@ -504,6 +538,12 @@ _mpp_got_player:
    ret z                             ;; no cats left
    dec a
    ld Player_cats(ix), a
+   push hl
+   push ix
+   ld a, #SFX_CAT
+   call sys_sound_play_sfx
+   pop ix
+   pop hl
    jr _mpp_do_place
 
 _mpp_check_kitten:
@@ -513,6 +553,12 @@ _mpp_check_kitten:
    ret z                             ;; no kittens left
    dec a
    ld Player_kittens(ix), a
+   push hl
+   push ix
+   ld a, #SFX_KITTEN
+   call sys_sound_play_sfx
+   pop ix
+   pop hl
 
 _mpp_do_place:
    ;; board_value = _match_state*2 + _cursor_piece + 1
@@ -527,7 +573,15 @@ _mpp_do_place:
 
    ;; Animate boop: frame0=placed, frame1=in-transit, frame2=destinations filled
    call _match_boop_animate
+   xor a
+   ld (_snd_lines_found), a
    call _match_check_lines           ;; check for 3 same-color pieces in a row
+   ld a, (_snd_lines_found)
+   or a
+   jr z, _mpp_no_line_sfx
+   ld a, #SFX_LINE
+   call sys_sound_play_sfx
+_mpp_no_line_sfx:
 
    ;; After boop + line resolution: check if placing player has no pieces left
    ;; (boop may have ejected their own pieces back; lines may have converted some)
@@ -605,40 +659,272 @@ _mpp_pe_out:
    jp _match_declare_winner
 
 ;;-----------------------------------------------------------------
+;;
+;; _match_restore_cell
+;;
+;;  Restores the grid background at a single cell position by copying
+;;  the corresponding region from the _bg_grid sprite data row by row.
+;;  Then redraws the piece sprite if the cell is non-empty.
+;;  This is used when the cursor moves away from a cell, replacing the
+;;  full _match_redraw_all call with a two-cell update.
+;;
+;;  Source offset in _bg_grid:
+;;    sprite_x = 2 + col*7   (grid origin X=18; cell X=19+col*7; cursor +1 = 20+col*7; 20-18=2)
+;;    sprite_y = 4 + row*24  (grid origin Y=20; cell Y=24+row*24; 24-20=4)
+;;    row_stride = BG_GRID_W = 44
+;;
+;;  Input:  C = col (0..GRID_COLS-1), B = row (0..GRID_ROWS-1)
+;;  Output: -
+;;  Modified: AF, BC, DE, HL
+;;
+_match_restore_cell:
+   ld a, c
+   ld (_mrc_col), a
+   ld a, b
+   ld (_mrc_row), a
+
+   ;; Compute sprite_y * BG_GRID_W (44):
+   ;;   sprite_y = 4 + row*24  (row*24 = row*8 + row*16)
+   ld a, b              ;; A = row
+   add a, a             ;; *2
+   add a, a             ;; *4
+   add a, a             ;; *8
+   ld l, a              ;; L = row*8
+   add a, a             ;; *16
+   add a, l             ;; *24
+   add a, #4            ;; sprite_y
+   ld l, a
+   ld h, #0             ;; HL = sprite_y
+   ;; HL * 44 = HL*32 + HL*8 + HL*4:
+   add hl, hl           ;; *2
+   add hl, hl           ;; *4
+   push hl              ;; [*4]
+   add hl, hl           ;; *8
+   push hl              ;; [*8, *4]
+   add hl, hl           ;; *16
+   add hl, hl           ;; *32
+   pop de               ;; DE = *8
+   add hl, de           ;; *40
+   pop de               ;; DE = *4
+   add hl, de           ;; *44
+
+   ;; Add sprite_x = 2 + col*7  (col still in C)
+   ld a, c              ;; A = col
+   add a, a             ;; *2
+   add a, a             ;; *4
+   add a, a             ;; *8
+   sub c                ;; *7
+   add a, #2            ;; sprite_x
+   ld e, a
+   ld d, #0
+   add hl, de           ;; HL = sprite_y*44 + sprite_x
+   ld de, #_bg_grid
+   add hl, de           ;; HL = &_bg_grid[offset]
+   ld (_mrc_src), hl
+
+   ;; Compute dest screen address (B=row, C=col still valid)
+   call _match_col_row_to_screen_addr  ;; → DE
+   inc de               ;; +1 byte (cursor/pieces are shifted 1 byte right within cell)
+   ld (_mrc_dst), de
+
+   ;; Copy CURSOR_W bytes per row, for CURSOR_H rows
+   ld b, #CURSOR_H
+_mrc_rowloop:
+   ld hl, (_mrc_src)
+   ld de, (_mrc_dst)
+   ld c, #CURSOR_W
+_mrc_copy:
+   ld a, (hl)
+   ld (de), a
+   inc hl
+   inc de
+   dec c
+   jr nz, _mrc_copy
+
+   ;; Source: skip remaining bytes to reach next row start (BG_GRID_W - CURSOR_W = 39)
+   ld de, #(BG_GRID_W - CURSOR_W)
+   add hl, de
+   ld (_mrc_src), hl
+
+   ;; Dest: advance one CPC pixel row (standard +0x800 with bank-crossing check)
+   ld de, (_mrc_dst)
+   ld a, d
+   add a, #0x08
+   ld d, a
+   and a, #0x38
+   jr nz, _mrc_next
+   ld a, e
+   add a, #0x50
+   ld e, a
+   ld a, d
+   adc a, #0xC0
+   ld d, a
+_mrc_next:
+   ld (_mrc_dst), de
+
+   dec b
+   jr nz, _mrc_rowloop
+
+   ;; Redraw piece if cell is non-empty
+   ld a, (_mrc_row)
+   ld b, a
+   ld a, (_mrc_col)
+   ld c, a
+   ld a, b              ;; row*6 + col
+   add a, a             ;; *2
+   ld e, a
+   add a, a             ;; *4
+   add a, e             ;; *6
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   or a
+   ret z                ;; empty: done
+   push af              ;; save board value
+   call _match_col_row_to_screen_addr  ;; B=row, C=col → DE
+   inc de
+   pop af
+   jp _match_draw_cell_sprite          ;; tail call
+
+;;-----------------------------------------------------------------
 ;; Match input action routines — called by sys_input_match_update
 ;;-----------------------------------------------------------------
+
+;;  _match_check_cell_empty
+;;  Input:  B=row, C=col
+;;  Output: Z=1 if BOARD_EMPTY, NZ if occupied
+;;  Modified: AF, DE, HL
+_match_check_cell_empty:
+   ld a, b
+   add a, a     ;; row*2
+   add a, a     ;; row*4
+   add a, b     ;; row*5
+   add a, b     ;; row*6
+   add a, c     ;; row*6 + col
+   ld hl, #_match_board
+   ld d, #0
+   ld e, a
+   add hl, de
+   ld a, (hl)
+   or a
+   ret
 
 _match_input_up::
    ld a, (_cursor_row)
    or a
    ret z                             ;; already at top
-   dec a
-   ld (_cursor_row), a
-   jp _match_redraw_all              ;; tail call
+   ld b, a                           ;; B = orig row (scan start)
+   ld a, (_cursor_col)
+   ld c, a
+   push bc                           ;; save (orig_row, col) for restore
+_miu_scan:
+   ld a, b
+   or a
+   jr z, _miu_none                   ;; reached top with no empty cell
+   dec b                             ;; candidate row
+   call _match_check_cell_empty
+   jr nz, _miu_scan                  ;; occupied: keep scanning
+   ld a, b
+   ld (_cursor_row), a               ;; commit
+   pop bc                            ;; BC = (orig_row, col) for restore
+   push bc
+   ld a, #SFX_CURSOR
+   call sys_sound_play_sfx
+   pop bc
+   call _match_restore_cell
+   jp _match_draw_cursor
+_miu_none:
+   pop bc
+   ret
 
 _match_input_down::
    ld a, (_cursor_row)
    cp #(GRID_ROWS - 1)
    ret z                             ;; already at bottom
-   inc a
+   ld b, a
+   ld a, (_cursor_col)
+   ld c, a
+   push bc
+_mid_scan:
+   ld a, b
+   cp #(GRID_ROWS - 1)
+   jr z, _mid_none
+   inc b
+   call _match_check_cell_empty
+   jr nz, _mid_scan
+   ld a, b
    ld (_cursor_row), a
-   jp _match_redraw_all
+   pop bc
+   push bc
+   ld a, #SFX_CURSOR
+   call sys_sound_play_sfx
+   pop bc
+   call _match_restore_cell
+   jp _match_draw_cursor
+_mid_none:
+   pop bc
+   ret
 
 _match_input_left::
    ld a, (_cursor_col)
    or a
    ret z                             ;; already at left edge
-   dec a
+   ld a, (_cursor_row)
+   ld b, a
+   ld a, (_cursor_col)
+   ld c, a
+   push bc
+_mil_scan:
+   ld a, c
+   or a
+   jr z, _mil_none
+   dec c
+   call _match_check_cell_empty
+   jr nz, _mil_scan
+   ld a, c
    ld (_cursor_col), a
-   jp _match_redraw_all
+   pop bc
+   push bc
+   ld a, #SFX_CURSOR
+   call sys_sound_play_sfx
+   pop bc
+   call _match_restore_cell
+   jp _match_draw_cursor
+_mil_none:
+   pop bc
+   ret
 
 _match_input_right::
    ld a, (_cursor_col)
    cp #(GRID_COLS - 1)
    ret z                             ;; already at right edge
-   inc a
+   ld a, (_cursor_row)
+   ld b, a
+   ld a, (_cursor_col)
+   ld c, a
+   push bc
+_mir_scan:
+   ld a, c
+   cp #(GRID_COLS - 1)
+   jr z, _mir_none
+   inc c
+   call _match_check_cell_empty
+   jr nz, _mir_scan
+   ld a, c
    ld (_cursor_col), a
-   jp _match_redraw_all
+   pop bc
+   push bc
+   ld a, #SFX_CURSOR
+   call sys_sound_play_sfx
+   pop bc
+   call _match_restore_cell
+   jp _match_draw_cursor
+_mir_none:
+   pop bc
+   ret
 
 _match_input_space::
    ld a, (_match_state)
@@ -664,7 +950,7 @@ _mis_do_toggle:
    ld a, (_cursor_piece)
    xor #1
    ld (_cursor_piece), a
-   jp _match_redraw_all
+   jp _match_draw_cursor             ;; same cell, just redraw cursor with new piece
 _mis_blocked:
    ld a, (_cursor_col)
    ld c, a
@@ -678,7 +964,7 @@ _mis_blocked:
    call cpct_drawSolidBox_asm
    ld b, #13
    call sys_util_delay
-   jp _match_redraw_all
+   jp _match_draw_cursor             ;; restore yellow cursor after red flash
 
 _match_input_enter::
    jp _match_place_piece             ;; tail call
@@ -953,6 +1239,10 @@ _mb_dest_out:
    pop af                            ;; kitten board value (2=P1, 4=P2)
    pop hl                            ;; source cell ptr
    ld (hl), #BOARD_EMPTY
+   push af
+   ld a, #SFX_EJECT
+   call sys_sound_play_sfx
+   pop af
    cp #BOARD_P2_KITTEN
    jr z, _mb_eject_p2
    ld ix, #man_match_player1
@@ -1082,6 +1372,10 @@ _mbc_dest_out:
    pop af                            ;; piece board value (1-4)
    pop hl                            ;; source cell ptr
    ld (hl), #BOARD_EMPTY
+   push af
+   ld a, #SFX_EJECT
+   call sys_sound_play_sfx
+   pop af
    ;; owner: values 1,2 = P1; values 3,4 = P2
    cp #3
    jr nc, _mbc_eject_p2
@@ -1206,6 +1500,9 @@ _mcl_h_v0_p2:
 
 _mcl_h_match:
    ;; HL = ptr+2, A = v2, D = v0; process each cell
+   ld a, #1
+   ld (_snd_lines_found), a
+   ld a, (hl)                        ;; reload v2 (A was clobbered by store above)
    call _mrl_process_kitten          ;; v2
    dec hl
    ld a, (hl)
@@ -1284,6 +1581,9 @@ _mcl_v_p1:
 
 _mcl_v_match:
    ;; HL = ptr2; stack = [ptr1, ptr0, BC_outer]
+   ld a, #1
+   ld (_snd_lines_found), a
+   ld a, (hl)                        ;; reload v2 (A clobbered by store above)
    call _mrl_process_kitten          ;; v2
    pop hl                            ;; HL = ptr1
    ld a, (hl)
@@ -1322,6 +1622,10 @@ _mcl_v_next:
 ;;  Modified: AF, BC, DE, HL
 ;;
 _match_declare_winner:
+   push af                           ;; save winner number for after fanfare call
+   ld a, #SFX_END
+   call sys_sound_play_sfx
+   pop af
    push af                           ;; save winner number (macro clobbers AF)
    m_msg_w_background 3
    ld e, #6
@@ -1590,11 +1894,40 @@ man_match_init::
    ld (_cursor_row), a
    ld a, #PIECE_KITTEN               ;; start with kitten selected
    ld (_cursor_piece), a
+   ;; Set P2 sprite pointers: AI level for 1-player, default (level 0) for 2-player
+   ld a, (man_match_num_players)
+   cp #1
+   jr nz, _mmi_p2_default
+   ld a, (man_ai_level)           ;; 0-3
+   jr _mmi_p2_set
+_mmi_p2_default:
+   xor a                          ;; treat as level 0 → _s_cat_1 / _s_catty_1
+_mmi_p2_set:
+   add a, a                       ;; A*2 (word table index)
+   ld c, a
+   ld b, #0
+   ld hl, #_p2_cat_sprites
+   add hl, bc
+   ld e, (hl)
+   inc hl
+   ld d, (hl)
+   ld (_p2_cat_ptr), de
+   ld (_board_sprite_ptrs + 4), de
+   ld hl, #_p2_catty_sprites
+   add hl, bc
+   ld e, (hl)
+   inc hl
+   ld d, (hl)
+   ld (_p2_catty_ptr), de
+   ld (_board_sprite_ptrs + 6), de
+
    ;; draw full screen: clear first (menu leaves hint text at Y=175/187), then static chrome
+   call sys_util_fadeOut
    call sys_render_clear_buffer
    call sys_render_draw_screen
    call _match_redraw_all
    call man_match_draw_hud
+   call sys_util_fadeIn
    ;; 1-player: initialise AI evaluation state for the first P2 turn
    ld a, (man_match_num_players)
    cp #1

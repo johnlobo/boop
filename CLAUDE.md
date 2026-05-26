@@ -20,7 +20,7 @@ To run in an emulator: `cpct_winape -as -f` (Windows/Linux) or `cpct_rvm -as -f`
 
 VSCode tasks for `make`, `clean`, `cleanall`, and `run` are configured in [.vscode/tasks.json](.vscode/tasks.json).
 
-**Version string**: bump `_game_loaded_string` in `src/man/game.s` after every change. Currently **V.016**. This is mandatory — always increment before finishing any task.
+**Version string**: bump `_game_loaded_string` in `src/man/game.s` after every change. Currently **V.042**. This is mandatory — always increment before finishing any task.
 
 ## Architecture
 
@@ -44,8 +44,8 @@ src/
 - **util** - 8-bit multiply (`sys_util_h_times_e`), 16-bit divide (`sys_util_hl_div_c`), BCD arithmetic, RNG, frame delay, CRTC fade/shake (`sys_util_fadeIn`/`fadeOut`/`temblor`).
 
 **man/ modules** (each has a `.h.s` header + `.s` implementation):
-- **game** (`sys_game_init` / `sys_game_update`) - Top-level state machine: `GAME_STATE_MENU=0` / `GAME_STATE_PLAYING=1` / `GAME_STATE_HELP=2`. Waits on `man_menu_confirmed` to transition from menu to match.
-- **menu** (`man_menu_init` / `man_menu_update` / `man_menu_draw`) - Menu navigation; exposes `man_menu_selected` and `man_menu_confirmed`.
+- **game** (`sys_game_init` / `sys_game_update`) - Top-level state machine with four states: `GAME_STATE_MENU=0`, `GAME_STATE_PLAYING=1`, `GAME_STATE_HELP=2`, `GAME_STATE_AI_SELECT=3`. Menu confirmed=1 (ONE PLAYER) → AI_SELECT; confirmed=2 (TWO PLAYERS) → PLAYING directly; confirmed=3 → HELP. ESC on AI-select returns to menu.
+- **menu** (`man_menu_init` / `man_menu_update` / `man_menu_draw`) - Three-option menu (ONE PLAYER / TWO PLAYERS / HELP); `man_menu_confirmed` = 1/2/3 respectively. Includes a walking gatito animation (4-frame cycle, direction-aware horizontal flip via `cpct_hflipSpriteM0_asm`, random walk/stop lengths).
 - **match** (`man_match_init` / `man_match_update` / `man_match_draw_hud`) - Turn-based 6×6 board game. Manages `man_match_player1`/`player2` structs and `man_match_num_players`.
 - **help** (`man_help_init` / `man_help_update`) - Help/rules screen; exposes `man_help_done` (set to 1 when user exits).
 
@@ -170,3 +170,38 @@ EndStruct Foo            ; sizeof_Foo = 3
 `_match_cancelled` (byte in `match.h.s`) is the signal from match back to the game loop:
 - Set to `1` by `_match_declare_winner` after the win/loss window is dismissed.
 - Polled each frame by `man_match_update`; when set, it returns and `man_game_update` transitions back to `GAME_STATE_MENU`.
+
+### AI Module (`man/ai.s`)
+
+Single-player opponent; always plays as **Player 2** (blue cats). Active when `man_match_num_players == 1` and it is P2's turn.
+
+**Difficulty levels** (`man_ai_level` 0–4):
+
+| Level | Name | Behaviour |
+|-------|------|-----------|
+| 0 | GATITO TIMIDO | Random, kitten-first, 50-frame think delay |
+| 1 | GATO JUGUETON | Slight positional awareness |
+| 2 | GATA ASTUTA | Balanced defense + offense |
+| 3 | MAESTRO FELINO | Full heuristic, 10-frame think delay |
+
+**Per-turn evaluation loop** (spread across frames, `AI_EVAL_CELLS_PER_FRAME = 4`):
+1. **Phase 0** — scan every empty cell, scoring kitten and cat placements via `_ai_score_one_candidate`. Evaluates 4 cells/frame; short-circuits immediately on a winning-move sentinel (score 255).
+2. **Phase 1** — post-eval delay (personality "think time", profile `delay_frames`).
+3. **Phase 2** — execute `_match_place_piece` with the best-found move, then `man_ai_init` to reset.
+
+**Scoring heuristic** (weights from the active profile in `_ai_profiles`):
+- **Defense** (`W_defense`): reduction in P1 adjacent cat-pairs after simulation.
+- **Alignment** (`W_align`): increase in P2 adjacent piece-pairs.
+- **Center** (`W_center`): 0–3 bonus from `_ai_center_table` (concentric squares).
+- **Kitten lines** (`W_kitten`): count of P2 three-in-a-row windows created.
+- **Random noise** (`rand_mask`): AND-masked random byte for variety.
+- Equal-scoring candidates are broken by a 50 % RNG tiebreak.
+
+**AI profile struct** (6 bytes at `_ai_profiles + level * 6`): `delay_frames, W_defense, W_align, W_center, W_kitten, rand_mask`.
+
+**Simulation** — `_ai_score_one_candidate` saves board + both player structs (36 + 6 + 6 bytes), calls `_ai_place_no_animate` (which calls `_match_boop` / `_match_boop_cat` as a tail call), evaluates, then restores. No animation or line-check is run during simulation.
+
+**Integration points:**
+- `man_ai_init` — called from `man_match_init` and after each AI move; resets phase, eval position, and sets a random fallback move.
+- `man_ai_update` — called every frame from `man_match_update` when `num_players==1` and `_match_state == MATCH_STATE_P2`.
+- `man_ai_select_init` / `man_ai_select_update` — AI level picker screen driven by `game.s` in `GAME_STATE_AI_SELECT`; sets `man_ai_select_done` to 1 (confirmed) or 2 (ESC/cancelled).

@@ -280,7 +280,7 @@ CRTC_H_auto:
 sys_util_fadeOut::
 	ld de, #25
 height_out:
-    ld a, #12
+    ld a, #3
 	call crt_delay
 	call CRTC_V_auto
 	dec e
@@ -300,8 +300,8 @@ height_out:
 sys_util_fadeIn::
 	ld de, #0
 height_in:
-    ld a, #12
-	call crt_delay 
+    ld a, #3
+	call crt_delay
 	call CRTC_V_auto
 	inc e
 	ld a, e
