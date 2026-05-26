@@ -42,7 +42,7 @@ GAME_STATE_AI_SELECT = 3   ;; AI level picker (1-player only)
 .area _DATA
 
 _game_state:         .db 0
-_game_loaded_string: .asciz " GAME LOADED - V.044"
+_game_loaded_string: .asciz " GAME LOADED - V.045"
 
 ;;
 ;; Start of _CODE area
@@ -74,9 +74,10 @@ sys_game_init::
    ;; set random seed using hl from message show
    call cpct_setSeed_mxor_asm
 
-   ;; Start in menu state
+   ;; Start in menu state with menu music
    xor a
    ld (_game_state), a
+   call sys_sound_start_menu_music
    call man_menu_init
 
    ret
@@ -159,6 +160,7 @@ _sgu_ai_select_cancel:
    xor a
    ld (_game_state), a
    ld (man_menu_confirmed), a       ;; reset so menu doesn't auto-confirm again
+   call sys_sound_start_menu_music
    call man_menu_init
    ret
 
@@ -173,7 +175,7 @@ _sgu_playing:
    ;; Transition back to menu
    xor a
    ld (_game_state), a              ;; GAME_STATE_MENU = 0
-   call sys_sound_stop
+   call sys_sound_start_menu_music
    call man_menu_init
    ret
 
@@ -187,5 +189,6 @@ _sgu_help:
 
    xor a
    ld (_game_state), a
+   call sys_sound_start_menu_music
    call man_menu_init
    ret

@@ -134,6 +134,7 @@ S_BIG_NUMBERS_HEIGHT = 13
 .globl sys_sound_init
 .globl sys_sound_stop
 .globl sys_sound_start_music
+.globl sys_sound_start_menu_music
 .globl sys_sound_play_sfx
 .globl _snd_lines_found
 

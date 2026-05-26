@@ -61,6 +61,23 @@ sys_sound_start_music::
 
 ;;-----------------------------------------------------------------
 ;;
+;; sys_sound_start_menu_music
+;;
+;;  Switches to the menu subsong and enables playback.
+;;  Call when entering any menu screen (main menu, help, AI select).
+;;
+sys_sound_start_menu_music::
+   ld bc, #SUBSONG_MENU
+   push bc
+   ld hl, #_DRROLANDSOUNDTRACK_START
+   push hl
+   call _PLY_AKG_INIT
+   ld a, #1
+   ld (_snd_music_active), a
+   ret
+
+;;-----------------------------------------------------------------
+;;
 ;; sys_sound_stop
 ;;
 ;;  Stops playback immediately.

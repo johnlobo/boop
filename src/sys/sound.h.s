@@ -23,7 +23,8 @@
 ;;
 ;; Subsong indices (must match the .aks compilation order in At2FilesAKG.s)
 ;;
-SUBSONG_GAME    = 0    ;; background game music
+SUBSONG_MENU    = 7    ;; menu music  (upbeat FEVER_MIX)
+SUBSONG_GAME    = 0    ;; in-game music
 SUBSONG_WIN     = 4    ;; win jingle
 SUBSONG_SILENCE = 6    ;; silent subsong
 
@@ -38,3 +39,9 @@ SND_CH_C = 2
 ;; sys/sound.s public symbols
 ;;
 .globl _snd_music_active
+.globl _snd_lines_found
+.globl sys_sound_init
+.globl sys_sound_stop
+.globl sys_sound_start_music
+.globl sys_sound_start_menu_music
+.globl sys_sound_play_sfx
