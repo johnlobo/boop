@@ -40,10 +40,11 @@ man_ai_level::          .db 0   ;; 0-3: difficulty chosen at level-select screen
 ;;------------------------------------------------------------------------------
 ;; Per-turn evaluation state
 ;;------------------------------------------------------------------------------
-_ai_think_phase:   .db 0   ;; 0=evaluating, 1=post-eval delay, 2=play
+_ai_think_phase:   .db 0   ;; 0=eval, 1=delay, 2=cursor anim, 3=play
 _ai_eval_row:      .db 0   ;; next row to evaluate (0..GRID_ROWS)
 _ai_eval_col:      .db 0   ;; next col to evaluate (0..GRID_COLS-1)
 _ai_post_delay:    .db 0   ;; countdown frames between eval end and move
+_ai_anim_delay:    .db 0   ;; countdown frames between animation steps
 
 ;; Pre-computed baselines (computed once at start of each AI turn)
 _ai_opp_before:    .db 0   ;; P1 cat-pair count before any simulation
@@ -178,8 +179,12 @@ _mau_eval_complete:
 
 _mau_phase12:
    cp #1
-   jr nz, _mau_play
+   jr z, _mau_delay_phase
+   cp #2
+   jr z, _mau_anim_phase
+   jr _mau_play            ;; phase 3
 
+_mau_delay_phase:
    ;; --- Phase 1: post-eval delay ---
    ld hl, #_ai_post_delay
    ld a, (hl)
@@ -189,12 +194,43 @@ _mau_phase12:
    ld (hl), a
    ret
 _mau_delay_done:
+   ;; Position cursor at top-right corner and show it
+   xor a
+   ld (_cursor_row), a
+   ld a, #5
+   ld (_cursor_col), a
+   ld a, (_ai_best_piece)
+   ld (_cursor_piece), a
+   call _match_draw_cursor
+   ;; Switch to animation phase with initial step delay
+   ld a, #2
+   ld (_ai_anim_delay), a
    ld a, #2
    ld (_ai_think_phase), a
    ret
 
+_mau_anim_phase:
+   ;; --- Phase 2: animate cursor moving toward target ---
+   ld hl, #_ai_anim_delay
+   ld a, (hl)
+   or a
+   jr z, _mau_anim_step
+   dec a
+   ld (hl), a
+   ret
+_mau_anim_step:
+   call _ai_cursor_step    ;; Z=1 if already at target
+   jr nz, _mau_anim_cont
+   ld a, #3
+   ld (_ai_think_phase), a
+   ret
+_mau_anim_cont:
+   ld a, #2
+   ld (_ai_anim_delay), a
+   ret
+
 _mau_play:
-   ;; --- Phase 2: execute chosen move ---
+   ;; --- Phase 3: cursor is at target, execute move ---
    ld a, (_ai_best_col)
    ld (_cursor_col), a
    ld a, (_ai_best_row)
@@ -203,6 +239,69 @@ _mau_play:
    ld (_cursor_piece), a
    call _match_place_piece
    call man_ai_init        ;; reset for next AI turn
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _ai_cursor_step
+;;
+;;  Moves the cursor one step toward (_ai_best_col, _ai_best_row),
+;;  restoring the previous cell and redrawing the cursor at the new
+;;  position. Column is adjusted before row.
+;;  Input:  _cursor_col, _cursor_row = current position
+;;          _ai_best_col, _ai_best_row = target
+;;  Output: Z=1 if cursor was already at target (no step taken)
+;;          Z=0 a step was taken and cursor redrawn
+;;  Modified: AF, BC, DE, HL, IX
+;;
+_ai_cursor_step:
+   ld a, (_cursor_col)
+   ld c, a                    ;; C = current col
+   ld a, (_cursor_row)
+   ld b, a                    ;; B = current row
+
+   ;; Try moving column first
+   ld a, (_ai_best_col)
+   cp c
+   jr z, _acs_try_row
+
+   push bc                    ;; save old row/col for restore
+   jr c, _acs_col_left
+   inc c
+   jr _acs_col_moved
+_acs_col_left:
+   dec c
+_acs_col_moved:
+   ld a, c
+   ld (_cursor_col), a
+   pop bc                     ;; B=old_row, C=old_col
+   call _match_restore_cell
+   call _match_draw_cursor
+   or #1                      ;; Z=0: step taken
+   ret
+
+_acs_try_row:
+   ld a, (_ai_best_row)
+   cp b
+   jr z, _acs_arrived
+
+   push bc
+   jr c, _acs_row_up
+   inc b
+   jr _acs_row_moved
+_acs_row_up:
+   dec b
+_acs_row_moved:
+   ld a, b
+   ld (_cursor_row), a
+   pop bc
+   call _match_restore_cell
+   call _match_draw_cursor
+   or #1
+   ret
+
+_acs_arrived:
+   xor a                      ;; Z=1: already at target
    ret
 
 ;;-----------------------------------------------------------------

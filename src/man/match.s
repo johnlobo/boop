@@ -410,7 +410,7 @@ _mdb_next_col:
 ;;  Output:
 ;;  Modified: AF, BC, DE, HL, IX
 ;;
-_match_draw_cursor:
+_match_draw_cursor::
    ;; Compute screen address for cursor position
    ld a, (_cursor_col)
    ld c, a
@@ -677,7 +677,7 @@ _mpp_pe_out:
 ;;  Output: -
 ;;  Modified: AF, BC, DE, HL
 ;;
-_match_restore_cell:
+_match_restore_cell::
    ld a, c
    ld (_mrc_col), a
    ld a, b

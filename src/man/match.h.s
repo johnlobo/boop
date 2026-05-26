@@ -105,3 +105,5 @@ BLOCKED_CURSOR_COLOR = 0xF0  ;; pen 3 (Red) both pixels in Mode 0 → blocked-to
 .globl _match_place_piece         ;; place current cursor piece on board
 .globl _match_boop                ;; kitten boop (uses _cursor_row/_col)
 .globl _match_boop_cat            ;; cat boop    (uses _cursor_row/_col)
+.globl _match_restore_cell        ;; restore grid at (C=col, B=row), redraw piece
+.globl _match_draw_cursor         ;; draw cursor at current _cursor_col/_row
