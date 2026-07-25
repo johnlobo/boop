@@ -41,3 +41,8 @@ Debug/
 
 #Visual Studio hidden files
 *.vs
+
+# Python venv / cache (assets/sound music generator scripts)
+.venv/
+__pycache__/
+*.pyc
