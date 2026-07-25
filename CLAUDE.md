@@ -1,26 +1,28 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code in this repo.
 
-## Project Overview
+## Project
 
-This is an Amstrad CPC game called **boop**, written in Z80 assembly using the **CPCtelera** game engine. It targets Mode 0 (160x200, 16 colors) and loads at memory address `0x4000`.
+Amstrad CPC game **boop**, Z80 assembly, **CPCtelera** engine. Mode 0 (160x200, 16 colors), loads at `0x4000`.
 
-## Build Commands
+## Build
 
 ```bash
-make            # Build the project (produces .cdt, .dsk, .sna files)
-make clean      # Clean compiled objects
-make cleanall   # Clean everything including generated assets
+make            # build (.cdt, .dsk, .sna)
+make clean      # clean compiled objects
+make cleanall   # clean everything incl. generated assets
 ```
 
-Requires the `CPCT_PATH` environment variable pointing to the CPCtelera installation. The build toolchain uses SDCC (Small Device C Compiler) with its Z80 assembler.
+Requires `CPCT_PATH` env var (CPCtelera install). Toolchain: SDCC + its Z80 assembler.
 
-To run in an emulator: `cpct_winape -as -f` (Windows/Linux) or `cpct_rvm -as -f` (macOS).
+Run in emulator: `cpct_winape -as -f` (Win/Linux) or `cpct_rvm -as -f` (macOS).
 
-VSCode tasks for `make`, `clean`, `cleanall`, and `run` are configured in [.vscode/tasks.json](.vscode/tasks.json).
+VSCode tasks for `make`/`clean`/`cleanall`/`run`: [.vscode/tasks.json](.vscode/tasks.json).
 
-**Version string**: bump `_game_loaded_string` in `src/man/game.s` after every change. Currently **V.042**. This is mandatory — always increment before finishing any task.
+**Version string**: bump `_game_loaded_string` in `src/man/game.s` after every change (currently **V.048**). Mandatory — always increment before finishing a task.
+
+**Dead code**: `./find_unused.sh [src_dir]` finds `label::` defs with no callers/refs elsewhere.
 
 ## Architecture
 
@@ -28,34 +30,38 @@ VSCode tasks for `make`, `clean`, `cleanall`, and `run` are configured in [.vsco
 
 ```
 src/
-  main.s          - Entry point (_main::), transparency table at 0x100, calls sys_game_init/update
-  common.h.s      - Global .globl declarations, sprite refs, CPCtelera imports, constants, shared macros
+  main.s          - Entry (_main::), transparency table @0x100, calls sys_game_init/update
+  common.h.s      - Global .globl decls, sprite refs, CPCtelera imports, constants, shared macros
   sys/            - Low-level system modules
   man/            - High-level game-logic modules
+  audio/          - Arkos Player 2 (AKG) exported song/SFX data (At2FilesAKG.s, generated)
   assets/         - Generated sprite/bg C arrays (do not edit by hand)
 ```
 
-**sys/ modules** (each has a `.h.s` header + `.s` implementation):
-- **render** - Video init (mode, palette, border), screen clear, sprite drawing, `drawSpriteMaskedAlignedColorizeM0` for color-replaced masked sprites. Has a logical double-buffer (front/back tracked by `sys_render_front_buffer`/`sys_render_back_buffer`). `sys_render_draw_screen` draws the full static chrome (header, baskets, cat/catty icons, grid); `sys_render_draw_grid` redraws only the grid background — use this when refreshing the board without touching the HUD.
+**sys/ modules** (each: `.h.s` header + `.s` impl):
+- **render** - Video init (mode/palette/border), screen clear, sprite drawing, `drawSpriteMaskedAlignedColorizeM0` (color-replaced masked sprites). Logical double-buffer via `sys_render_front_buffer`/`sys_render_back_buffer`. `sys_render_draw_screen` draws full static chrome (header, baskets, cat/catty icons, grid); `sys_render_draw_grid` redraws only grid bg — use to refresh board without touching HUD.
 - **system** - Firmware disable, chain of 6 interrupt handlers cycling per frame; handler 2 scans keyboard.
 - **input** - Keyboard dispatch table, wait-for-key, `sys_input_getKeyPressed` for polled reads.
-- **messages** - Windowed message overlay with background save/restore via 3000-byte `message_buffer`.
-- **text** - Font rendering with 5-color swap table, string utilities, BCD number display using digit sprites.
+- **messages** - Windowed message overlay, bg save/restore via 3000-byte `message_buffer`.
+- **text** - Font rendering (5-color swap table), string utils, BCD number display via digit sprites.
 - **util** - 8-bit multiply (`sys_util_h_times_e`), 16-bit divide (`sys_util_hl_div_c`), BCD arithmetic, RNG, frame delay, CRTC fade/shake (`sys_util_fadeIn`/`fadeOut`/`temblor`).
+- **sound** - Arkos Player 2 (AKG) wrapper. `sys_sound_init` (once, boot), `sys_sound_start_music`/`sys_sound_start_menu_music` (switch subsong + enable playback via `_snd_music_active`), `sys_sound_stop`, `sys_sound_play_sfx` (A=`SFX_*` id, channel B; `SFX_END`=255 → win-jingle subsong instead of an effect). Subsong indices (`SUBSONG_MENU/GAME/WIN/SILENCE`) and SFX ids (`SFX_CURSOR/KITTEN/CAT/EJECT/LINE/END`, in `common.h.s`) must match `.aks` compile order in `src/audio/At2FilesAKG.s`. `PLY_AKG_PLAY` pumped once/frame from `int_handler5` in `system.s`, gated on `_snd_music_active`.
 
-**man/ modules** (each has a `.h.s` header + `.s` implementation):
-- **game** (`sys_game_init` / `sys_game_update`) - Top-level state machine with four states: `GAME_STATE_MENU=0`, `GAME_STATE_PLAYING=1`, `GAME_STATE_HELP=2`, `GAME_STATE_AI_SELECT=3`. Menu confirmed=1 (ONE PLAYER) → AI_SELECT; confirmed=2 (TWO PLAYERS) → PLAYING directly; confirmed=3 → HELP. ESC on AI-select returns to menu.
-- **menu** (`man_menu_init` / `man_menu_update` / `man_menu_draw`) - Three-option menu (ONE PLAYER / TWO PLAYERS / HELP); `man_menu_confirmed` = 1/2/3 respectively. Includes a walking gatito animation (4-frame cycle, direction-aware horizontal flip via `cpct_hflipSpriteM0_asm`, random walk/stop lengths).
-- **match** (`man_match_init` / `man_match_update` / `man_match_draw_hud`) - Turn-based 6×6 board game. Manages `man_match_player1`/`player2` structs and `man_match_num_players`.
-- **help** (`man_help_init` / `man_help_update`) - Help/rules screen; exposes `man_help_done` (set to 1 when user exits).
+**man/ modules** (each: `.h.s` header + `.s` impl):
+- **game** (`sys_game_init`/`sys_game_update`) - State machine: `GAME_STATE_MENU=0`, `PLAYING=1`, `HELP=2`, `AI_SELECT=3`. Menu confirmed=1 (ONE PLAYER) → AI_SELECT (`man_menu_level_init`); confirmed=2 (TWO PLAYERS) → PLAYING; confirmed=3 → HELP. ESC on AI-select → menu. Also owns music-track switching on every state transition.
+- **menu** (`man_menu_init`/`update`/`draw`) - 3-option menu (ONE/TWO PLAYERS/HELP); `man_menu_confirmed`=1/2/3. Walking gatito animation (4-frame, direction-aware hflip via `cpct_hflipSpriteM0_asm`, random walk/stop lengths).
+- **menu_level** (`man_menu_level_init`/`update`) - AI difficulty picker (4 options, colored catty sprites). `man_menu_level_done`=1 confirmed/2 cancelled (ESC); on confirm writes chosen index (0–3) to `man_ai_level` (in `ai.h.s`).
+- **match** (`man_match_init`/`update`/`draw_hud`) - Turn-based 6×6 board game. Manages `man_match_player1`/`player2` structs, `man_match_num_players`.
+- **help** (`man_help_init`/`update`) - Help/rules screen; `man_help_done`=1 on exit.
+- **ai** - see AI Module below.
 
 ### Code Conventions
 
-- Assembly files use `.s` extension; headers use `.h.s`.
-- Module headers declare `.globl` symbols and macros; implementations `.include` their own header.
-- Each module declares `.area _DATA` and `.area _CODE` sections (required by SDCC linker).
-- Self-modifying code is used in input key scanning, sprite colorize, and draw_box — these routines cannot run from ROM.
-- Comments mix English and Spanish.
+- `.s` = assembly; `.h.s` = headers.
+- Headers declare `.globl` symbols/macros; impls `.include` their own header.
+- Each module: `.area _DATA` + `.area _CODE` (SDCC linker requires this).
+- Self-modifying code: input key scanning, sprite colorize, draw_box — can't run from ROM.
+- Comments mix English/Spanish.
 
 ### Key Macros (render.h.s)
 
@@ -67,74 +73,68 @@ m_screenPtr_frontbuffer X, Y — same for front buffer
 m_draw_blank_small_number BG — draw a blank 4×5 solid box with colour BG at current DE
 ```
 
-CPC screen address formula used by the macros: `base + 80*(Y/8) + 2048*(Y&7) + X`
+CPC screen address formula: `base + 80*(Y/8) + 2048*(Y&7) + X`
 
 ### Asset Pipeline
 
-PNG sprites in `assets/` are auto-converted to C arrays via CPCtelera's `IMG2SP` macros defined in `cfg/image_conversion.mk`. Generated files land in `src/assets/sprites/` (sprites) and `src/assets/bg/` (backgrounds). The firmware palette is `PALETTE0` in that file.
+PNG sprites in `assets/` auto-convert to C arrays via CPCtelera's `IMG2SP` macros (`cfg/image_conversion.mk`). Output: `src/assets/sprites/` (sprites), `src/assets/bg/` (backgrounds). Firmware palette: `PALETTE0` in that file.
 
-A 256-byte transparency table at absolute address `0x100` (in `main.s`) is used by all masked sprite drawing routines.
+256-byte transparency table at `0x100` (in `main.s`), used by all masked sprite drawing routines.
+
+### Music Pipeline (`assets/sound/`) — manual, not part of `make`
+
+1. `songNN.py` scripts (mido-based) generate draft `.mid` files — 3 tracks matching the AY-3-8912's 3 physical channels (lead/harmony/bass), no dedicated drum channel. Run via the venv in that dir: `assets/sound/.venv/bin/python songNN.py` (deps pinned in `requirements.txt`).
+2. The `.mid` is hand-imported into Arkos Tracker 2, tempo/instruments adjusted there, then exported as `.aks` (e.g. `song01.aks`, `menu01.aks`).
+3. The `.aks` project is manually merged into `src/audio/At2FilesAKG.s` (single `DRROLANDSOUNDTRACK_START` blob, **8 subsongs, indices 0-7**) — there's no automated `.aks` → `.s` build rule (`cfg/music_conversion.mk` only has commented-out boilerplate).
+4. Wire a subsong into the game by pointing a `SUBSONG_*` constant (`sys/sound.h.s`) at its index. Only indices 0, 4, 6, 7 are currently referenced by code — **1, 2, 3, 5 already exist in the compiled blob but are unused**, free to wire up without re-exporting AKG data.
 
 ### Interrupt System
 
-Six interrupt handlers (`int_handler1`–`int_handler6`) rotate each interrupt, giving predictable per-frame timing. Handler 2 calls `cpct_scanKeyboard_if_asm` so the keyboard buffer is always current.
+6 handlers (`int_handler1`–`6`) rotate each interrupt for predictable per-frame timing. Handler 2 calls `cpct_scanKeyboard_if_asm` to keep keyboard buffer current.
 
 ### Match Board & Player Data
 
-**Board** (`_match_board`) — 36-byte row-major array; cell values:
-`BOARD_EMPTY=0`, `BOARD_P1_CAT=1`, `BOARD_P1_KITTEN=2`, `BOARD_P2_CAT=3`, `BOARD_P2_KITTEN=4`
+**Board** (`_match_board`) — 36-byte row-major array; cell values: `BOARD_EMPTY=0`, `BOARD_P1_CAT=1`, `BOARD_P1_KITTEN=2`, `BOARD_P2_CAT=3`, `BOARD_P2_KITTEN=4`
 
-**Grid geometry** (defined in `match.h.s`):
-- First cell: X=19 bytes, Y=36 px
-- Cell pitch: 7 bytes wide × 24 px tall
-- Dimensions: 6 cols × 6 rows
-- Cursor color: `CURSOR_COLOR = 0x3C` (pen 6 — bright yellow — both pixels in Mode 0)
-- Blocked cursor: `BLOCKED_CURSOR_COLOR = 0xF0` (pen 3 — red) — flashed when Space is pressed but the target piece type has 0 remaining
+**Grid geometry** (`match.h.s`): first cell X=19 bytes, Y=36 px; pitch 7 bytes × 24 px; 6 cols × 6 rows. Cursor color `CURSOR_COLOR=0x3C` (pen 6, bright yellow). Blocked cursor `BLOCKED_CURSOR_COLOR=0xF0` (pen 3, red) — flashed when Space pressed but target piece type has 0 remaining.
 
-**Player struct** (offsets in `match.h.s`):
-`score` 4 bytes BCD (0), `cats` 1 (4), `kittens` 1 (5); `sizeof_Player = 6`
+**Player struct** (`match.h.s`): `score` 4B BCD (offset 0), `cats` 1B (4), `kittens` 1B (5); `sizeof_Player=6`.
 
-**Initial reserve**: `MATCH_INITIAL_CATS = 0`, `MATCH_INITIAL_KITTENS = 8` — each player starts with 0 cats and 8 kittens in reserve.
+**Initial reserve**: `MATCH_INITIAL_CATS=0`, `MATCH_INITIAL_KITTENS=8` per player.
 
 ### Keyboard Controls (during match)
 
 | Key | Action |
 |-----|--------|
-| Cursor arrows | Move cursor on the 6×6 grid |
-| Space | Toggle `_cursor_piece` between `PIECE_KITTEN` (1) and `PIECE_CAT` (0); flashes red and blocks if the target piece type has 0 in reserve |
-| Enter/Return | Place the selected piece at the cursor position (`_match_place_piece`) |
-| Escape | Open "ABANDON MATCH? (Y/N)" dialog; Y sets `_match_cancelled=1`, N/Esc resumes |
+| Cursor arrows | Move cursor on 6×6 grid |
+| Space | Toggle `_cursor_piece` between `PIECE_KITTEN`(1)/`PIECE_CAT`(0); flashes red + blocks if target type has 0 in reserve |
+| Enter/Return | Place selected piece at cursor (`_match_place_piece`) |
+| Escape | "ABANDON MATCH? (Y/N)" dialog; Y → `_match_cancelled=1`, N/Esc resumes |
 
-**`_cursor_piece` state**: starts each turn as `PIECE_KITTEN` (or forced to `PIECE_CAT` if the active player has 0 kittens). Board value = `_match_state * 2 + _cursor_piece + 1`.
+`_cursor_piece`: starts each turn as `PIECE_KITTEN` (or forced `PIECE_CAT` if active player has 0 kittens). Board value = `_match_state * 2 + _cursor_piece + 1`.
 
 ### Kitten Placement Rules
 
-1. **Empty cell only** — a kitten can only be placed on a cell that is currently `BOARD_EMPTY`.
+1. **Empty cell only** — kitten placeable only on `BOARD_EMPTY` cell.
+2. **Boop push** — after placement, every kitten in the (up to 8) surrounding cells pushed one cell away from the new kitten, along the vector from new kitten → neighbor.
+3. **Out-of-bounds ejection** — push off-grid → kitten removed from board, owner's kitten count incremented (returns to reserve).
+4. **Piece interactions** — kittens boop only neighboring kittens; cats immune to kittens. A placed **cat** boops all neighboring pieces (kittens + cats). Ejected kittens → owner's kitten reserve; ejected cats → owner's cat reserve. Kitten boop: `_match_boop`; cat boop: `_match_boop_cat`. Owner: 1–2=P1, 3–4=P2. Type: odd=cat, even=kitten.
+5. **Three-in-a-row conversion** — after placement+boop, scan for 3 consecutive same-player pieces (any cat/kitten mix) in a row/col. Kittens in the line removed, owner +1 cat per kitten; cats stay. Triggers on both kitten and cat placement. Impl: `_match_check_lines` + `_mrl_process_kitten` in `match.s`.
+6. **Cat three-in-a-row win** — after each placement, scan for 3 consecutive same-color cats in a row/col → that player wins immediately (`BOARD_P1_CAT=1`→P1, `BOARD_P2_CAT=3`→P2). Impl: `_match_check_cat_lines` in `match.s`.
+7. **No-pieces win** — after boop+line-check (before turn toggle), if placing player has 0 cats AND 0 kittens in reserve, match ends, opponent wins (accounts for pieces ejected back to reserve during boop). Inline in `_match_place_piece` at `_mpp_pe_chk`/`_mpp_pe_out`.
 
-2. **Boop push** — after placement, every kitten present in any of the (up to 8) surrounding cells is pushed one cell **away** from the newly placed kitten. The push direction for each neighbor is the vector from the new kitten to that neighbor (i.e. the neighbor moves one cell further away in the same direction).
-
-3. **Out-of-bounds ejection** — if the push would move a kitten outside the 6×6 grid, the kitten is removed from the board and the **owner's kitten count is incremented** (it is returned to that player's reserve).
-
-4. **Piece interactions** — kittens boop only neighboring kittens; cats are immune to kittens. When a **cat** is placed it boops all neighboring pieces (both kittens and cats). Ejected kittens return to the owner's kitten reserve; ejected cats return to the owner's cat reserve. Kitten boop: `_match_boop`; cat boop: `_match_boop_cat`. Piece owner: values 1–2 = P1, 3–4 = P2. Piece type: odd value = cat, even value = kitten.
-
-5. **Three-in-a-row conversion** — after any placement and boop, the board is scanned for 3 consecutive same-colour pieces (any mix of cats and kittens of the same player) in any row or column. For each match: kittens in the line are removed from the board and the owner gains +1 cat per kitten; cats in the line stay in place. Triggered for both kitten and cat placement. Implemented in `_match_check_lines` + `_mrl_process_kitten` in `match.s`.
-
-6. **Cat three-in-a-row win** — after each placement, the board is scanned for 3 consecutive cats of the same colour in any row or column. If found, that player wins immediately. `BOARD_P1_CAT=1` → P1 wins; `BOARD_P2_CAT=3` → P2 wins. Implemented in `_match_check_cat_lines` in `match.s`.
-
-7. **No-pieces win** — after boop and line-check resolution (but before toggling the turn), if the placing player has 0 cats AND 0 kittens in reserve, the match ends and the opponent wins. This accounts for pieces that may have been ejected back to the reserve during boop. Inline in `_match_place_piece` at `_mpp_pe_chk` / `_mpp_pe_out`.
-
-Both win conditions call `_match_declare_winner` (A=1 P1, A=2 P2), which shows a "PLAYER X WINS!" window, waits for any key, then sets `_match_cancelled = 1` to return to menu.
+Both win conditions call `_match_declare_winner` (A=1 P1, A=2 P2): shows "PLAYER X WINS!" window, waits for keypress, sets `_match_cancelled=1` → menu.
 
 ### Boop Animation & Turn Announcement
 
-**Boop animation** (`_match_boop_animate` in `match.s`) — replaces the bare `_match_boop`/`_match_boop_cat` calls with a 3-frame visual sequence:
-1. **Frame 0**: piece placed, board drawn, 4-frame delay (pre-boop snapshot saved to `_boop_anim_before`)
-2. **Frame 1**: boop executed, destination cells cleared into `_boop_transit_buf` (16 bytes, up to 8 entries of offset+value), board redrawn with sources gone and destinations empty, 3-frame delay
-3. **Frame 2**: destinations restored in board; caller then redraws
+**Boop animation** (`_match_boop_animate` in `match.s`) — replaces bare `_match_boop`/`_match_boop_cat` with 3-frame sequence:
+1. Frame 0: piece placed, board drawn, 4-frame delay (pre-boop snapshot → `_boop_anim_before`)
+2. Frame 1: boop executed, dest cells cleared into `_boop_transit_buf` (16B, up to 8 offset+value entries), board redrawn with sources gone/dests empty, 3-frame delay
+3. Frame 2: destinations restored in board; caller redraws
 
-`_boop_transit_cnt` tracks the number of valid entries in `_boop_transit_buf`.
+`_boop_transit_cnt` = valid entry count in `_boop_transit_buf`.
 
-**Turn announcement** (`_match_show_turn_message`) — called as a tail call at end of `man_match_init` (P1 starts) and at end of `_match_place_piece` (after each move, unless `_match_cancelled`). Shows "PLAYER X TURN" in an auto-dismissing window (2 seconds, `A=2` mode): orange background for P1 (pen 5), blue background for P2 (pen 2).
+**Turn announcement** (`_match_show_turn_message`) — tail call at end of `man_match_init` (P1 starts) and end of `_match_place_piece` (after each move, unless `_match_cancelled`). Shows "PLAYER X TURN", auto-dismiss 2s window (A=2 mode): orange bg P1 (pen 5), blue bg P2 (pen 2).
 
 ### CPCtelera Calling Conventions
 
@@ -154,7 +154,7 @@ Input: A=wait_flag (1=block until keypress, auto-restores background on return),
 Modified: AF, HL, DE, BC
 ```
 
-**Critical**: `m_msg_w_background BK` (defined in `common.h.s`) clobbers **AF and HL** — it calls `cpct_px2byteM0_asm` and stores the result in `AF'`. Always invoke this macro *first*, then load E, D, B, C, A, HL. If a value must survive the macro call, wrap it with `push af` / `pop af`.
+**Critical**: `m_msg_w_background BK` (in `common.h.s`) clobbers **AF and HL** (calls `cpct_px2byteM0_asm`, stores result in AF'). Always invoke first, then load E,D,B,C,A,HL. To preserve a value across the call, wrap with `push af`/`pop af`.
 
 ### Struct Definition Macros (common.h.s)
 
@@ -167,41 +167,43 @@ EndStruct Foo            ; sizeof_Foo = 3
 
 ### Match Cancellation Flow
 
-`_match_cancelled` (byte in `match.h.s`) is the signal from match back to the game loop:
-- Set to `1` by `_match_declare_winner` after the win/loss window is dismissed.
-- Polled each frame by `man_match_update`; when set, it returns and `man_game_update` transitions back to `GAME_STATE_MENU`.
+`_match_cancelled` (byte, `match.h.s`) signals match → game loop:
+- Set to `1` by `_match_declare_winner` after win/loss window dismissed.
+- Polled each frame by `man_match_update`; when set, returns and `man_game_update` transitions to `GAME_STATE_MENU`.
 
 ### AI Module (`man/ai.s`)
 
-Single-player opponent; always plays as **Player 2** (blue cats). Active when `man_match_num_players == 1` and it is P2's turn.
+Single-player opponent, always **Player 2** (blue cats). Active when `man_match_num_players==1` and it's P2's turn.
 
-**Difficulty levels** (`man_ai_level` 0–4):
+**Difficulty levels** (`man_ai_level` 0–3):
 
 | Level | Name | Behaviour |
 |-------|------|-----------|
 | 0 | GATITO TIMIDO | Random, kitten-first, 50-frame think delay |
 | 1 | GATO JUGUETON | Slight positional awareness |
-| 2 | GATA ASTUTA | Balanced defense + offense |
-| 3 | MAESTRO FELINO | Full heuristic, 10-frame think delay |
+| 2 | GATA ASTUTA | Balanced defense + offense, danger check active |
+| 3 | MAESTRO FELINO | Full heuristic, 10-frame think delay, danger check active |
 
-**Per-turn evaluation loop** (spread across frames, `AI_EVAL_CELLS_PER_FRAME = 4`):
-1. **Phase 0** — scan every empty cell, scoring kitten and cat placements via `_ai_score_one_candidate`. Evaluates 4 cells/frame; short-circuits immediately on a winning-move sentinel (score 255).
-2. **Phase 1** — post-eval delay (personality "think time", profile `delay_frames`).
-3. **Phase 2** — execute `_match_place_piece` with the best-found move, then `man_ai_init` to reset.
+**Per-turn eval loop** (spread across frames, `AI_EVAL_CELLS_PER_FRAME=4`):
+1. Phase 0 — scan every empty cell, score kitten/cat placements via `_ai_score_one_candidate`. 4 cells/frame; short-circuits on winning-move sentinel (score 255).
+2. Phase 1 — post-eval delay (profile `delay_frames`, "think time").
+3. Phase 2 — execute `_match_place_piece` with best move, then `man_ai_init` to reset.
 
-**Scoring heuristic** (weights from the active profile in `_ai_profiles`):
+**Scoring heuristic** (weights from active profile in `_ai_profiles`):
 - **Defense** (`W_defense`): reduction in P1 adjacent cat-pairs after simulation.
 - **Alignment** (`W_align`): increase in P2 adjacent piece-pairs.
 - **Center** (`W_center`): 0–3 bonus from `_ai_center_table` (concentric squares).
 - **Kitten lines** (`W_kitten`): count of P2 three-in-a-row windows created.
 - **Random noise** (`rand_mask`): AND-masked random byte for variety.
-- Equal-scoring candidates are broken by a 50 % RNG tiebreak.
+- Equal-scoring candidates: 50% RNG tiebreak.
+- **Danger check** (levels 2-3 only): after scoring, `_ai_has_p1_cat_win` scans the simulated board; if the move leaves P1 with an immediate 3-cats-in-a-row win, the candidate's score is forced to 0 regardless of heuristic value. Levels 0-1 skip this check on purpose (stay tactically blind).
 
-**AI profile struct** (6 bytes at `_ai_profiles + level * 6`): `delay_frames, W_defense, W_align, W_center, W_kitten, rand_mask`.
+**AI profile struct** (6B at `_ai_profiles + level*6`): `delay_frames, W_defense, W_align, W_center, W_kitten, rand_mask`.
 
-**Simulation** — `_ai_score_one_candidate` saves board + both player structs (36 + 6 + 6 bytes), calls `_ai_place_no_animate` (which calls `_match_boop` / `_match_boop_cat` as a tail call), evaluates, then restores. No animation or line-check is run during simulation.
+**Simulation** — `_ai_score_one_candidate` saves board + both player structs (36+6+6B), calls `_ai_place_no_animate` (tail-calls `_match_boop`/`_match_boop_cat`), evaluates, restores. No animation/line-check during simulation.
 
 **Integration points:**
-- `man_ai_init` — called from `man_match_init` and after each AI move; resets phase, eval position, and sets a random fallback move.
-- `man_ai_update` — called every frame from `man_match_update` when `num_players==1` and `_match_state == MATCH_STATE_P2`.
-- `man_ai_select_init` / `man_ai_select_update` — AI level picker screen driven by `game.s` in `GAME_STATE_AI_SELECT`; sets `man_ai_select_done` to 1 (confirmed) or 2 (ESC/cancelled).
+- `man_ai_init` — called from `man_match_init` and after each AI move; resets phase, eval position, random fallback move.
+- `man_ai_update` — called every frame from `man_match_update` when `num_players==1` and `_match_state==MATCH_STATE_P2`.
+- AI level picker screen: `man/menu_level.s` (see man/ modules above), not part of `ai.s` — only writes `man_ai_level` on confirm.
+- Move placement/eject SFX (`SFX_CURSOR/KITTEN/CAT`) triggered from `ai.s` via `sys_sound_play_sfx` alongside `_match_place_piece`, same as human moves in `match.s`.

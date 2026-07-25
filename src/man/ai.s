@@ -509,6 +509,19 @@ _asoc_align_ok:
    add a, d
    ld d, a
 
+   ;; --- Danger check: does this move leave P1 an immediate win? ---
+   ;; Only applied at levels 2-3 (GATA ASTUTA / MAESTRO FELINO); lower
+   ;; levels stay blind to this threat on purpose (part of their weakness).
+   ld a, (man_ai_level)
+   cp #2
+   jr c, _asoc_restore     ;; level 0-1: skip danger check
+   push de                 ;; D = accumulated score, save across the call
+   call _ai_has_p1_cat_win
+   pop de
+   or a
+   jr z, _asoc_restore     ;; no danger: keep heuristic score
+   ld d, #0                ;; danger: this move loses the game, discard score
+
 _asoc_restore:
    ;; === Restore board and player reserves ===
    ld hl, #_ai_board_backup
@@ -686,6 +699,103 @@ _ahpcw_vnext:
    ld a, c
    cp #GRID_COLS
    jr c, _ahpcw_vcol
+
+   xor a
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _ai_has_p1_cat_win
+;;
+;;  Scans _match_board for 3 consecutive BOARD_P1_CAT (=1) in any
+;;  row or column (windows of 3). Used to detect whether a simulated
+;;  P2 move leaves P1 with an immediate winning reply.
+;;  Output: A = 1 if P1 has 3 cats in a row, 0 otherwise
+;;  Modified: AF, BC, DE, HL
+;;
+_ai_has_p1_cat_win:
+   ;; Horizontal scan
+   ld b, #0
+_ahp1cw_hrow:
+   ld c, #0
+_ahp1cw_hcol:
+   push bc
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _ahp1cw_hnext
+   inc hl
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _ahp1cw_hnext
+   inc hl
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _ahp1cw_hnext
+   pop bc
+   ld a, #1
+   ret
+_ahp1cw_hnext:
+   pop bc
+   inc c
+   ld a, c
+   cp #(GRID_COLS - 2)   ;; window start: 0..3
+   jr c, _ahp1cw_hcol
+   inc b
+   ld a, b
+   cp #GRID_ROWS
+   jr c, _ahp1cw_hrow
+
+   ;; Vertical scan
+   ld c, #0
+_ahp1cw_vcol:
+   ld b, #0
+_ahp1cw_vrow:
+   push bc
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _ahp1cw_vnext
+   ld de, #6
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _ahp1cw_vnext
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _ahp1cw_vnext
+   pop bc
+   ld a, #1
+   ret
+_ahp1cw_vnext:
+   pop bc
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)   ;; window start: 0..3
+   jr c, _ahp1cw_vrow
+   inc c
+   ld a, c
+   cp #GRID_COLS
+   jr c, _ahp1cw_vcol
 
    xor a
    ret
