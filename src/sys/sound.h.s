@@ -26,6 +26,8 @@
 ;;
 SUBSONG_GAME = 1
 SUBSONG_MENU = 0
+SUBSONG_WIN  = 2
+SUBSONG_LOSE = 3
 
 ;;
 ;; AY channel indices for PLY_AKG_PLAYSOUNDEFFECT
@@ -43,4 +45,6 @@ SND_CH_C = 2
 .globl sys_sound_stop
 .globl sys_sound_start_music
 .globl sys_sound_start_menu_music
+.globl sys_sound_start_win_music
+.globl sys_sound_start_lose_music
 .globl sys_sound_play_sfx

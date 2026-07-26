@@ -69,6 +69,28 @@ sys_sound_start_menu_music::
    ret
 
 ;;-----------------------------------------------------------------
+;; Starts the one-position victory fanfare.
+;;
+sys_sound_start_win_music::
+   ld hl, #_START
+   ld a, #SUBSONG_WIN
+   call _PLY_AKG_INIT
+   ld a, #1
+   ld (_snd_music_active), a
+   ret
+
+;;-----------------------------------------------------------------
+;; Starts the one-position defeat fanfare.
+;;
+sys_sound_start_lose_music::
+   ld hl, #_START
+   ld a, #SUBSONG_LOSE
+   call _PLY_AKG_INIT
+   ld a, #1
+   ld (_snd_music_active), a
+   ret
+
+;;-----------------------------------------------------------------
 ;;
 ;; sys_sound_stop
 ;;
@@ -85,24 +107,16 @@ sys_sound_stop::
 ;; sys_sound_play_sfx
 ;;
 ;;  Triggers a sound effect on channel B.
-;;  SFX_END (255) stops music until a win subsong is added to the AT3 song.
 ;;
-;;  Input:  A = SFX_xxx id (SFX_CURSOR/KITTEN/CAT/EJECT/LINE) or SFX_END
+;;  Input:  A = SFX_xxx id (SFX_CURSOR/KITTEN/CAT/EJECT/LINE)
 ;;  Output: -
 ;;  Modified: AF, BC, DE, HL
 ;;
 sys_sound_play_sfx::
    or a
    ret z                 ;; SFX id 0 means that this event has no assigned sound
-   cp #SFX_END
-   jr z, _ssps_win
    ;; AT3 ABI: A = SFX id, B = inverted volume, C = channel.
    ld b, #0            ;; volume = 0
    ld c, #SND_CH_B     ;; channel = B
    call _PLY_AKG_PLAYSOUNDEFFECT
-   ret
-_ssps_win:
-   xor a
-   ld (_snd_music_active), a
-   call _PLY_AKG_STOP
    ret

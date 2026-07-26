@@ -34,6 +34,8 @@ include "$at3_root/players/playerAkg/sources/z80/PlayerAkg.asm"
 include "$project_root/src/audio/BoopAkg.asm"
 include "$project_root/src/audio/BoopAkg_s0.asm"
 include "$project_root/src/audio/BoopAkg_s1.asm"
+include "$project_root/src/audio/BoopAkg_s2.asm"
+include "$project_root/src/audio/BoopAkg_s3.asm"
 include "$project_root/src/audio/BoopFX.asm"
 EOF
 

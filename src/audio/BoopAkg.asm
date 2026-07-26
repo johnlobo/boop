@@ -19,6 +19,8 @@ DisarkPointerRegionEnd1
 DisarkPointerRegionStart2
     dw Subsong0_Start
     dw Subsong1_Start
+    dw Subsong2_Start
+    dw Subsong3_Start
 DisarkPointerRegionEnd2
 
 ; Declares all the Arpeggios.
