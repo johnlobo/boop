@@ -189,6 +189,6 @@ _sgu_help:
 
    xor a
    ld (_game_state), a
-   call sys_sound_start_menu_music
+   ;; Help uses the menu track already playing; keep its current position.
    call man_menu_init
    ret

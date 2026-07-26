@@ -34,7 +34,7 @@ src/
   common.h.s      - Global .globl decls, sprite refs, CPCtelera imports, constants, shared macros
   sys/            - Low-level system modules
   man/            - High-level game-logic modules
-  audio/          - Arkos Player 2 (AKG) exported song/SFX data (At2FilesAKG.s, generated)
+  audio/          - Arkos Tracker 3 AKG exports and generated SDCC player/data
   assets/         - Generated sprite/bg C arrays (do not edit by hand)
 ```
 
@@ -45,7 +45,7 @@ src/
 - **messages** - Windowed message overlay, bg save/restore via 3000-byte `message_buffer`.
 - **text** - Font rendering (5-color swap table), string utils, BCD number display via digit sprites.
 - **util** - 8-bit multiply (`sys_util_h_times_e`), 16-bit divide (`sys_util_hl_div_c`), BCD arithmetic, RNG, frame delay, CRTC fade/shake (`sys_util_fadeIn`/`fadeOut`/`temblor`).
-- **sound** - Arkos Player 2 (AKG) wrapper. `sys_sound_init` (once, boot), `sys_sound_start_music`/`sys_sound_start_menu_music` (switch subsong + enable playback via `_snd_music_active`), `sys_sound_stop`, `sys_sound_play_sfx` (A=`SFX_*` id, channel B; `SFX_END`=255 → win-jingle subsong instead of an effect). Subsong indices (`SUBSONG_MENU/GAME/WIN/SILENCE`) and SFX ids (`SFX_CURSOR/KITTEN/CAT/EJECT/LINE/END`, in `common.h.s`) must match `.aks` compile order in `src/audio/At2FilesAKG.s`. `PLY_AKG_PLAY` pumped once/frame from `int_handler5` in `system.s`, gated on `_snd_music_active`.
+- **sound** - Arkos Tracker 3 AKG wrapper. `sys_sound_init` (once, boot), `sys_sound_start_music`/`sys_sound_start_menu_music` (switch subsong + enable playback via `_snd_music_active`), `sys_sound_stop`, `sys_sound_play_sfx`. Menu is subsong 0 and gameplay is subsong 1. `BoopFX` maps kitten/cat/line to SFX 1/2/3; cursor/eject use 0 (disabled), and `SFX_END`=255 stops playback until a win subsong exists. `PLY_AKG_PLAY` is pumped once/frame from `int_handler5` in `system.s`, gated on `_snd_music_active`.
 
 **man/ modules** (each: `.h.s` header + `.s` impl):
 - **game** (`sys_game_init`/`sys_game_update`) - State machine: `GAME_STATE_MENU=0`, `PLAYING=1`, `HELP=2`, `AI_SELECT=3`. Menu confirmed=1 (ONE PLAYER) → AI_SELECT (`man_menu_level_init`); confirmed=2 (TWO PLAYERS) → PLAYING; confirmed=3 → HELP. ESC on AI-select → menu. Also owns music-track switching on every state transition.
@@ -83,10 +83,7 @@ PNG sprites in `assets/` auto-convert to C arrays via CPCtelera's `IMG2SP` macro
 
 ### Music Pipeline (`assets/sound/`) — manual, not part of `make`
 
-1. `songNN.py` scripts (mido-based) generate draft `.mid` files — 3 tracks matching the AY-3-8912's 3 physical channels (lead/harmony/bass), no dedicated drum channel. Run via the venv in that dir: `assets/sound/.venv/bin/python songNN.py` (deps pinned in `requirements.txt`).
-2. The `.mid` is hand-imported into Arkos Tracker 2, tempo/instruments adjusted there, then exported as `.aks` (e.g. `song01.aks`, `menu01.aks`).
-3. The `.aks` project is manually merged into `src/audio/At2FilesAKG.s` (single `DRROLANDSOUNDTRACK_START` blob, **8 subsongs, indices 0-7**) — there's no automated `.aks` → `.s` build rule (`cfg/music_conversion.mk` only has commented-out boilerplate).
-4. Wire a subsong into the game by pointing a `SUBSONG_*` constant (`sys/sound.h.s`) at its index. Only indices 0, 4, 6, 7 are currently referenced by code — **1, 2, 3, 5 already exist in the compiled blob but are unused**, free to wire up without re-exporting AKG data.
+The editable AT3 songs (`.aks`) and reusable instruments (`.aki`) live in `assets/sound/`. Music and effects are exported as `src/audio/BoopAkg*.asm` and `src/audio/BoopFX*.asm`. Run `assets/sound/generate_at3_audio.sh` with `AT3_HOME`, `RASM`, and `DISARK` set to regenerate the relocatable `src/audio/BoopAudioAT3.s`; see `assets/sound/AT3_AUDIO.md`.
 
 ### Interrupt System
 

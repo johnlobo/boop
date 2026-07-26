@@ -4,6 +4,9 @@ obj/
 # Folder Debug
 Debug/
 
+# macOS metadata
+.DS_Store
+
 
 # Object files
 *.o
