@@ -37,6 +37,14 @@ HUD_P2_CATS_X    = 67   ;; below P2 cat   sprite (render x=66, w=5)
 HUD_P2_KITTENS_X = 72   ;; below P2 catty sprite (render x=71, w=5)
 HUD_Y            = 89   ;; y = 68 (sprites top) + 17 (height) + 4 (gap)
 
+;; Basket sprite origins (must match sys_render_draw_screen /
+;; man_match_draw_hud's own basket redraw). S_BASKET_H=74 means the basket
+;; art bleeds all the way down under the HUD digit row (Y=89) — the digit
+;; area is NOT flat black background, it's basket artwork.
+HUD_BASKET_P1_X  = 0
+HUD_BASKET_P2_X  = 62
+HUD_BASKET_Y     = 50
+
 ;;------------------------------------------------------------------------------
 ;; Match state constants
 ;;------------------------------------------------------------------------------
@@ -79,6 +87,24 @@ GRID_ROWS            = 6
 ;;------------------------------------------------------------------------------
 CURSOR_COLOR         = 0x3C
 BLOCKED_CURSOR_COLOR = 0xF0  ;; pen 3 (Red) both pixels in Mode 0 → blocked-toggle flash
+
+;; Last-move marker: pen 15 (bright white, firmware 26) — maximum contrast
+;; against the board art; distinct from cursor (yellow) and the blocked-cursor
+;; flash (0xF0, which despite its old comment is actually pen 5 / Orange, not
+;; Red — see g_palette0.c's "Firmware Palette Converted" list).
+LAST_MOVE_COLOR      = 0xFF
+
+;; Cat-triple win-line blink: pen 6 (bright yellow, firmware 24) — same
+;; pattern byte as CURSOR_COLOR, fine since the cursor isn't drawn during
+;; the win sequence.
+WIN_FLASH_COLOR      = 0x3C
+
+;; Victory/defeat fanfare duration, in vsync frames (50/sec). The AT3
+;; export's win/lose subsongs loop forever once started (this player build
+;; has no "play once" flag), so _match_declare_winner lets the fanfare run
+;; for this long, then stops it explicitly before showing the banner.
+;; Tune if the .aks fanfare length changes.
+WIN_MUSIC_FRAMES     = 150   ;; ~3 seconds
 
 ;;------------------------------------------------------------------------------
 ;; Global variables

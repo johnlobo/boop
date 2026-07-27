@@ -63,6 +63,37 @@ _cursor_col::   .db 0   ;; 0 .. GRID_COLS-1  (exported for AI module)
 _cursor_row::   .db 0   ;; 0 .. GRID_ROWS-1  (exported for AI module)
 _cursor_piece:: .db 0   ;; PIECE_CAT or PIECE_KITTEN (exported for AI module)
 
+;; Last-move marker: row/col of the most recently placed piece, so its cell
+;; can be highlighted. 0xFF = no marker (start of match). Set at the end of
+;; _match_place_piece; reset in man_match_init.
+_last_move_row: .db 0xFF
+_last_move_col: .db 0xFF
+_lmm_x:         .db 0   ;; scratch: box byte-column origin (_match_draw_cell_frame / _match_draw_bbox_frame)
+_lmm_y:         .db 0   ;; scratch: box pixel-row origin
+_lmm_color:     .db 0   ;; scratch: colour pattern byte, across the clobbering calls
+_lmm_w:         .db 0   ;; scratch: box width in bytes (_match_draw_bbox_frame only)
+_lmm_h:         .db 0   ;; scratch: box height in px (_match_draw_bbox_frame only)
+
+;; Scratch for the cat-triple win-line blink (_match_flash_win_box)
+_mfwb_row:      .db 0
+_mfwb_col:      .db 0
+_mfwb_w:        .db 0
+_mfwb_h:        .db 0
+_mfwb_horiz:    .db 0   ;; 1 = 3 cols wide (horizontal line), 0 = 3 rows tall
+_mccl_v0:       .db 0   ;; winning piece value, stashed across the blink call
+
+;; Set by _match_mark_cats_increased whenever a player's cat reserve grows
+;; (kitten converted via a 3-in-a-row, or a cat ejected back off the
+;; board); consumed once by _mpp_do_place right after the HUD redraw, which
+;; blinks that player's "cats" digit via _match_blink_cats_hud.
+_cats_blink_p1: .db 0
+_cats_blink_p2: .db 0
+_mbch_addr:     .dw 0   ;; scratch: digit screen address (_match_blink_cats_hud)
+_mbch_digit:    .db 0   ;; scratch: digit value, across the delay calls
+_mbch_player:   .db 0   ;; scratch: 1/2, needed again for the backdrop restore
+_mcdb_src:      .dw 0   ;; scratch: basket source ptr (_match_restore_cats_digit_backdrop)
+_mcdb_dst:      .dw 0   ;; scratch: screen dest ptr
+
 ;;
 ;; Boop animation buffers
 ;;
@@ -294,6 +325,161 @@ man_match_draw_hud::
 
 ;;-----------------------------------------------------------------
 ;;
+;; _match_mark_cats_increased
+;;
+;;  Records that a player's cat reserve just grew, for
+;;  _match_blink_cats_hud to pick up after the next HUD redraw.
+;;  Input:  IX = &man_match_player1 or &man_match_player2
+;;  Output: -
+;;  Modified: AF, DE
+;;
+;;  HL is preserved: this is called from _mrl_process_kitten, which the
+;;  three-in-a-row match handlers (_mcl_h_match/_mcl_v_match) call while
+;;  HL still points at a board cell they're about to walk backwards
+;;  through — see the V.054 HL-preservation note on _match_draw_cell_frame
+;;  for what goes wrong if that pointer gets clobbered.
+;;
+_match_mark_cats_increased:
+   push hl
+   push ix
+   pop hl                            ;; HL = IX
+   ld de, #man_match_player1
+   or a
+   sbc hl, de
+   jr nz, _mmci_p2
+   ld a, #1
+   ld (_cats_blink_p1), a
+   jr _mmci_done
+_mmci_p2:
+   ld a, #1
+   ld (_cats_blink_p2), a
+_mmci_done:
+   pop hl
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_restore_cats_digit_backdrop
+;;
+;;  Restores the basket-art rectangle behind a player's "cats" HUD digit.
+;;  That area is NOT flat black — S_BASKET_H=74 means the basket sprite
+;;  (drawn at Y=HUD_BASKET_Y) bleeds all the way down under the digit row
+;;  (Y=HUD_Y), so "erasing" the digit means copying that patch of _s_basket
+;;  back, the same row-by-row technique _match_restore_cell uses for
+;;  _bg_grid. Both players' cats digit sits at the same offset within
+;;  their own basket (HUD_P1_CATS_X-HUD_BASKET_P1_X == HUD_P2_CATS_X-
+;;  HUD_BASKET_P2_X == 5), so one routine covers both.
+;;  Input:  A = 1 (P1) or 2 (P2)
+;;          DE = digit screen address (as computed by _match_blink_cats_hud)
+;;  Output: -
+;;  Modified: AF, BC, DE, HL
+;;
+_match_restore_cats_digit_backdrop:
+   ld (_mcdb_dst), de
+   cp #2
+   jr z, _mrcdb_p2
+   ld hl, #(_s_basket + (HUD_Y - HUD_BASKET_Y) * S_BASKET_W + (HUD_P1_CATS_X - HUD_BASKET_P1_X))
+   jr _mrcdb_go
+_mrcdb_p2:
+   ld hl, #(_s_basket + (HUD_Y - HUD_BASKET_Y) * S_BASKET_W + (HUD_P2_CATS_X - HUD_BASKET_P2_X))
+_mrcdb_go:
+   ld (_mcdb_src), hl
+
+   ld b, #S_BIG_NUMBERS_H
+_mrcdb_rowloop:
+   ld hl, (_mcdb_src)
+   ld de, (_mcdb_dst)
+   ld c, #S_BIG_NUMBERS_W
+_mrcdb_copy:
+   ld a, (hl)
+   ld (de), a
+   inc hl
+   inc de
+   dec c
+   jr nz, _mrcdb_copy
+
+   ;; Source: skip remaining bytes to reach next basket row
+   ld de, #(S_BASKET_W - S_BIG_NUMBERS_W)
+   add hl, de
+   ld (_mcdb_src), hl
+
+   ;; Dest: advance one CPC pixel row (standard +0x800 with bank-crossing check)
+   ld de, (_mcdb_dst)
+   ld a, d
+   add a, #0x08
+   ld d, a
+   and a, #0x38
+   jr nz, _mrcdb_next
+   ld a, e
+   add a, #0x50
+   ld e, a
+   ld a, d
+   adc a, #0xC0
+   ld d, a
+_mrcdb_next:
+   ld (_mcdb_dst), de
+
+   dec b
+   jr nz, _mrcdb_rowloop
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_blink_cats_hud
+;;
+;;  Blinks a player's "cats" HUD digit a few times so the player notices
+;;  their reserve grew (kitten converted via a 3-in-a-row, or a cat
+;;  ejected back off the board). "Off" restores the real basket-art
+;;  backdrop (see _match_restore_cats_digit_backdrop); "on" redraws the
+;;  real digit — both via the same masked/transparent routines the rest
+;;  of the HUD uses, no solid-colour box involved.
+;;  Input:  A = 1 (P1) or 2 (P2)
+;;  Output: -
+;;  Modified: AF, BC, DE, HL, IX
+;;
+_match_blink_cats_hud:
+   ld (_mbch_player), a
+   cp #2
+   jr z, _mbch_p2
+   ld c, #HUD_P1_CATS_X
+   ld a, (man_match_player1 + Player_cats)
+   jr _mbch_go
+_mbch_p2:
+   ld c, #HUD_P2_CATS_X
+   ld a, (man_match_player2 + Player_cats)
+_mbch_go:
+   ld (_mbch_digit), a
+   ld b, #HUD_Y
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm
+   ex de, hl                         ;; DE = digit screen addr
+   ld (_mbch_addr), de
+
+   ld b, #4                          ;; 4 blink cycles
+_mbch_loop:
+   push bc
+
+   ;; OFF: restore the real basket-art backdrop
+   ld a, (_mbch_player)
+   ld de, (_mbch_addr)
+   call _match_restore_cats_digit_backdrop
+   ld b, #10
+   call sys_util_delay
+
+   ;; ON: redraw the real digit
+   ld de, (_mbch_addr)
+   ld a, (_mbch_digit)
+   call _draw_big_digit
+   ld b, #10
+   call sys_util_delay
+
+   pop bc
+   dec b
+   jr nz, _mbch_loop
+   ret
+
+;;-----------------------------------------------------------------
+;;
 ;; _match_col_row_to_screen_addr
 ;;
 ;;  Converts a grid (col, row) position to a video memory address.
@@ -328,6 +514,256 @@ _match_col_row_to_screen_addr:
    call cpct_getScreenPtr_asm        ;; HL = screen address
    ex de, hl                         ;; DE = screen address
    ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_draw_cell_frame
+;;
+;;  Outlines a cell with a rectangular frame (top/bottom/left/right edges)
+;;  in the given color. Corners overlap by a couple of pixels where edges
+;;  meet — harmless at this scale. Shared by the last-move marker and the
+;;  three-in-a-row line-conversion flash.
+;;
+;;  Input:  B = row, C = col, A = colour pattern byte — B/C/HL preserved
+;;  Output: -
+;;  Modified: AF, DE
+;;
+_match_draw_cell_frame:
+   ;; Both callers rely on B=row/C=col surviving this call — everything below
+   ;; clobbers B/C freely (getScreenPtr's B=y/C=x, drawSolidBox's B=h/C=w), so
+   ;; save/restore around it. Colour (A) is stashed too since it's clobbered
+   ;; the same way. HL is also preserved: _match_check_lines calls the
+   ;; sibling _match_draw_bbox_frame while HL still points at a board cell
+   ;; it's about to read — silently corrupting that pointer previously left
+   ;; the board data unmodified after a "cleared" line, so it re-matched
+   ;; every following turn. Preserve HL here too so no caller can hit that
+   ;; same trap.
+   push hl
+   push bc
+   ld (_lmm_color), a
+
+   ;; Cell origin: X (byte) = GRID_FIRST_CELL_X + col*7, Y (px) = GRID_FIRST_CELL_Y + row*24
+   ;; Same formulas as _match_col_row_to_screen_addr, kept separate since we
+   ;; need the raw X/Y pair (not a resolved screen address) for 4 edges.
+   ld a, b
+   add a, a                          ;; row*2
+   add a, a                          ;; row*4
+   add a, a                          ;; row*8
+   ld l, a
+   add a, a                          ;; row*16
+   add a, l                          ;; row*24
+   add a, #(GRID_FIRST_CELL_Y - 1)   ;; -1: nudge whole frame up 1px
+   ld (_lmm_y), a
+
+   ld a, c
+   add a, a                          ;; col*2
+   add a, a                          ;; col*4
+   add a, a                          ;; col*8
+   sub c                             ;; col*7
+   add a, #GRID_FIRST_CELL_X
+   ld (_lmm_x), a
+
+   ;; Top edge: full cell width, 2px tall, at (x, y)
+   ld a, (_lmm_y)
+   ld b, a
+   ld a, (_lmm_x)
+   ld c, a
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm
+   ex de, hl
+   ld a, (_lmm_color)
+   ld b, #2
+   ld c, #GRID_CELL_W
+   call cpct_drawSolidBox_asm
+
+   ;; Bottom edge: full cell width, 2px tall, at (x, y + GRID_CELL_H - 2)
+   ld a, (_lmm_y)
+   add a, #(GRID_CELL_H - 2)
+   ld b, a
+   ld a, (_lmm_x)
+   ld c, a
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm
+   ex de, hl
+   ld a, (_lmm_color)
+   ld b, #2
+   ld c, #GRID_CELL_W
+   call cpct_drawSolidBox_asm
+
+   ;; Left edge: 1 byte wide, full cell height, at (x, y)
+   ld a, (_lmm_y)
+   ld b, a
+   ld a, (_lmm_x)
+   ld c, a
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm
+   ex de, hl
+   ld a, (_lmm_color)
+   ld b, #GRID_CELL_H
+   ld c, #1
+   call cpct_drawSolidBox_asm
+
+   ;; Right edge: 1 byte wide, full cell height, at (x + GRID_CELL_W - 1, y)
+   ld a, (_lmm_y)
+   ld b, a
+   ld a, (_lmm_x)
+   add a, #(GRID_CELL_W - 1)
+   ld c, a
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm
+   ex de, hl
+   ld a, (_lmm_color)
+   ld b, #GRID_CELL_H
+   ld c, #1
+   call cpct_drawSolidBox_asm
+
+   pop bc
+   pop hl
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_draw_bbox_frame
+;;
+;;  Outlines a rectangular block of cells spanning from cell (B, C) with
+;;  the given pixel size — used for the three-in-a-row line flash so all
+;;  3 matched cells get ONE frame instead of 3 separate ones.
+;;
+;;  Input:  B = row, C = col (top-left cell of the box)
+;;          D = box width in bytes (e.g. 3*GRID_CELL_W for a horizontal line)
+;;          E = box height in px   (e.g. 3*GRID_CELL_H for a vertical line)
+;;          A = colour pattern byte
+;;  Output: -
+;;  Modified: AF, DE
+;;
+_match_draw_bbox_frame:
+   ;; HL is preserved (see _match_draw_cell_frame's comment on why this
+   ;; matters): _match_check_lines calls this while HL still points at a
+   ;; board cell it's about to read/clear.
+   push hl
+   push bc
+   ld (_lmm_color), a
+   ld a, d
+   ld (_lmm_w), a
+   ld a, e
+   ld (_lmm_h), a
+
+   ;; Box origin: same cell-origin formula as _match_draw_cell_frame
+   ld a, b
+   add a, a                          ;; row*2
+   add a, a                          ;; row*4
+   add a, a                          ;; row*8
+   ld l, a
+   add a, a                          ;; row*16
+   add a, l                          ;; row*24
+   add a, #(GRID_FIRST_CELL_Y - 1)   ;; -1: nudge up 1px, matches the last-move marker
+   ld (_lmm_y), a
+
+   ld a, c
+   add a, a                          ;; col*2
+   add a, a                          ;; col*4
+   add a, a                          ;; col*8
+   sub c                             ;; col*7
+   add a, #GRID_FIRST_CELL_X
+   ld (_lmm_x), a
+
+   ;; Top edge: full box width, 2px tall, at (x, y)
+   ld a, (_lmm_y)
+   ld b, a
+   ld a, (_lmm_x)
+   ld c, a
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm
+   ex de, hl
+   ld a, (_lmm_color)
+   ld b, #2
+   push af                           ;; save colour across the (_lmm_w) load
+   ld a, (_lmm_w)
+   ld c, a
+   pop af
+   call cpct_drawSolidBox_asm
+
+   ;; Bottom edge: full box width, 2px tall, at (x, y + h - 2)
+   ld a, (_lmm_h)
+   sub #2
+   ld b, a
+   ld a, (_lmm_y)
+   add a, b
+   ld b, a
+   ld a, (_lmm_x)
+   ld c, a
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm
+   ex de, hl
+   ld a, (_lmm_color)
+   ld b, #2
+   push af
+   ld a, (_lmm_w)
+   ld c, a
+   pop af
+   call cpct_drawSolidBox_asm
+
+   ;; Left edge: 1 byte wide, full box height, at (x, y)
+   ld a, (_lmm_y)
+   ld b, a
+   ld a, (_lmm_x)
+   ld c, a
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm
+   ex de, hl
+   ld a, (_lmm_color)
+   push af
+   ld a, (_lmm_h)
+   ld b, a
+   pop af
+   ld c, #1
+   call cpct_drawSolidBox_asm
+
+   ;; Right edge: 1 byte wide, full box height, at (x + w - 1, y)
+   ld a, (_lmm_w)
+   dec a
+   ld d, a                           ;; D = w-1 (temp; row/col already saved via push bc)
+   ld a, (_lmm_y)
+   ld b, a
+   ld a, (_lmm_x)
+   add a, d
+   ld c, a
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm
+   ex de, hl
+   ld a, (_lmm_color)
+   push af
+   ld a, (_lmm_h)
+   ld b, a
+   pop af
+   ld c, #1
+   call cpct_drawSolidBox_asm
+
+   pop bc
+   pop hl
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_maybe_draw_last_move_marker
+;;
+;;  If (B, C) is the last-placed cell, draws the frame there in
+;;  LAST_MOVE_COLOR. See _match_draw_cell_frame.
+;;
+;;  Input:  B = row, C = col (the cell about to be / just drawn) — preserved
+;;  Output: -
+;;  Modified: AF, DE (HL preserved — see _match_draw_cell_frame)
+;;
+_match_maybe_draw_last_move_marker:
+   ld a, (_last_move_row)
+   cp b
+   ret nz
+   ld a, (_last_move_col)
+   cp c
+   ret nz
+
+   ld a, #LAST_MOVE_COLOR
+   jp _match_draw_cell_frame         ;; tail call: preserves B/C, returns for us
 
 ;;-----------------------------------------------------------------
 ;;
@@ -381,6 +817,7 @@ _mdb_col_loop:
    push ix                           ;; save board pointer (clobbered by sprite draw)
    push bc                           ;; save row (B) and col (C)
    push af                           ;; save cell value
+   call _match_maybe_draw_last_move_marker  ;; no-op unless (B,C) is the marked cell
    call _match_col_row_to_screen_addr ;; B=row, C=col -> DE = screen addr
    pop af                            ;; A = cell value
    inc de                            ;; shift sprite 1 byte (2px) right, same as cursor
@@ -571,6 +1008,12 @@ _mpp_do_place:
    inc a                             ;; A = state*2 + piece + 1
    ld (hl), a                        ;; write to board
 
+   ;; Remember this cell for the last-move marker (see _match_maybe_draw_last_move_marker)
+   ld a, (_cursor_row)
+   ld (_last_move_row), a
+   ld a, (_cursor_col)
+   ld (_last_move_col), a
+
    ;; Animate boop: frame0=placed, frame1=in-transit, frame2=destinations filled
    call _match_boop_animate
    xor a
@@ -626,6 +1069,27 @@ _mpp_init_done:
    call sys_render_draw_grid
    call _match_draw_board
    call man_match_draw_hud
+
+   ;; If either player's cat reserve grew this turn (kitten converted via a
+   ;; 3-in-a-row, or a cat ejected back off the board), blink their "cats"
+   ;; digit so they notice.
+   ld a, (_cats_blink_p1)
+   or a
+   jr z, _mpp_no_blink_p1
+   xor a
+   ld (_cats_blink_p1), a
+   ld a, #1
+   call _match_blink_cats_hud
+_mpp_no_blink_p1:
+   ld a, (_cats_blink_p2)
+   or a
+   jr z, _mpp_no_blink_p2
+   xor a
+   ld (_cats_blink_p2), a
+   ld a, #2
+   call _match_blink_cats_hud
+_mpp_no_blink_p2:
+
    call _match_check_cat_lines       ;; check 3 cats in a row → winner
    ld a, (_match_cancelled)
    or a
@@ -685,6 +1149,11 @@ _match_restore_cell::
 
    ;; Compute sprite_y * BG_GRID_W (44):
    ;;   sprite_y = 4 + row*24  (row*24 = row*8 + row*16)
+   ;;   The "+4" is NOT a cursor inset — it's the _bg_grid asset's own
+   ;;   origin offset relative to the screen cell origin (see the sprite_x
+   ;;   note below for the derivation). Full cell height/width is still
+   ;;   used (no CURSOR_W/H narrowing) so margin art drawn by
+   ;;   _match_draw_cell_frame/_match_draw_bbox_frame is erasable too.
    ld a, b              ;; A = row
    add a, a             ;; *2
    add a, a             ;; *4
@@ -708,13 +1177,18 @@ _match_restore_cell::
    pop de               ;; DE = *4
    add hl, de           ;; *44
 
-   ;; Add sprite_x = 2 + col*7  (col still in C)
+   ;; Add sprite_x = 1 + col*7  (col still in C). Derived from
+   ;; sys_render_draw_grid (draws _bg_grid 1:1 at screen X=18,Y=20): cell
+   ;; origin screen X = GRID_FIRST_CELL_X(19) + col*7, so its _bg_grid-local
+   ;; X = (19+col*7) - 18 = 1 + col*7. (The old "+2" belonged to the narrow
+   ;; CURSOR_W copy, which ALSO added a +1 dest shift — net effect "+2" only
+   ;; matched once cell-origin dest no longer carries that +1.)
    ld a, c              ;; A = col
    add a, a             ;; *2
    add a, a             ;; *4
    add a, a             ;; *8
    sub c                ;; *7
-   add a, #2            ;; sprite_x
+   add a, #1            ;; sprite_x
    ld e, a
    ld d, #0
    add hl, de           ;; HL = sprite_y*44 + sprite_x
@@ -722,17 +1196,17 @@ _match_restore_cell::
    add hl, de           ;; HL = &_bg_grid[offset]
    ld (_mrc_src), hl
 
-   ;; Compute dest screen address (B=row, C=col still valid)
+   ;; Compute dest screen address (B=row, C=col still valid) — cell origin,
+   ;; no +1 byte shift (that shift is only for the inset cursor/piece art)
    call _match_col_row_to_screen_addr  ;; → DE
-   inc de               ;; +1 byte (cursor/pieces are shifted 1 byte right within cell)
    ld (_mrc_dst), de
 
-   ;; Copy CURSOR_W bytes per row, for CURSOR_H rows
-   ld b, #CURSOR_H
+   ;; Copy GRID_CELL_W bytes per row, for GRID_CELL_H rows (the whole cell)
+   ld b, #GRID_CELL_H
 _mrc_rowloop:
    ld hl, (_mrc_src)
    ld de, (_mrc_dst)
-   ld c, #CURSOR_W
+   ld c, #GRID_CELL_W
 _mrc_copy:
    ld a, (hl)
    ld (de), a
@@ -741,8 +1215,8 @@ _mrc_copy:
    dec c
    jr nz, _mrc_copy
 
-   ;; Source: skip remaining bytes to reach next row start (BG_GRID_W - CURSOR_W = 39)
-   ld de, #(BG_GRID_W - CURSOR_W)
+   ;; Source: skip remaining bytes to reach next row start (BG_GRID_W - GRID_CELL_W)
+   ld de, #(BG_GRID_W - GRID_CELL_W)
    add hl, de
    ld (_mrc_src), hl
 
@@ -770,6 +1244,7 @@ _mrc_next:
    ld b, a
    ld a, (_mrc_col)
    ld c, a
+   call _match_maybe_draw_last_move_marker  ;; no-op unless (B,C) is the marked cell
    ld a, b              ;; row*6 + col
    add a, a             ;; *2
    ld e, a
@@ -1288,7 +1763,7 @@ _mbc_dir_loop:
    jp m, _mbc_next_dir               ;; nr < 0 → out of bounds
    ld d, a                           ;; D = nr
    cp #GRID_ROWS
-   jr nc, _mbc_next_dir              ;; nr >= 6 → out of bounds
+   jp nc, _mbc_next_dir              ;; nr >= 6 → out of bounds
 
    ;; -- compute neighbor col: nc = cursor_col + dc --
    ld a, (_cursor_col)
@@ -1388,6 +1863,7 @@ _mbc_eject_inc:
    bit 0, a
    jr z, _mbc_eject_kitten           ;; even → kitten
    inc Player_cats(ix)
+   call _match_mark_cats_increased   ;; blink the HUD digit after the redraw
    jr _mbc_next_dir
 _mbc_eject_kitten:
    inc Player_kittens(ix)
@@ -1410,7 +1886,7 @@ _mbc_next_dir:
 ;;  Input:  HL = board cell pointer
 ;;          A  = cell value (must be non-zero)
 ;;  Output: -
-;;  Modified: AF, IX
+;;  Modified: AF, IX (HL preserved — callers walk it cell-by-cell)
 ;;
 _mrl_process_kitten:
    bit 0, a                          ;; odd = cat → nothing to do
@@ -1425,6 +1901,7 @@ _mpk_p2:
    ld ix, #man_match_player2
 _mpk_add:
    inc Player_cats(ix)
+   call _match_mark_cats_increased   ;; blink the HUD digit after the redraw
    ret
 
 ;;-----------------------------------------------------------------
@@ -1445,7 +1922,7 @@ _mpk_add:
 ;;  Output: -
 ;;  Modified: AF, BC, DE, HL, IX
 ;;
-_match_check_lines:
+_match_check_lines::
    ;; === Horizontal scan ===
    ld b, #0                          ;; B = row (0..5)
 _mcl_h_rowloop:
@@ -1467,41 +1944,51 @@ _mcl_h_colloop:
 
    ld a, (hl)
    or a
-   jr z, _mcl_h_next                 ;; empty → skip
+   jp z, _mcl_h_next                 ;; empty → skip
    ld d, a                           ;; D = v0
-   cp #3
-   jr nc, _mcl_h_v0_p2               ;; v0 >= 3 → P2 colour
 
-   ;; P1 colour (v0 in {1,2}): v1 and v2 must be in {1,2}
+   ;; Boop's real rule: a trio must be the SAME PLAYER *and* SAME SIZE
+   ;; (three matching kittens, or three matching cats) — mixed sizes do
+   ;; nothing, even if same-coloured. So require v1 == v0 and v2 == v0
+   ;; exactly, not just "same player, any size".
    inc hl
    ld a, (hl)
-   or a
-   jr z, _mcl_h_next                 ;; empty
-   cp #3
-   jr nc, _mcl_h_next                ;; P2 piece → mismatch
+   cp d
+   jp nz, _mcl_h_next                 ;; v1 != v0 → mismatch
    inc hl
    ld a, (hl)
-   or a
-   jr z, _mcl_h_next                 ;; empty
-   cp #3
-   jr nc, _mcl_h_next                ;; P2 piece → mismatch
-   jr _mcl_h_match
-
-_mcl_h_v0_p2:
-   ;; P2 colour (v0 in {3,4}): v1 and v2 must be >= 3
-   inc hl
-   ld a, (hl)
-   cp #3
-   jr c, _mcl_h_next                 ;; empty or P1 → mismatch
-   inc hl
-   ld a, (hl)
-   cp #3
-   jr c, _mcl_h_next                 ;; mismatch
+   cp d
+   jp nz, _mcl_h_next                 ;; v2 != v0 → mismatch
 
 _mcl_h_match:
-   ;; HL = ptr+2, A = v2, D = v0; process each cell
+   ;; HL = ptr+2, A = v2 (== v1 == v0), D = v0; process each cell
+
+   ;; A same-size trio of CATS is a win-line, not a conversion — leave it
+   ;; to _match_check_cat_lines (run later, after the final board redraw)
+   ;; instead of firing the cyan line-conversion flash here for a window
+   ;; with nothing to convert, ahead of (and visually competing with) the
+   ;; real yellow win flash.
+   bit 0, d                          ;; v0 (== v1 == v2) odd → all 3 cats
+   jp nz, _mcl_h_next                ;; skip — win-check handles it
+
+_mcl_h_do_match:
+   ;; Yellow flash for this conversion (same colour as the win flash, but
+   ;; ends erased — only the game-ending combo stays lit). Clear the
+   ;; last-move marker first so its white frame doesn't reappear (in
+   ;; _match_restore_cell's redraw) during the flash's off-phase.
+   ld a, #0xFF
+   ld (_last_move_row), a
+   ld (_last_move_col), a
+   push hl                           ;; preserve v2 ptr — _match_flash_combo_box
+                                      ;; (via _match_restore_cell) clobbers HL
+   ld d, #(3 * GRID_CELL_W)
+   ld e, #GRID_CELL_H
+   call _match_flash_combo_box
+   pop hl
+
    ld a, #1
    ld (_snd_lines_found), a
+
    ld a, (hl)                        ;; reload v2 (A was clobbered by store above)
    call _mrl_process_kitten          ;; v2
    dec hl
@@ -1515,11 +2002,11 @@ _mcl_h_next:
    inc c
    ld a, c
    cp #(GRID_COLS - 2)
-   jr c, _mcl_h_colloop
+   jp c, _mcl_h_colloop
    inc b
    ld a, b
    cp #GRID_ROWS
-   jr c, _mcl_h_rowloop
+   jp c, _mcl_h_rowloop
 
    ;; === Vertical scan ===
    ld c, #0                          ;; C = col (0..5)
@@ -1542,47 +2029,62 @@ _mcl_v_rowloop:
 
    ld a, (hl)
    or a
-   jr z, _mcl_v_next                 ;; empty → skip
+   jp z, _mcl_v_next                 ;; empty → skip
    ld d, a                           ;; D = v0
-   cp #3
-   jr c, _mcl_v_p1                   ;; v0 < 3 → P1 colour
 
-   ;; P2 colour: v1 and v2 must be >= 3
+   ;; Boop's real rule: a trio must be the SAME PLAYER *and* SAME SIZE —
+   ;; see the matching note on the horizontal scan above. Require v1 == v0
+   ;; and v2 == v0 exactly.
+   ;; BUG FIX: this used to do `ld de, #GRID_COLS` here as a 16-bit stride
+   ;; for `add hl, de` — but D is v0! Loading DE clobbers D to 0 (GRID_COLS'
+   ;; high byte), so the `cp d` below compared v1/v2 against 0, not v0. Since
+   ;; empty cells ARE 0, any empty v1/v2 "matched" trivially — placing the
+   ;; very first kitten anywhere always false-matched a vertical trio with
+   ;; the two empty cells below it. Fix: step HL by GRID_COLS via six
+   ;; `inc hl`, never touching D.
    push hl                           ;; [ptr0, BC_outer]
-   ld bc, #GRID_COLS
-   add hl, bc                        ;; HL = ptr1
+   inc hl
+   inc hl
+   inc hl
+   inc hl
+   inc hl
+   inc hl                             ;; HL = ptr1 (row stride = GRID_COLS)
    ld a, (hl)
-   cp #3
-   jr c, _mcl_v_nm1                  ;; empty or P1 → mismatch
+   cp d
+   jp nz, _mcl_v_nm1                  ;; v1 != v0 → mismatch
    push hl                           ;; [ptr1, ptr0, BC_outer]
-   add hl, bc                        ;; HL = ptr2
+   inc hl
+   inc hl
+   inc hl
+   inc hl
+   inc hl
+   inc hl                             ;; HL = ptr2 (row stride = GRID_COLS)
    ld a, (hl)
-   cp #3
-   jr c, _mcl_v_nm2                  ;; mismatch
-   jr _mcl_v_match
-
-_mcl_v_p1:
-   ;; P1 colour: v1 and v2 must be in {1,2}
-   push hl                           ;; [ptr0, BC_outer]
-   ld bc, #GRID_COLS
-   add hl, bc                        ;; HL = ptr1
-   ld a, (hl)
-   or a
-   jr z, _mcl_v_nm1                  ;; empty
-   cp #3
-   jr nc, _mcl_v_nm1                 ;; P2 → mismatch
-   push hl                           ;; [ptr1, ptr0, BC_outer]
-   add hl, bc                        ;; HL = ptr2
-   ld a, (hl)
-   or a
-   jr z, _mcl_v_nm2                  ;; empty
-   cp #3
-   jr nc, _mcl_v_nm2                 ;; P2 → mismatch
+   cp d
+   jp nz, _mcl_v_nm2                  ;; v2 != v0 → mismatch
 
 _mcl_v_match:
-   ;; HL = ptr2; stack = [ptr1, ptr0, BC_outer]
+   ;; HL = ptr2 (== v1 == v0); stack = [ptr1, ptr0, BC_outer]
+
+   ;; A same-size trio of CATS is a win-line, not a conversion — see the
+   ;; matching note on _mcl_h_match.
+   bit 0, d                          ;; v0 (== v1 == v2) odd → all 3 cats
+   jp nz, _mcl_v_nm2                 ;; skip — win-check handles it, unwind like a mismatch
+
+_mcl_v_do_match:
+   ;; Yellow flash — see the matching note on _mcl_h_do_match.
+   ld a, #0xFF
+   ld (_last_move_row), a
+   ld (_last_move_col), a
+   push hl                           ;; preserve v2 ptr (see _mcl_h_do_match note)
+   ld d, #GRID_CELL_W
+   ld e, #(3 * GRID_CELL_H)
+   call _match_flash_combo_box
+   pop hl
+
    ld a, #1
    ld (_snd_lines_found), a
+
    ld a, (hl)                        ;; reload v2 (A clobbered by store above)
    call _mrl_process_kitten          ;; v2
    pop hl                            ;; HL = ptr1
@@ -1602,12 +2104,12 @@ _mcl_v_next:
    inc b
    ld a, b
    cp #(GRID_ROWS - 2)
-   jr c, _mcl_v_rowloop
+   jp c, _mcl_v_rowloop
 
    inc c
    ld a, c
    cp #GRID_COLS
-   jr c, _mcl_v_colloop
+   jp c, _mcl_v_colloop
 
    ret
 
@@ -1621,7 +2123,7 @@ _mcl_v_next:
 ;;  Output: -
 ;;  Modified: AF, BC, DE, HL
 ;;
-_match_declare_winner:
+_match_declare_winner::
    push af                           ;; save winner number for after fanfare call
    cp #2
    jr nz, _mdw_win_music             ;; P1 always gets the victory fanfare
@@ -1633,6 +2135,10 @@ _match_declare_winner:
 _mdw_win_music:
    call sys_sound_start_win_music
 _mdw_music_ready:
+   ;; Let the fanfare play once, then stop it — see WIN_MUSIC_FRAMES note.
+   ld b, #WIN_MUSIC_FRAMES
+   call sys_util_delay
+   call sys_sound_stop
    pop af
    push af                           ;; save winner number (macro clobbers AF)
    m_msg_w_background 3
@@ -1695,6 +2201,161 @@ _mstm_p2:
 
 ;;-----------------------------------------------------------------
 ;;
+;; _match_flash_win_box
+;;
+;;  Blinks a yellow frame around the winning 3-cat line (3 short
+;;  on/off cycles) before _match_declare_winner shows the "PLAYER X
+;;  WINS!" banner and starts the victory music. Between blinks the box
+;;  is restored via _match_restore_cell, which also redraws the cats
+;;  underneath, so the line reads as flashing rather than disappearing.
+;;
+;;  Input:  B = row, C = col (top-left cell of the box)
+;;          D = box width in bytes  (GRID_CELL_W or 3*GRID_CELL_W)
+;;          E = box height in px    (GRID_CELL_H or 3*GRID_CELL_H)
+;;  Output: -
+;;  Modified: AF, BC, DE, HL
+;;
+_match_flash_win_box:
+   ld a, b
+   ld (_mfwb_row), a
+   ld a, c
+   ld (_mfwb_col), a
+   ld a, d
+   ld (_mfwb_w), a
+   ld a, e
+   ld (_mfwb_h), a
+   ld a, #1                          ;; assume horizontal (width = 3 cells)
+   ld (_mfwb_horiz), a
+   ld a, d
+   cp #GRID_CELL_W
+   jr nz, _mfwb_orient_done          ;; width == 1 cell → vertical line
+   xor a
+   ld (_mfwb_horiz), a
+_mfwb_orient_done:
+
+   ld b, #2                          ;; 2 full on/off cycles, then a final
+                                      ;; on-phase that stays lit (see below)
+_mfwb_loop:
+   push bc                           ;; save blink counter
+   call _mfwb_draw_on
+   ld b, #15
+   call sys_util_delay
+   call _mfwb_restore_off
+   ld b, #15
+   call sys_util_delay
+   pop bc                            ;; restore blink counter
+   dec b
+   jr nz, _mfwb_loop
+
+   ;; Final on-phase: leave the yellow frame visible so the winning line
+   ;; stays highlighted under the "PLAYER X WINS!" banner.
+   call _mfwb_draw_on
+   ret
+
+;; ON: draw the yellow frame over the 3-cell box
+_mfwb_draw_on:
+   ld a, (_mfwb_row)
+   ld b, a
+   ld a, (_mfwb_col)
+   ld c, a
+   ld a, (_mfwb_w)
+   ld d, a
+   ld a, (_mfwb_h)
+   ld e, a
+   ld a, #WIN_FLASH_COLOR
+   jp _match_draw_bbox_frame         ;; tail call
+
+;; OFF: restore the 3 cells (redraws the cats too)
+_mfwb_restore_off:
+   ld a, (_mfwb_horiz)
+   or a
+   jr z, _mfwb_off_v
+
+   ld a, (_mfwb_row)
+   ld b, a
+   ld a, (_mfwb_col)
+   ld c, a
+   call _match_restore_cell
+   ld a, (_mfwb_row)
+   ld b, a
+   ld a, (_mfwb_col)
+   inc a
+   ld c, a
+   call _match_restore_cell
+   ld a, (_mfwb_row)
+   ld b, a
+   ld a, (_mfwb_col)
+   add a, #2
+   ld c, a
+   jp _match_restore_cell            ;; tail call
+
+_mfwb_off_v:
+   ld a, (_mfwb_row)
+   ld b, a
+   ld a, (_mfwb_col)
+   ld c, a
+   call _match_restore_cell
+   ld a, (_mfwb_row)
+   inc a
+   ld b, a
+   ld a, (_mfwb_col)
+   ld c, a
+   call _match_restore_cell
+   ld a, (_mfwb_row)
+   add a, #2
+   ld b, a
+   ld a, (_mfwb_col)
+   ld c, a
+   jp _match_restore_cell            ;; tail call
+
+;;-----------------------------------------------------------------
+;;
+;; _match_flash_combo_box
+;;
+;;  Blinks a yellow frame around a 3-in-a-row kitten conversion (2 on/off
+;;  cycles), same visual language as _match_flash_win_box, but ends OFF
+;;  (fully restored) since this doesn't end the match — only the winning
+;;  combo stays permanently lit.
+;;  Input:  B = row, C = col (top-left cell of the box)
+;;          D = box width in bytes  (GRID_CELL_W or 3*GRID_CELL_W)
+;;          E = box height in px    (GRID_CELL_H or 3*GRID_CELL_H)
+;;  Output: -
+;;  Modified: AF, BC, DE, HL
+;;
+_match_flash_combo_box:
+   ld a, b
+   ld (_mfwb_row), a
+   ld a, c
+   ld (_mfwb_col), a
+   ld a, d
+   ld (_mfwb_w), a
+   ld a, e
+   ld (_mfwb_h), a
+   ld a, #1                          ;; assume horizontal (width = 3 cells)
+   ld (_mfwb_horiz), a
+   ld a, d
+   cp #GRID_CELL_W
+   jr nz, _mfcb_orient_done          ;; width == 1 cell → vertical line
+   xor a
+   ld (_mfwb_horiz), a
+_mfcb_orient_done:
+
+   ld b, #2                          ;; 2 on/off cycles
+_mfcb_loop:
+   push bc
+   call _mfwb_draw_on
+   ld b, #15
+   call sys_util_delay
+   call _mfwb_restore_off
+   ld b, #15
+   call sys_util_delay
+   pop bc
+   dec b
+   jr nz, _mfcb_loop
+   ret
+
+;;-----------------------------------------------------------------
+;;
 ;; _match_check_cat_lines
 ;;
 ;;  Scans every row and column for 3 consecutive cats of the same
@@ -1743,9 +2404,16 @@ _mccl_h_chk:
    cp d
    jr nz, _mccl_h_next
    ;; Match: 3 cats in a row
-   pop bc
-   ld a, #1                          ;; default P1 wins (P1_CAT=1)
-   ld a, d
+   pop bc                             ;; B=row, C=col (leftmost cell)
+   ld a, #0xFF                        ;; clear last-move marker — see the
+   ld (_last_move_row), a             ;; note on _mcl_h_do_match
+   ld (_last_move_col), a
+   ld a, d                            ;; stash v0 — _match_flash_win_box clobbers D
+   ld (_mccl_v0), a
+   ld d, #(3 * GRID_CELL_W)
+   ld e, #GRID_CELL_H
+   call _match_flash_win_box
+   ld a, (_mccl_v0)
    cp #BOARD_P2_CAT
    ld a, #1
    jr nz, _mccl_declare
@@ -1803,8 +2471,16 @@ _mccl_v_chk:
    ;; Match
    pop hl                            ;; pop ptr1
    pop hl                            ;; pop ptr0
-   pop bc                            ;; restore outer BC
-   ld a, d
+   pop bc                            ;; restore outer BC (B=row window start, C=col)
+   ld a, #0xFF                       ;; clear last-move marker — see the
+   ld (_last_move_row), a            ;; note on _mcl_h_do_match
+   ld (_last_move_col), a
+   ld a, d                           ;; stash v0 — _match_flash_win_box clobbers D
+   ld (_mccl_v0), a
+   ld d, #GRID_CELL_W
+   ld e, #(3 * GRID_CELL_H)
+   call _match_flash_win_box
+   ld a, (_mccl_v0)
    cp #BOARD_P2_CAT
    ld a, #1
    jr nz, _mccl_v_declare
@@ -1902,6 +2578,12 @@ man_match_init::
    ld (_cursor_row), a
    ld a, #PIECE_KITTEN               ;; start with kitten selected
    ld (_cursor_piece), a
+   ld a, #0xFF                       ;; no last-move marker at match start
+   ld (_last_move_row), a
+   ld (_last_move_col), a
+   xor a
+   ld (_cats_blink_p1), a            ;; no pending cats-increased blink either
+   ld (_cats_blink_p2), a
    ;; Set P2 sprite pointers: AI level for 1-player, default (level 0) for 2-player
    ld a, (man_match_num_players)
    cp #1
