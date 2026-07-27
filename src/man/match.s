@@ -80,7 +80,6 @@ _mfwb_col:      .db 0
 _mfwb_w:        .db 0
 _mfwb_h:        .db 0
 _mfwb_horiz:    .db 0   ;; 1 = 3 cols wide (horizontal line), 0 = 3 rows tall
-_mccl_v0:       .db 0   ;; winning piece value, stashed across the blink call
 
 ;; Set by _match_mark_cats_increased whenever a player's cat reserve grows
 ;; (kitten converted via a 3-in-a-row, or a cat ejected back off the
@@ -93,6 +92,18 @@ _mbch_digit:    .db 0   ;; scratch: digit value, across the delay calls
 _mbch_player:   .db 0   ;; scratch: 1/2, needed again for the backdrop restore
 _mcdb_src:      .dw 0   ;; scratch: basket source ptr (_match_restore_cats_digit_backdrop)
 _mcdb_dst:      .dw 0   ;; scratch: screen dest ptr
+_mgow_player:   .db 0   ;; scratch: 1/2 (_match_graduate_or_win)
+
+;; Scratch for diagonal match flashes (_match_flash_combo_diag /
+;; _match_flash_win_diag): the bbox frame only draws axis-aligned
+;; rectangles, so diagonals flash 3 individual cell frames instead.
+_mfdc_r0:       .db 0
+_mfdc_c0:       .db 0
+_mfdc_r1:       .db 0
+_mfdc_c1:       .db 0
+_mfdc_r2:       .db 0
+_mfdc_c2:       .db 0
+_mfdc_color:    .db 0
 
 ;;
 ;; Boop animation buffers
@@ -333,7 +344,7 @@ man_match_draw_hud::
 ;;  Output: -
 ;;  Modified: AF, DE
 ;;
-;;  HL is preserved: this is called from _mrl_process_kitten, which the
+;;  HL is preserved: this is called from _mrl_process_trio_piece, which the
 ;;  three-in-a-row match handlers (_mcl_h_match/_mcl_v_match) call while
 ;;  HL still points at a board cell they're about to walk backwards
 ;;  through — see the V.054 HL-preservation note on _match_draw_cell_frame
@@ -1026,46 +1037,9 @@ _mpp_do_place:
    call sys_sound_play_sfx
 _mpp_no_line_sfx:
 
-   ;; After boop + line resolution: check if placing player has no pieces left
-   ;; (boop may have ejected their own pieces back; lines may have converted some)
-   ld a, (_match_state)              ;; still = placing player (not yet toggled)
-   or a
-   jr nz, _mpp_pe_p2
-   ld ix, #man_match_player1
-   jr _mpp_pe_chk
-_mpp_pe_p2:
-   ld ix, #man_match_player2
-_mpp_pe_chk:
-   ld a, Player_cats(ix)
-   or a
-   jr nz, _mpp_pe_done
-   ld a, Player_kittens(ix)
-   or a
-   jr z, _mpp_pe_out                 ;; 0 cats and 0 kittens → opponent wins
-_mpp_pe_done:
-
-   ;; Toggle state, reset piece selection to kitten (or cat if no kittens left)
-   ld a, (_match_state)
-   xor #1
-   ld (_match_state), a
-   or a
-   jr nz, _mpp_init_p2
-   ld ix, #man_match_player1
-   jr _mpp_init_piece
-_mpp_init_p2:
-   ld ix, #man_match_player2
-_mpp_init_piece:
-   ld a, #PIECE_KITTEN
-   ld b, a
-   ld a, Player_kittens(ix)
-   or a
-   jr nz, _mpp_init_done
-   ld b, #PIECE_CAT                  ;; no kittens → default to cat
-_mpp_init_done:
-   ld a, b
-   ld (_cursor_piece), a
-
-   ;; Redraw final board state (line conversions visible), without cursor
+   ;; Redraw final board state (line conversions visible), without cursor —
+   ;; done BEFORE the win/elimination checks below so the win-line flash
+   ;; (if any) draws over up-to-date board art.
    call sys_render_draw_grid
    call _match_draw_board
    call man_match_draw_hud
@@ -1090,10 +1064,64 @@ _mpp_no_blink_p1:
    call _match_blink_cats_hud
 _mpp_no_blink_p2:
 
+   ;; Check for a 3-cats win BEFORE the "no pieces left" elimination check
+   ;; below: a move that completes a winning line and also happens to
+   ;; empty the mover's reserve must count as a win for the mover, not an
+   ;; elimination loss for them.
    call _match_check_cat_lines       ;; check 3 cats in a row → winner
    ld a, (_match_cancelled)
    or a
-   ret nz                            ;; winner declared, skip turn message
+   ret nz                            ;; winner declared, done
+
+   ;; After boop + line resolution: check if placing player has no pieces left
+   ;; in reserve (boop may have ejected their own pieces back; lines may
+   ;; have converted some). Per the real Boop rules: an empty reserve is
+   ;; NOT a loss — it means all 8 of that player's pieces are on the
+   ;; board. If all 8 are adult cats, that player WINS. Otherwise they
+   ;; "graduate": one kitten comes off the board and becomes a cat in
+   ;; their reserve, giving them something to place next turn.
+   ld a, (_match_state)              ;; still = placing player (not yet toggled)
+   or a
+   jr nz, _mpp_pe_p2
+   ld ix, #man_match_player1
+   jr _mpp_pe_chk
+_mpp_pe_p2:
+   ld ix, #man_match_player2
+_mpp_pe_chk:
+   ld a, Player_cats(ix)
+   or a
+   jr nz, _mpp_pe_done
+   ld a, Player_kittens(ix)
+   or a
+   jr nz, _mpp_pe_done                ;; still has something to place
+   ld a, (_match_state)
+   inc a                              ;; _match_state 0/1 → player number 1/2
+   call _match_graduate_or_win
+   ld a, (_match_cancelled)
+   or a
+   ret nz                             ;; win declared inside, done
+_mpp_pe_done:
+
+   ;; Toggle state, reset piece selection to kitten (or cat if no kittens left)
+   ld a, (_match_state)
+   xor #1
+   ld (_match_state), a
+   or a
+   jr nz, _mpp_init_p2
+   ld ix, #man_match_player1
+   jr _mpp_init_piece
+_mpp_init_p2:
+   ld ix, #man_match_player2
+_mpp_init_piece:
+   ld a, #PIECE_KITTEN
+   ld b, a
+   ld a, Player_kittens(ix)
+   or a
+   jr nz, _mpp_init_done
+   ld b, #PIECE_CAT                  ;; no kittens → default to cat
+_mpp_init_done:
+   ld a, b
+   ld (_cursor_piece), a
 
    ;; Show turn message before cursor moves to next player's starting corner
    call _match_show_turn_message
@@ -1113,14 +1141,67 @@ _mpp_cursor_p1:
    call man_match_draw_hud
    ret
 
-_mpp_pe_out:
-   ;; Placing player is out of pieces after resolution → redraw, opponent wins
+;;-----------------------------------------------------------------
+;;
+;; _match_graduate_or_win
+;;
+;;  Called when a player's reserve just hit 0 cats AND 0 kittens (all 8
+;;  of their pieces are on the board). Scans the board for that player's
+;;  first kitten:
+;;   - found → "graduation": remove it from the board, add 1 cat to
+;;     their reserve (so they have something to place next turn)
+;;   - none found (all 8 on-board pieces are already cats) → they win
+;;  Input:  A = 1 (P1) or 2 (P2)
+;;  Output: -
+;;  Modified: AF, BC, DE, HL, IX (calls _match_declare_winner on a win —
+;;            no return in that case, sets _match_cancelled)
+;;
+_match_graduate_or_win:
+   ld (_mgow_player), a
+   ld hl, #_match_board
+   ld b, #36                          ;; cell counter
+_mgow_scan:
+   ld a, (hl)
+   or a
+   jr z, _mgow_next                   ;; empty cell
+   ld c, a                            ;; C = board value at this cell
+   ld a, (_mgow_player)
+   cp #2
+   ld a, c
+   jr z, _mgow_p2
+   cp #BOARD_P1_KITTEN
+   jr z, _mgow_found_kitten
+   jr _mgow_next
+_mgow_p2:
+   cp #BOARD_P2_KITTEN
+   jr z, _mgow_found_kitten
+_mgow_next:
+   inc hl
+   djnz _mgow_scan
+
+   ;; No kitten found for this player anywhere on the board → all 8 of
+   ;; their pieces are adult cats → they win.
+   ld a, (_mgow_player)
+   jp _match_declare_winner           ;; no return; sets _match_cancelled
+
+_mgow_found_kitten:
+   ;; HL points at this player's first kitten cell — graduate it.
+   ld (hl), #BOARD_EMPTY
+   ld a, (_mgow_player)
+   cp #2
+   jr z, _mgow_grad_p2
+   ld ix, #man_match_player1
+   jr _mgow_grad_inc
+_mgow_grad_p2:
+   ld ix, #man_match_player2
+_mgow_grad_inc:
+   inc Player_cats(ix)
+   ld a, (_mgow_player)
+   call _match_blink_cats_hud         ;; show it now — the main per-turn
+                                       ;; redraw already ran earlier
    call _match_redraw_all
    call man_match_draw_hud
-   ld a, (_match_state)              ;; placing player: 0=P1, 1=P2
-   xor #1
-   inc a                             ;; winner: state=0→2(P2), state=1→1(P1)
-   jp _match_declare_winner
+   ret
 
 ;;-----------------------------------------------------------------
 ;;
@@ -1878,23 +1959,25 @@ _mbc_next_dir:
 
 ;;-----------------------------------------------------------------
 ;;
-;; _mrl_process_kitten
+;; _mrl_process_trio_piece
 ;;
-;;  For a single board cell: if it holds a kitten (even value),
-;;  clears it and gives the owner +1 cat. If it holds a cat (odd),
-;;  does nothing (cats remain in place).
+;;  For a single board cell that's part of a resolved (non-winning) trio:
+;;  clears it and awards the owner +1 cat, whether the cell held a cat or
+;;  a kitten. Boop's real rule: a trio may mix cats and kittens of the
+;;  same player (e.g. cat-kitten-cat); ALL three pieces come off the
+;;  board, kittens graduate to cats, and cats simply return to reserve —
+;;  same net effect either way, so this doesn't special-case the type.
+;;  (An all-cats trio never reaches here — see the caller's skip check;
+;;  that's a win-line, handled separately by _match_check_cat_lines.)
 ;;  Input:  HL = board cell pointer
 ;;          A  = cell value (must be non-zero)
 ;;  Output: -
 ;;  Modified: AF, IX (HL preserved — callers walk it cell-by-cell)
 ;;
-_mrl_process_kitten:
-   bit 0, a                          ;; odd = cat → nothing to do
-   ret nz
-   ;; even = kitten: clear cell and award 1 cat to owner
+_mrl_process_trio_piece:
    ld (hl), #BOARD_EMPTY
-   cp #BOARD_P2_KITTEN
-   jr z, _mpk_p2
+   cp #3
+   jr nc, _mpk_p2                    ;; value 3 or 4 → P2 piece
    ld ix, #man_match_player1
    jr _mpk_add
 _mpk_p2:
@@ -1906,17 +1989,61 @@ _mpk_add:
 
 ;;-----------------------------------------------------------------
 ;;
+;; _match_is_inactive_piece
+;;
+;;  Per the real Boop rules, only the ACTIVE player (the one who just
+;;  moved, per _match_state — NOT yet toggled when this is called) can
+;;  win or graduate on their turn. If their move boops an opponent piece
+;;  into a line of 3, that line just sits there until the opponent's own
+;;  turn. So every trio/win scan must skip windows belonging to the
+;;  other player.
+;;  Input:  A = board cell value (nonzero: 1..4)
+;;  Output: Carry SET if this piece belongs to the player who is NOT
+;;          active this turn — caller should skip the window.
+;;  Modified: F only; A preserved
+;;
+_match_is_inactive_piece:
+   push bc
+   ld b, a                           ;; B = piece value
+   ld a, (_match_state)              ;; 0 = P1 active, 1 = P2 active
+   or a
+   jr nz, _miap_p2_active
+   ld a, b
+   cp #3
+   jr nc, _miap_inactive             ;; A >= 3 (P2 piece) but P1 active
+   jr _miap_active
+_miap_p2_active:
+   ld a, b
+   cp #3
+   jr c, _miap_inactive              ;; A < 3 (P1 piece) but P2 active
+_miap_active:
+   or a                              ;; clear carry
+   ld a, b
+   pop bc
+   ret
+_miap_inactive:
+   scf                               ;; set carry
+   ld a, b
+   pop bc
+   ret
+
+;;-----------------------------------------------------------------
+;;
 ;; _match_check_lines
 ;;
-;;  After any placement + boop, scans every row and column for 3
-;;  consecutive same-colour pieces (any mix of cats and kittens of
-;;  the same player). For each match:
-;;    - kittens are removed from the board; owner gets +1 cat each
-;;    - cats are left in place
-;;  Both players are checked. Called for both kitten and cat placement.
+;;  After any placement + boop, scans every row/col/diagonal for 3
+;;  consecutive pieces belonging to the SAME PLAYER, any mix of cats and
+;;  kittens (e.g. cat-kitten-cat counts) — confirmed against the
+;;  rulebook. All 3 pieces come off the board; the owner gets +1 cat in
+;;  reserve for each one, whether it was a kitten (graduating) or already
+;;  a cat (simply returning). An all-cats trio is skipped here — that's a
+;;  win-line, handled by _match_check_cat_lines instead.
+;;  Only the active player's trios resolve this turn — see
+;;  _match_is_inactive_piece.
 ;;
 ;;  Horizontal windows: col 0..3 in each row (0..5)
 ;;  Vertical   windows: row 0..3 in each col (0..5)
+;;  Diagonal windows:   "\" and "/", row/col window start per direction
 ;;
 ;;  Input:  -
 ;;  Output: -
@@ -1946,30 +2073,42 @@ _mcl_h_colloop:
    or a
    jp z, _mcl_h_next                 ;; empty → skip
    ld d, a                           ;; D = v0
+   call _match_is_inactive_piece
+   jp c, _mcl_h_next                 ;; not the active player's piece → skip
 
-   ;; Boop's real rule: a trio must be the SAME PLAYER *and* SAME SIZE
-   ;; (three matching kittens, or three matching cats) — mixed sizes do
-   ;; nothing, even if same-coloured. So require v1 == v0 and v2 == v0
-   ;; exactly, not just "same player, any size".
+   ;; Boop's real rule: a trio needs the SAME PLAYER, any mix of sizes
+   ;; (cat-kitten-cat counts too) — confirmed against the rulebook. Only
+   ;; the exact "all 3 already cats" case is excluded below (that's a
+   ;; win-line, not a trio removal).
    inc hl
    ld a, (hl)
-   cp d
-   jp nz, _mcl_h_next                 ;; v1 != v0 → mismatch
+   or a
+   jp z, _mcl_h_next                 ;; v1 empty → mismatch
+   ld e, a                           ;; E = v1
+   call _match_is_inactive_piece
+   jp c, _mcl_h_next                 ;; v1 wrong player → mismatch
    inc hl
    ld a, (hl)
-   cp d
-   jp nz, _mcl_h_next                 ;; v2 != v0 → mismatch
+   or a
+   jp z, _mcl_h_next                 ;; v2 empty → mismatch
+   call _match_is_inactive_piece
+   jp c, _mcl_h_next                 ;; v2 wrong player → mismatch
 
 _mcl_h_match:
-   ;; HL = ptr+2, A = v2 (== v1 == v0), D = v0; process each cell
+   ;; HL = ptr+2, A = v2, D = v0, E = v1; process each cell
 
-   ;; A same-size trio of CATS is a win-line, not a conversion — leave it
-   ;; to _match_check_cat_lines (run later, after the final board redraw)
-   ;; instead of firing the cyan line-conversion flash here for a window
-   ;; with nothing to convert, ahead of (and visually competing with) the
-   ;; real yellow win flash.
-   bit 0, d                          ;; v0 (== v1 == v2) odd → all 3 cats
-   jp nz, _mcl_h_next                ;; skip — win-check handles it
+   ;; A trio of all-cats is a win-line, not a removal — leave it to
+   ;; _match_check_cat_lines (run later, after the final board redraw)
+   ;; instead of firing the yellow trio flash here for a window with
+   ;; nothing to graduate, ahead of (and visually competing with) the
+   ;; real win flash.
+   bit 0, a                          ;; v2 odd (cat)?
+   jr z, _mcl_h_do_match             ;; v2 is a kitten → real trio
+   bit 0, d                          ;; v0 odd (cat)?
+   jr z, _mcl_h_do_match             ;; v0 is a kitten → real trio
+   bit 0, e                          ;; v1 odd (cat)?
+   jr z, _mcl_h_do_match             ;; v1 is a kitten → real trio
+   jp _mcl_h_next                    ;; all 3 already cats → skip
 
 _mcl_h_do_match:
    ;; Yellow flash for this conversion (same colour as the win flash, but
@@ -1990,13 +2129,13 @@ _mcl_h_do_match:
    ld (_snd_lines_found), a
 
    ld a, (hl)                        ;; reload v2 (A was clobbered by store above)
-   call _mrl_process_kitten          ;; v2
+   call _mrl_process_trio_piece          ;; v2
    dec hl
    ld a, (hl)
-   call _mrl_process_kitten          ;; v1
+   call _mrl_process_trio_piece          ;; v1
    dec hl
    ld a, (hl)
-   call _mrl_process_kitten          ;; v0
+   call _mrl_process_trio_piece          ;; v0
 _mcl_h_next:
    pop bc
    inc c
@@ -2031,17 +2170,14 @@ _mcl_v_rowloop:
    or a
    jp z, _mcl_v_next                 ;; empty → skip
    ld d, a                           ;; D = v0
+   call _match_is_inactive_piece
+   jp c, _mcl_v_next                 ;; not the active player's piece → skip
 
-   ;; Boop's real rule: a trio must be the SAME PLAYER *and* SAME SIZE —
-   ;; see the matching note on the horizontal scan above. Require v1 == v0
-   ;; and v2 == v0 exactly.
-   ;; BUG FIX: this used to do `ld de, #GRID_COLS` here as a 16-bit stride
-   ;; for `add hl, de` — but D is v0! Loading DE clobbers D to 0 (GRID_COLS'
-   ;; high byte), so the `cp d` below compared v1/v2 against 0, not v0. Since
-   ;; empty cells ARE 0, any empty v1/v2 "matched" trivially — placing the
-   ;; very first kitten anywhere always false-matched a vertical trio with
-   ;; the two empty cells below it. Fix: step HL by GRID_COLS via six
-   ;; `inc hl`, never touching D.
+   ;; Boop's real rule: a trio needs the SAME PLAYER, any mix of sizes —
+   ;; see the matching note on the horizontal scan above.
+   ;; NOTE: step HL by GRID_COLS via six `inc hl`, not `ld de,#GRID_COLS` —
+   ;; that would clobber D (holding v0) with 0 (GRID_COLS' high byte). See
+   ;; the historical bug note on the horizontal scan's do_match block.
    push hl                           ;; [ptr0, BC_outer]
    inc hl
    inc hl
@@ -2050,8 +2186,11 @@ _mcl_v_rowloop:
    inc hl
    inc hl                             ;; HL = ptr1 (row stride = GRID_COLS)
    ld a, (hl)
-   cp d
-   jp nz, _mcl_v_nm1                  ;; v1 != v0 → mismatch
+   or a
+   jp z, _mcl_v_nm1                   ;; v1 empty → mismatch
+   ld e, a                            ;; E = v1
+   call _match_is_inactive_piece
+   jp c, _mcl_v_nm1                   ;; v1 wrong player → mismatch
    push hl                           ;; [ptr1, ptr0, BC_outer]
    inc hl
    inc hl
@@ -2060,16 +2199,23 @@ _mcl_v_rowloop:
    inc hl
    inc hl                             ;; HL = ptr2 (row stride = GRID_COLS)
    ld a, (hl)
-   cp d
-   jp nz, _mcl_v_nm2                  ;; v2 != v0 → mismatch
+   or a
+   jp z, _mcl_v_nm2                   ;; v2 empty → mismatch
+   call _match_is_inactive_piece
+   jp c, _mcl_v_nm2                   ;; v2 wrong player → mismatch
 
 _mcl_v_match:
-   ;; HL = ptr2 (== v1 == v0); stack = [ptr1, ptr0, BC_outer]
+   ;; HL = ptr2, A = v2, D = v0, E = v1; stack = [ptr1, ptr0, BC_outer]
 
-   ;; A same-size trio of CATS is a win-line, not a conversion — see the
-   ;; matching note on _mcl_h_match.
-   bit 0, d                          ;; v0 (== v1 == v2) odd → all 3 cats
-   jp nz, _mcl_v_nm2                 ;; skip — win-check handles it, unwind like a mismatch
+   ;; A trio of all-cats is a win-line, not a removal — see the matching
+   ;; note on _mcl_h_match.
+   bit 0, a                          ;; v2 odd (cat)?
+   jr z, _mcl_v_do_match             ;; v2 is a kitten → real trio
+   bit 0, d                          ;; v0 odd (cat)?
+   jr z, _mcl_v_do_match
+   bit 0, e                          ;; v1 odd (cat)?
+   jr z, _mcl_v_do_match
+   jp _mcl_v_nm2                     ;; all 3 already cats → skip, unwind like a mismatch
 
 _mcl_v_do_match:
    ;; Yellow flash — see the matching note on _mcl_h_do_match.
@@ -2086,13 +2232,13 @@ _mcl_v_do_match:
    ld (_snd_lines_found), a
 
    ld a, (hl)                        ;; reload v2 (A clobbered by store above)
-   call _mrl_process_kitten          ;; v2
+   call _mrl_process_trio_piece          ;; v2
    pop hl                            ;; HL = ptr1
    ld a, (hl)
-   call _mrl_process_kitten          ;; v1
+   call _mrl_process_trio_piece          ;; v1
    pop hl                            ;; HL = ptr0
    ld a, (hl)
-   call _mrl_process_kitten          ;; v0
+   call _mrl_process_trio_piece          ;; v0
    jr _mcl_v_next
 
 _mcl_v_nm2:
@@ -2110,6 +2256,228 @@ _mcl_v_next:
    ld a, c
    cp #GRID_COLS
    jp c, _mcl_v_colloop
+
+   ;; === Diagonal "\" scan (row+1, col+1): row/col window start 0..3 ===
+   ld b, #0
+_mcl_d1_rowloop:
+   ld c, #0
+_mcl_d1_colloop:
+   push bc                           ;; save row/col
+
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld d, #0
+   ld e, a
+   add hl, de                        ;; HL = &board[row][col]
+
+   ld a, (hl)
+   or a
+   jp z, _mcl_d1_next                ;; empty → skip
+   ld d, a                           ;; D = v0
+   call _match_is_inactive_piece
+   jp c, _mcl_d1_next                ;; not the active player's piece → skip
+
+   push hl                           ;; [ptr0, BC_outer]
+   inc hl
+   inc hl
+   inc hl
+   inc hl
+   inc hl
+   inc hl
+   inc hl                            ;; HL = ptr0 + 7 = ptr1 (row+1,col+1)
+   ld a, (hl)
+   or a
+   jp z, _mcl_d1_nm1                 ;; v1 empty → mismatch
+   ld e, a                           ;; E = v1
+   call _match_is_inactive_piece
+   jp c, _mcl_d1_nm1                 ;; v1 wrong player → mismatch
+   push hl                           ;; [ptr1, ptr0, BC_outer]
+   inc hl
+   inc hl
+   inc hl
+   inc hl
+   inc hl
+   inc hl
+   inc hl                            ;; HL = ptr1 + 7 = ptr2
+   ld a, (hl)
+   or a
+   jp z, _mcl_d1_nm2                 ;; v2 empty → mismatch
+   call _match_is_inactive_piece
+   jp c, _mcl_d1_nm2                 ;; v2 wrong player → mismatch
+
+   ;; A trio of all-cats is a win-line, not a removal — see the matching
+   ;; note on the horizontal scan.
+   bit 0, a                          ;; v2 odd (cat)?
+   jr z, _mcl_d1_realtrio
+   bit 0, d                          ;; v0 odd (cat)?
+   jr z, _mcl_d1_realtrio
+   bit 0, e                          ;; v1 odd (cat)?
+   jr z, _mcl_d1_realtrio
+   jp _mcl_d1_nm2                    ;; all 3 already cats → skip
+_mcl_d1_realtrio:
+
+   ;; Yellow flash on the 3 diagonal cells (row,col), (row+1,col+1), (row+2,col+2)
+   ld a, #0xFF
+   ld (_last_move_row), a
+   ld (_last_move_col), a
+   ld a, b
+   ld (_mfdc_r0), a
+   ld a, c
+   ld (_mfdc_c0), a
+   inc a
+   ld (_mfdc_c1), a
+   inc a
+   ld (_mfdc_c2), a
+   ld a, b
+   inc a
+   ld (_mfdc_r1), a
+   inc a
+   ld (_mfdc_r2), a
+   push hl                           ;; preserve v2 ptr — flash clobbers HL
+   call _match_flash_combo_diag
+   pop hl
+
+   ld a, #1
+   ld (_snd_lines_found), a
+
+   ld a, (hl)                        ;; reload v2
+   call _mrl_process_trio_piece          ;; v2
+   pop hl                            ;; HL = ptr1
+   ld a, (hl)
+   call _mrl_process_trio_piece          ;; v1
+   pop hl                            ;; HL = ptr0
+   ld a, (hl)
+   call _mrl_process_trio_piece          ;; v0
+   jp _mcl_d1_next
+
+_mcl_d1_nm2:
+   pop hl                            ;; pop ptr1
+_mcl_d1_nm1:
+   pop hl                            ;; pop ptr0
+_mcl_d1_next:
+   pop bc
+   inc c
+   ld a, c
+   cp #(GRID_COLS - 2)
+   jp c, _mcl_d1_colloop
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)
+   jp c, _mcl_d1_rowloop
+
+   ;; === Diagonal "/" scan (row+1, col-1): row start 0..3, col start 2..5 ===
+   ld b, #0
+_mcl_d2_rowloop:
+   ld c, #2
+_mcl_d2_colloop:
+   push bc                           ;; save row/col
+
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld d, #0
+   ld e, a
+   add hl, de                        ;; HL = &board[row][col]
+
+   ld a, (hl)
+   or a
+   jp z, _mcl_d2_next                ;; empty → skip
+   ld d, a                           ;; D = v0
+   call _match_is_inactive_piece
+   jp c, _mcl_d2_next                ;; not the active player's piece → skip
+
+   push hl                           ;; [ptr0, BC_outer]
+   inc hl
+   inc hl
+   inc hl
+   inc hl
+   inc hl                            ;; HL = ptr0 + 5 = ptr1 (row+1,col-1)
+   ld a, (hl)
+   or a
+   jp z, _mcl_d2_nm1                 ;; v1 empty → mismatch
+   ld e, a                           ;; E = v1
+   call _match_is_inactive_piece
+   jp c, _mcl_d2_nm1                 ;; v1 wrong player → mismatch
+   push hl                           ;; [ptr1, ptr0, BC_outer]
+   inc hl
+   inc hl
+   inc hl
+   inc hl
+   inc hl                            ;; HL = ptr1 + 5 = ptr2
+   ld a, (hl)
+   or a
+   jp z, _mcl_d2_nm2                 ;; v2 empty → mismatch
+   call _match_is_inactive_piece
+   jp c, _mcl_d2_nm2                 ;; v2 wrong player → mismatch
+
+   ;; A trio of all-cats is a win-line, not a removal — see the matching
+   ;; note on the horizontal scan.
+   bit 0, a                          ;; v2 odd (cat)?
+   jr z, _mcl_d2_realtrio
+   bit 0, d                          ;; v0 odd (cat)?
+   jr z, _mcl_d2_realtrio
+   bit 0, e                          ;; v1 odd (cat)?
+   jr z, _mcl_d2_realtrio
+   jp _mcl_d2_nm2                    ;; all 3 already cats → skip
+_mcl_d2_realtrio:
+
+   ;; Yellow flash on the 3 diagonal cells (row,col), (row+1,col-1), (row+2,col-2)
+   ld a, #0xFF
+   ld (_last_move_row), a
+   ld (_last_move_col), a
+   ld a, b
+   ld (_mfdc_r0), a
+   ld a, c
+   ld (_mfdc_c0), a
+   dec a
+   ld (_mfdc_c1), a
+   dec a
+   ld (_mfdc_c2), a
+   ld a, b
+   inc a
+   ld (_mfdc_r1), a
+   inc a
+   ld (_mfdc_r2), a
+   push hl                           ;; preserve v2 ptr — flash clobbers HL
+   call _match_flash_combo_diag
+   pop hl
+
+   ld a, #1
+   ld (_snd_lines_found), a
+
+   ld a, (hl)                        ;; reload v2
+   call _mrl_process_trio_piece          ;; v2
+   pop hl                            ;; HL = ptr1
+   ld a, (hl)
+   call _mrl_process_trio_piece          ;; v1
+   pop hl                            ;; HL = ptr0
+   ld a, (hl)
+   call _mrl_process_trio_piece          ;; v0
+   jp _mcl_d2_next
+
+_mcl_d2_nm2:
+   pop hl                            ;; pop ptr1
+_mcl_d2_nm1:
+   pop hl                            ;; pop ptr0
+_mcl_d2_next:
+   pop bc
+   inc c
+   ld a, c
+   cp #GRID_COLS
+   jp c, _mcl_d2_colloop
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)
+   jp c, _mcl_d2_rowloop
 
    ret
 
@@ -2354,16 +2722,110 @@ _mfcb_loop:
    jr nz, _mfcb_loop
    ret
 
+;; ON: draw individual yellow frames on the 3 cells (_mfdc_r0/c0 etc, set
+;; by the caller)
+_mfdc_draw_on:
+   ld a, (_mfdc_r0)
+   ld b, a
+   ld a, (_mfdc_c0)
+   ld c, a
+   ld a, (_mfdc_color)
+   call _match_draw_cell_frame
+   ld a, (_mfdc_r1)
+   ld b, a
+   ld a, (_mfdc_c1)
+   ld c, a
+   ld a, (_mfdc_color)
+   call _match_draw_cell_frame
+   ld a, (_mfdc_r2)
+   ld b, a
+   ld a, (_mfdc_c2)
+   ld c, a
+   ld a, (_mfdc_color)
+   jp _match_draw_cell_frame         ;; tail call
+
+;; OFF: restore the 3 cells (redraws the pieces too)
+_mfdc_restore_off:
+   ld a, (_mfdc_r0)
+   ld b, a
+   ld a, (_mfdc_c0)
+   ld c, a
+   call _match_restore_cell
+   ld a, (_mfdc_r1)
+   ld b, a
+   ld a, (_mfdc_c1)
+   ld c, a
+   call _match_restore_cell
+   ld a, (_mfdc_r2)
+   ld b, a
+   ld a, (_mfdc_c2)
+   ld c, a
+   jp _match_restore_cell            ;; tail call
+
+;;-----------------------------------------------------------------
+;;
+;; _match_flash_combo_diag / _match_flash_win_diag
+;;
+;;  Diagonal counterparts of _match_flash_combo_box / _match_flash_win_box:
+;;  _match_draw_bbox_frame only draws axis-aligned rectangles, so a
+;;  diagonal 3-in-a-row flashes 3 individual cell frames instead (see
+;;  _mfdc_draw_on/_mfdc_restore_off above). Same 2-cycle blink; combo ends
+;;  erased, win ends lit. Caller must set _mfdc_r0/c0/r1/c1/r2/c2 first.
+;;
+;;  Input:  -  (cell coords + already set in _mfdc_* scratch)
+;;  Output: -
+;;  Modified: AF, BC, DE, HL
+;;
+_match_flash_combo_diag:
+   ld a, #WIN_FLASH_COLOR
+   ld (_mfdc_color), a
+   ld b, #2
+_mfcd_loop:
+   push bc
+   call _mfdc_draw_on
+   ld b, #15
+   call sys_util_delay
+   call _mfdc_restore_off
+   ld b, #15
+   call sys_util_delay
+   pop bc
+   dec b
+   jr nz, _mfcd_loop
+   ret
+
+_match_flash_win_diag:
+   ld a, #WIN_FLASH_COLOR
+   ld (_mfdc_color), a
+   ld b, #2
+_mfwd_loop:
+   push bc
+   call _mfdc_draw_on
+   ld b, #15
+   call sys_util_delay
+   call _mfdc_restore_off
+   ld b, #15
+   call sys_util_delay
+   pop bc
+   dec b
+   jr nz, _mfwd_loop
+
+   ;; Final on-phase: leave the frames visible (matches _match_flash_win_box).
+   call _mfdc_draw_on
+   ret
+
 ;;-----------------------------------------------------------------
 ;;
 ;; _match_check_cat_lines
 ;;
-;;  Scans every row and column for 3 consecutive cats of the same
-;;  colour. If found, calls _match_declare_winner for that player.
-;;  BOARD_P1_CAT=1 (odd) → P1 wins; BOARD_P2_CAT=3 (odd) → P2 wins.
+;;  Scans every row/col/diagonal for 3 consecutive cats belonging to the
+;;  ACTIVE player (per _match_state — see _match_is_inactive_piece) of
+;;  the same colour. If found, that player wins via _match_declare_winner
+;;  — since only the active player's cats are scanned, a match always
+;;  means the active player won.
 ;;
 ;;  Horizontal windows: col 0..3 in each row (0..5)
 ;;  Vertical   windows: row 0..3 in each col (0..5)
+;;  Diagonal windows:   "\" and "/", row/col window start per direction
 ;;
 ;;  Input:  -
 ;;  Output: -
@@ -2390,35 +2852,34 @@ _mccl_h_colloop:
 
    ld a, (hl)
    ld d, a                           ;; D = v0
-   cp #BOARD_P1_CAT
-   jr z, _mccl_h_chk
-   cp #BOARD_P2_CAT
-   jr nz, _mccl_h_next
-_mccl_h_chk:
-   inc hl
-   ld a, (hl)
+   ;; Only the active player's cats can win this turn — check against
+   ;; their specific cat constant, not "either player".
+   ld a, (_match_state)
+   or a
+   ld a, #BOARD_P1_CAT
+   jr z, _mccl_h_cpsel
+   ld a, #BOARD_P2_CAT
+_mccl_h_cpsel:
    cp d
    jr nz, _mccl_h_next
    inc hl
    ld a, (hl)
    cp d
    jr nz, _mccl_h_next
-   ;; Match: 3 cats in a row
+   inc hl
+   ld a, (hl)
+   cp d
+   jr nz, _mccl_h_next
+   ;; Match: 3 cats in a row (always the active player's — see above)
    pop bc                             ;; B=row, C=col (leftmost cell)
    ld a, #0xFF                        ;; clear last-move marker — see the
    ld (_last_move_row), a             ;; note on _mcl_h_do_match
    ld (_last_move_col), a
-   ld a, d                            ;; stash v0 — _match_flash_win_box clobbers D
-   ld (_mccl_v0), a
    ld d, #(3 * GRID_CELL_W)
    ld e, #GRID_CELL_H
    call _match_flash_win_box
-   ld a, (_mccl_v0)
-   cp #BOARD_P2_CAT
-   ld a, #1
-   jr nz, _mccl_declare
-   ld a, #2
-_mccl_declare:
+   ld a, (_match_state)
+   inc a                              ;; 0/1 → winner 1/2
    jp _match_declare_winner          ;; no return; sets _match_cancelled
 _mccl_h_next:
    pop bc
@@ -2451,12 +2912,16 @@ _mccl_v_rowloop:
 
    ld a, (hl)
    ld d, a                           ;; D = v0
-   cp #BOARD_P1_CAT
-   jr z, _mccl_v_chk
-   cp #BOARD_P2_CAT
+   ;; Only the active player's cats can win this turn.
+   ld a, (_match_state)
+   or a
+   ld a, #BOARD_P1_CAT
+   jr z, _mccl_v_cpsel
+   ld a, #BOARD_P2_CAT
+_mccl_v_cpsel:
+   cp d
    jr nz, _mccl_v_next
 
-_mccl_v_chk:
    push hl                           ;; [ptr0, BC_outer]
    ld bc, #GRID_COLS
    add hl, bc                        ;; HL = ptr1
@@ -2468,24 +2933,18 @@ _mccl_v_chk:
    ld a, (hl)
    cp d
    jr nz, _mccl_v_nm2
-   ;; Match
+   ;; Match (always the active player's — see above)
    pop hl                            ;; pop ptr1
    pop hl                            ;; pop ptr0
    pop bc                            ;; restore outer BC (B=row window start, C=col)
    ld a, #0xFF                       ;; clear last-move marker — see the
    ld (_last_move_row), a            ;; note on _mcl_h_do_match
    ld (_last_move_col), a
-   ld a, d                           ;; stash v0 — _match_flash_win_box clobbers D
-   ld (_mccl_v0), a
    ld d, #GRID_CELL_W
    ld e, #(3 * GRID_CELL_H)
    call _match_flash_win_box
-   ld a, (_mccl_v0)
-   cp #BOARD_P2_CAT
-   ld a, #1
-   jr nz, _mccl_v_declare
-   ld a, #2
-_mccl_v_declare:
+   ld a, (_match_state)
+   inc a                             ;; 0/1 → winner 1/2
    jp _match_declare_winner
 _mccl_v_nm2:
    pop hl                            ;; pop ptr1
@@ -2503,41 +2962,167 @@ _mccl_v_next:
    cp #GRID_COLS
    jr c, _mccl_v_colloop
 
-   ret
+   ;; === Diagonal "\" scan (row+1, col+1): row/col window start 0..3 ===
+   ld b, #0
+_mccl_d1_rowloop:
+   ld c, #0
+_mccl_d1_colloop:
+   push bc
 
-;;-----------------------------------------------------------------
-;;
-;; _match_check_no_pieces
-;;
-;;  Called after each placement. Checks whether the next player has
-;;  no cats and no kittens in reserve. If so, the opposite player
-;;  wins via _match_declare_winner.
-;;  Input:  _match_state = next player (0=P1, 1=P2, already toggled)
-;;  Output: -
-;;  Modified: AF, IX
-;;
-_match_check_no_pieces:
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld d, #0
+   ld e, a
+   add hl, de                        ;; HL = &board[row][col]
+
+   ld a, (hl)
+   ld d, a                           ;; D = v0
+   ;; Only the active player's cats can win this turn.
    ld a, (_match_state)
    or a
-   jr nz, _mcnp_p2
-   ld ix, #man_match_player1
-   jr _mcnp_chk
-_mcnp_p2:
-   ld ix, #man_match_player2
-_mcnp_chk:
-   ld a, Player_cats(ix)
-   or a
-   ret nz                            ;; still has cats
-   ld a, Player_kittens(ix)
-   or a
-   ret nz                            ;; still has kittens
+   ld a, #BOARD_P1_CAT
+   jr z, _mccl_d1_cpsel
+   ld a, #BOARD_P2_CAT
+_mccl_d1_cpsel:
+   cp d
+   jr nz, _mccl_d1_next
 
-   ;; state=0 (P1 out) → P2 wins; state=1 (P2 out) → P1 wins
-   ;; winner = (state XOR 1) + 1: state=0→2, state=1→1
-   ld a, (_match_state)
-   xor #1
+   push hl                           ;; [ptr0, BC_outer]
+   ld bc, #7
+   add hl, bc                        ;; HL = ptr1 (row+1,col+1)
+   ld a, (hl)
+   cp d
+   jr nz, _mccl_d1_nm1
+   push hl                           ;; [ptr1, ptr0, BC_outer]
+   add hl, bc                        ;; HL = ptr2
+   ld a, (hl)
+   cp d
+   jr nz, _mccl_d1_nm2
+   ;; Match: 3 cats diagonally (always the active player's — see above)
+   pop hl
+   pop hl
+   pop bc                            ;; B=row, C=col (top-left cell)
+   ld a, #0xFF
+   ld (_last_move_row), a
+   ld (_last_move_col), a
+   ld a, b
+   ld (_mfdc_r0), a
+   ld a, c
+   ld (_mfdc_c0), a
    inc a
+   ld (_mfdc_c1), a
+   inc a
+   ld (_mfdc_c2), a
+   ld a, b
+   inc a
+   ld (_mfdc_r1), a
+   inc a
+   ld (_mfdc_r2), a
+   call _match_flash_win_diag
+   ld a, (_match_state)
+   inc a                             ;; 0/1 → winner 1/2
    jp _match_declare_winner
+_mccl_d1_nm2:
+   pop hl
+_mccl_d1_nm1:
+   pop hl
+_mccl_d1_next:
+   pop bc
+   inc c
+   ld a, c
+   cp #(GRID_COLS - 2)
+   jr c, _mccl_d1_colloop
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)
+   jr c, _mccl_d1_rowloop
+
+   ;; === Diagonal "/" scan (row+1, col-1): row start 0..3, col start 2..5 ===
+   ld b, #0
+_mccl_d2_rowloop:
+   ld c, #2
+_mccl_d2_colloop:
+   push bc
+
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld d, #0
+   ld e, a
+   add hl, de                        ;; HL = &board[row][col]
+
+   ld a, (hl)
+   ld d, a                           ;; D = v0
+   ;; Only the active player's cats can win this turn.
+   ld a, (_match_state)
+   or a
+   ld a, #BOARD_P1_CAT
+   jr z, _mccl_d2_cpsel
+   ld a, #BOARD_P2_CAT
+_mccl_d2_cpsel:
+   cp d
+   jr nz, _mccl_d2_next
+
+   push hl                           ;; [ptr0, BC_outer]
+   ld bc, #5
+   add hl, bc                        ;; HL = ptr1 (row+1,col-1)
+   ld a, (hl)
+   cp d
+   jr nz, _mccl_d2_nm1
+   push hl                           ;; [ptr1, ptr0, BC_outer]
+   add hl, bc                        ;; HL = ptr2
+   ld a, (hl)
+   cp d
+   jr nz, _mccl_d2_nm2
+   ;; Match: 3 cats diagonally (always the active player's — see above)
+   pop hl
+   pop hl
+   pop bc                            ;; B=row, C=col (top cell)
+   ld a, #0xFF
+   ld (_last_move_row), a
+   ld (_last_move_col), a
+   ld a, b
+   ld (_mfdc_r0), a
+   ld a, c
+   ld (_mfdc_c0), a
+   dec a
+   ld (_mfdc_c1), a
+   dec a
+   ld (_mfdc_c2), a
+   ld a, b
+   inc a
+   ld (_mfdc_r1), a
+   inc a
+   ld (_mfdc_r2), a
+   call _match_flash_win_diag
+   ld a, (_match_state)
+   inc a                             ;; 0/1 → winner 1/2
+   jp _match_declare_winner
+_mccl_d2_nm2:
+   pop hl
+_mccl_d2_nm1:
+   pop hl
+_mccl_d2_next:
+   pop bc
+   inc c
+   ld a, c
+   cp #GRID_COLS
+   jr c, _mccl_d2_colloop
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)
+   jr c, _mccl_d2_rowloop
+
+   ret
 
 ;;-----------------------------------------------------------------
 ;;

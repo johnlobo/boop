@@ -72,6 +72,17 @@ _ai_p2_backup:     .ds 6
 ;; Temporary count variable shared by all pair/line counting functions
 _ai_pair_count:    .db 0
 
+;; Score accumulator for _ai_score_one_candidate. MUST live in memory, not
+;; in D: the counting/lookup helpers it calls (_ai_count_p1_cat_pairs and
+;; friends) use D as the high byte of a 16-bit board index, and the
+;; _asoc_restore ldir's load DE with fixed pointers — either would silently
+;; clobber a live score kept in D.
+_ai_score:         .db 0
+
+;; Set by _ai_simulate_reserve_empty: 1 if the current candidate move
+;; wins by graduation exhaustion (leaves P2 with all 8 pieces as cats).
+_ai_grad_win:      .db 0
+
 ;;------------------------------------------------------------------------------
 ;; Profile table: 4 profiles × AI_PROFILE_SIZE(6) bytes
 ;;   delay, W_defense, W_align, W_center, W_kitten, rand_mask
@@ -439,15 +450,35 @@ _ai_score_one_candidate:
    ;; === Place piece + boop (no animation) ===
    call _ai_place_no_animate
 
-   ;; === Evaluate ===
-   ld d, #0        ;; D = score accumulator
+   ;; If this move empties P2's reserve, apply the real "graduate or
+   ;; win" resolution to the simulated state (see _ai_simulate_reserve_empty
+   ;; and match.s's _match_graduate_or_win) so the heuristics below see
+   ;; an accurate post-move board/reserve, not a state the real game
+   ;; would never actually leave on the board.
+   call _ai_simulate_reserve_empty
+   ld (_ai_grad_win), a              ;; 1 = this move wins via graduation exhaustion
 
-   ;; Priority 1: immediate P2 cat win → sentinel score, early exit
+   ;; === Evaluate ===
+   ;; Score accumulates in _ai_score (memory), NOT in D: the counting
+   ;; helpers below use D as a 16-bit board-index high byte, and the
+   ;; restore ldir's below load DE with fixed pointers — a live score
+   ;; kept in D would get silently clobbered by either.
+   xor a
+   ld (_ai_score), a
+
+   ;; Priority 1: immediate win — either a 3-cat line, or this move
+   ;; leaving P2 with all 8 pieces already cats (graduation exhaustion)
+   ;; → sentinel score, early exit.
    call _ai_has_p2_cat_win
    or a
+   jr nz, _asoc_win
+   ld a, (_ai_grad_win)
+   or a
    jr z, _asoc_no_win
-   ld d, #AI_WIN_SENTINEL
-   jr _asoc_restore
+_asoc_win:
+   ld a, #AI_WIN_SENTINEL
+   ld (_ai_score), a
+   jp _asoc_restore
 
 _asoc_no_win:
    ;; Load profile into IX for fast weight access
@@ -466,48 +497,66 @@ _asoc_def_ok:
    ld e, a
    ld a, 1(ix)      ;; W_defense
    call _ai_mul_e_a ;; A = reduction × W_defense
-   add a, d
-   ld d, a
+   ld e, a
+   ld a, (_ai_score)
+   add a, e
+   ld (_ai_score), a
 
    ;; --- Alignment: own piece-pair improvement ---
+   ;; BUG FIX: this used to compute before-after then NEG it, using NEG's
+   ;; carry flag as a sign test. NEG's carry means "input was nonzero", NOT
+   ;; "result is negative" — so it fell through to xor a (clamped to 0) for
+   ;; almost every case, including genuine positive improvements. Fixed by
+   ;; comparing before vs after directly with CP (carry = before < after)
+   ;; before computing the subtraction, never negating.
    call _ai_count_p2_piece_pairs  ;; A = pairs after
-   ld b, a
-   ld a, (_ai_own_before)
-   ;; gain = after - before
-   ld e, b
-   sub e            ;; A = before - after; we want after - before
-   neg              ;; A = after - before (may be negative)
-   jr nc, _asoc_align_ok
+   ld e, a                        ;; E = after
+   ld a, (_ai_own_before)         ;; A = before
+   ld d, a                        ;; D = before
+   cp e                           ;; carry set if before < after (real gain)
+   jr nc, _asoc_align_clamp       ;; before >= after: no gain
+   ld a, e                        ;; A = after
+   sub d                          ;; A = after - before (> 0, guaranteed)
+   jr _asoc_align_ok
+_asoc_align_clamp:
    xor a
 _asoc_align_ok:
    ld e, a
    ld a, 2(ix)      ;; W_align
    call _ai_mul_e_a
-   add a, d
-   ld d, a
+   ld e, a
+   ld a, (_ai_score)
+   add a, e
+   ld (_ai_score), a
 
    ;; --- Center bonus ---
    call _ai_center_bonus  ;; A = 0..3
    ld e, a
    ld a, 3(ix)      ;; W_center
    call _ai_mul_e_a
-   add a, d
-   ld d, a
+   ld e, a
+   ld a, (_ai_score)
+   add a, e
+   ld (_ai_score), a
 
    ;; --- Kitten 3-in-a-row lines created ---
    call _ai_count_p2_three_in_row  ;; A = count
    ld e, a
    ld a, 4(ix)      ;; W_kitten
    call _ai_mul_e_a
-   add a, d
-   ld d, a
+   ld e, a
+   ld a, (_ai_score)
+   add a, e
+   ld (_ai_score), a
 
    ;; --- Random noise ---
    call cpct_getRandom_mxor_u8_asm
    ld a, l
    and 5(ix)        ;; rand_mask
-   add a, d
-   ld d, a
+   ld e, a
+   ld a, (_ai_score)
+   add a, e
+   ld (_ai_score), a
 
    ;; --- Danger check: does this move leave P1 an immediate win? ---
    ;; Only applied at levels 2-3 (GATA ASTUTA / MAESTRO FELINO); lower
@@ -515,12 +564,11 @@ _asoc_align_ok:
    ld a, (man_ai_level)
    cp #2
    jr c, _asoc_restore     ;; level 0-1: skip danger check
-   push de                 ;; D = accumulated score, save across the call
    call _ai_has_p1_cat_win
-   pop de
    or a
    jr z, _asoc_restore     ;; no danger: keep heuristic score
-   ld d, #0                ;; danger: this move loses the game, discard score
+   xor a
+   ld (_ai_score), a       ;; danger: this move loses the game, discard score
 
 _asoc_restore:
    ;; === Restore board and player reserves ===
@@ -540,7 +588,7 @@ _asoc_restore:
    ldir
 
    ;; === Compare with current best ===
-   ld a, d            ;; score
+   ld a, (_ai_score)  ;; score
    ld hl, #_ai_best_score
    cp (hl)
    jr c, _asoc_done   ;; worse: skip
@@ -554,7 +602,7 @@ _asoc_equal:
    ld a, l
    rra              ;; test bit 0
    jr nc, _asoc_done
-   ld a, d
+   ld a, (_ai_score)
    ld (_ai_best_score), a
 _asoc_update_best:
    ld a, (_ai_cand_col)
@@ -606,6 +654,55 @@ _apna_kitten:
    dec Player_kittens(ix)
    ld (hl), #BOARD_P2_KITTEN
    jp _match_boop       ;; tail call
+
+;;-----------------------------------------------------------------
+;;
+;; _ai_simulate_reserve_empty
+;;
+;;  Called right after _ai_place_no_animate. If the simulated move
+;;  leaves P2's reserve at 0 cats/0 kittens, applies the same "graduate
+;;  or win" resolution _match_graduate_or_win does for real moves (see
+;;  match.s) — but purely to the simulated board/reserve state, with no
+;;  sound/UI/declared-winner side effects. _ai_score_one_candidate
+;;  restores the whole simulated state afterward regardless, so
+;;  mutating it here is safe.
+;;  Output: A = 1 if this move wins by graduation exhaustion (no P2
+;;          kitten left anywhere on the board — all 8 pieces are
+;;          already cats), 0 otherwise (including "reserve not empty")
+;;  Modified: AF, BC, HL, IX
+;;
+_ai_simulate_reserve_empty:
+   ld a, (man_match_player2 + Player_cats)
+   or a
+   jr nz, _asre_no
+   ld a, (man_match_player2 + Player_kittens)
+   or a
+   jr nz, _asre_no
+
+   ;; Reserve empty: scan for a P2 kitten to graduate
+   ld hl, #_match_board
+   ld b, #36
+_asre_scan:
+   ld a, (hl)
+   cp #BOARD_P2_KITTEN
+   jr z, _asre_graduate
+   inc hl
+   djnz _asre_scan
+
+   ;; No kitten found anywhere → all 8 P2 pieces are cats → this move wins
+   ld a, #1
+   ret
+
+_asre_graduate:
+   ld (hl), #BOARD_EMPTY
+   ld ix, #man_match_player2
+   inc Player_cats(ix)
+   xor a
+   ret
+
+_asre_no:
+   xor a
+   ret
 
 ;;-----------------------------------------------------------------
 ;;
@@ -699,6 +796,90 @@ _ahpcw_vnext:
    ld a, c
    cp #GRID_COLS
    jr c, _ahpcw_vcol
+
+   ;; Diagonal "\" scan (row+1, col+1)
+   ld b, #0
+_ahpcw_d1row:
+   ld c, #0
+_ahpcw_d1col:
+   push bc
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr nz, _ahpcw_d1next
+   ld de, #7
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr nz, _ahpcw_d1next
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr nz, _ahpcw_d1next
+   pop bc
+   ld a, #1
+   ret
+_ahpcw_d1next:
+   pop bc
+   inc c
+   ld a, c
+   cp #(GRID_COLS - 2)
+   jr c, _ahpcw_d1col
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)
+   jr c, _ahpcw_d1row
+
+   ;; Diagonal "/" scan (row+1, col-1)
+   ld b, #0
+_ahpcw_d2row:
+   ld c, #2
+_ahpcw_d2col:
+   push bc
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr nz, _ahpcw_d2next
+   ld de, #5
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr nz, _ahpcw_d2next
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr nz, _ahpcw_d2next
+   pop bc
+   ld a, #1
+   ret
+_ahpcw_d2next:
+   pop bc
+   inc c
+   ld a, c
+   cp #GRID_COLS
+   jr c, _ahpcw_d2col
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)
+   jr c, _ahpcw_d2row
 
    xor a
    ret
@@ -797,6 +978,90 @@ _ahp1cw_vnext:
    cp #GRID_COLS
    jr c, _ahp1cw_vcol
 
+   ;; Diagonal "\" scan (row+1, col+1)
+   ld b, #0
+_ahp1cw_d1row:
+   ld c, #0
+_ahp1cw_d1col:
+   push bc
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _ahp1cw_d1next
+   ld de, #7
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _ahp1cw_d1next
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _ahp1cw_d1next
+   pop bc
+   ld a, #1
+   ret
+_ahp1cw_d1next:
+   pop bc
+   inc c
+   ld a, c
+   cp #(GRID_COLS - 2)
+   jr c, _ahp1cw_d1col
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)
+   jr c, _ahp1cw_d1row
+
+   ;; Diagonal "/" scan (row+1, col-1)
+   ld b, #0
+_ahp1cw_d2row:
+   ld c, #2
+_ahp1cw_d2col:
+   push bc
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _ahp1cw_d2next
+   ld de, #5
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _ahp1cw_d2next
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _ahp1cw_d2next
+   pop bc
+   ld a, #1
+   ret
+_ahp1cw_d2next:
+   pop bc
+   inc c
+   ld a, c
+   cp #GRID_COLS
+   jr c, _ahp1cw_d2col
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)
+   jr c, _ahp1cw_d2row
+
    xor a
    ret
 
@@ -882,6 +1147,76 @@ _a1cp_vnext:
    cp #(GRID_ROWS - 1)
    jr c, _a1cp_vrow
 
+   ;; Diagonal "\": rows 0..4, cols 0..4
+   ld b, #0
+_a1cp_d1row:
+   ld c, #0
+_a1cp_d1col:
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _a1cp_d1next
+   ld de, #7
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _a1cp_d1next
+   ld hl, #_ai_pair_count
+   inc (hl)
+_a1cp_d1next:
+   inc c
+   ld a, c
+   cp #(GRID_COLS - 1)
+   jr c, _a1cp_d1col
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 1)
+   jr c, _a1cp_d1row
+
+   ;; Diagonal "/": rows 0..4, cols 1..5
+   ld b, #0
+_a1cp_d2row:
+   ld c, #1
+_a1cp_d2col:
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _a1cp_d2next
+   ld de, #5
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr nz, _a1cp_d2next
+   ld hl, #_ai_pair_count
+   inc (hl)
+_a1cp_d2next:
+   inc c
+   ld a, c
+   cp #GRID_COLS
+   jr c, _a1cp_d2col
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 1)
+   jr c, _a1cp_d2row
+
    ld a, (_ai_pair_count)
    ret
 
@@ -966,6 +1301,76 @@ _a2pp_vnext:
    ld a, b
    cp #(GRID_ROWS - 1)
    jr c, _a2pp_vrow
+
+   ;; Diagonal "\": rows 0..4, cols 0..4
+   ld b, #0
+_a2pp_d1row:
+   ld c, #0
+_a2pp_d1col:
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr c, _a2pp_d1next
+   ld de, #7
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr c, _a2pp_d1next
+   ld hl, #_ai_pair_count
+   inc (hl)
+_a2pp_d1next:
+   inc c
+   ld a, c
+   cp #(GRID_COLS - 1)
+   jr c, _a2pp_d1col
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 1)
+   jr c, _a2pp_d1row
+
+   ;; Diagonal "/": rows 0..4, cols 1..5
+   ld b, #0
+_a2pp_d2row:
+   ld c, #1
+_a2pp_d2col:
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr c, _a2pp_d2next
+   ld de, #5
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr c, _a2pp_d2next
+   ld hl, #_ai_pair_count
+   inc (hl)
+_a2pp_d2next:
+   inc c
+   ld a, c
+   cp #GRID_COLS
+   jr c, _a2pp_d2col
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 1)
+   jr c, _a2pp_d2row
 
    ld a, (_ai_pair_count)
    ret
@@ -1065,6 +1470,88 @@ _a2tir_vnext:
    ld a, c
    cp #GRID_COLS
    jr c, _a2tir_vcol
+
+   ;; Diagonal "\": row/col window start 0..3
+   ld b, #0
+_a2tir_d1row:
+   ld c, #0
+_a2tir_d1col:
+   push bc
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr c, _a2tir_d1next
+   ld de, #7
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr c, _a2tir_d1next
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr c, _a2tir_d1next
+   ld hl, #_ai_pair_count
+   inc (hl)
+_a2tir_d1next:
+   pop bc
+   inc c
+   ld a, c
+   cp #(GRID_COLS - 2)
+   jr c, _a2tir_d1col
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)
+   jr c, _a2tir_d1row
+
+   ;; Diagonal "/": row start 0..3, col start 2..5
+   ld b, #0
+_a2tir_d2row:
+   ld c, #2
+_a2tir_d2col:
+   push bc
+   ld a, b
+   add a, a
+   add a, a
+   add a, b
+   add a, b
+   add a, c
+   ld hl, #_match_board
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr c, _a2tir_d2next
+   ld de, #5
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr c, _a2tir_d2next
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr c, _a2tir_d2next
+   ld hl, #_ai_pair_count
+   inc (hl)
+_a2tir_d2next:
+   pop bc
+   inc c
+   ld a, c
+   cp #GRID_COLS
+   jr c, _a2tir_d2col
+   inc b
+   ld a, b
+   cp #(GRID_ROWS - 2)
+   jr c, _a2tir_d2row
 
    ld a, (_ai_pair_count)
    ret

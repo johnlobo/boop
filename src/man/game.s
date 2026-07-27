@@ -42,7 +42,7 @@ GAME_STATE_AI_SELECT = 3   ;; AI level picker (1-player only)
 .area _DATA
 
 _game_state:         .db 0
-_game_loaded_string: .asciz " GAME LOADED - V.064"
+_game_loaded_string: .asciz " GAME LOADED - V.069"
 
 ;;
 ;; Start of _CODE area
