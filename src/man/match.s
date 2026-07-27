@@ -1623,8 +1623,16 @@ _mcl_v_next:
 ;;
 _match_declare_winner:
    push af                           ;; save winner number for after fanfare call
-   ld a, #SFX_END
-   call sys_sound_play_sfx
+   cp #2
+   jr nz, _mdw_win_music             ;; P1 always gets the victory fanfare
+   ld a, (man_match_num_players)
+   cp #1
+   jr nz, _mdw_win_music             ;; two humans: P2 also gets victory music
+   call sys_sound_start_lose_music    ;; one player: P2 is the AI
+   jr _mdw_music_ready
+_mdw_win_music:
+   call sys_sound_start_win_music
+_mdw_music_ready:
    pop af
    push af                           ;; save winner number (macro clobbers AF)
    m_msg_w_background 3

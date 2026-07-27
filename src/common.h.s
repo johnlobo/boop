@@ -129,22 +129,23 @@ S_BIG_NUMBERS_HEIGHT = 13
 
 
 ;;===============================================================================
-;; SOUND MODULE (Arkos Player 2 / AKG)
+;; SOUND MODULE (Arkos Tracker 3 / AKG)
 ;;===============================================================================
 .globl sys_sound_init
 .globl sys_sound_stop
 .globl sys_sound_start_music
 .globl sys_sound_start_menu_music
+.globl sys_sound_start_win_music
+.globl sys_sound_start_lose_music
 .globl sys_sound_play_sfx
 .globl _snd_lines_found
 
-;; SFX IDs (1-based, matching fx.aks SFX table from drRoland/At2FilesAKG.s)
-SFX_CURSOR  = 15   ;; SOUND_TURN  — short navigation ping
-SFX_KITTEN  = 14   ;; SOUND_HIT   — kitten placed
-SFX_CAT     = 16   ;; SOUND_HIHAT — cat placed (heavier)
-SFX_EJECT   = 4    ;; SOUND_VIRUS — piece ejected off board
-SFX_LINE    = 9    ;; SOUND_LINE  — 3-in-a-row conversion
-SFX_END     = 255  ;; Special: switch to WIN_SONG subsong
+;; BoopFX output IDs are linear and 1-based. Zero disables an unassigned event.
+SFX_CURSOR  = 0
+SFX_KITTEN  = 1    ;; PLACE SMALL CAT
+SFX_CAT     = 2    ;; PLACE FAT CAT
+SFX_EJECT   = 0
+SFX_LINE    = 3    ;; MERGE 3 CATS
 
 ;;===============================================================================
 ;; DEFINED MACROS

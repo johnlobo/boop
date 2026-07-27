@@ -3,30 +3,31 @@
 ;;-------------------------------------------------------------------------------
 
 ;;===============================================================================
-;; sys/sound.h.s — Arkos Player 2 (AKG) sound engine interface
+;; sys/sound.h.s — Arkos Tracker 3 AKG sound engine interface
 ;;
-;; Music data and player are compiled together in src/audio/At2FilesAKG.s.
+;; Music data, temporary SFX and player are compiled together in
+;; src/audio/BoopAudioAT3.s.
 ;; PLY_AKG_PLAY is called every frame from interrupt handler 5.
 ;;===============================================================================
 
 ;;
-;; Arkos Player 2 symbols (defined in src/audio/At2FilesAKG.s)
+;; Arkos Tracker 3 AKG symbols (defined in src/audio/BoopAudioAT3.s)
 ;;
 .globl _PLY_AKG_PLAY
 .globl _PLY_AKG_INIT
 .globl _PLY_AKG_STOP
 .globl _PLY_AKG_INITSOUNDEFFECTS
 .globl _PLY_AKG_PLAYSOUNDEFFECT
-.globl _DRROLANDSOUNDTRACK_START
-.globl _FX_SOUNDEFFECTS
+.globl _START
+.globl _BOOP_FXSOUNDEFFECTS
 
 ;;
-;; Subsong indices (must match the .aks compilation order in At2FilesAKG.s)
+;; Subsong indices (must match the AT3 BoopAkg export order)
 ;;
-SUBSONG_MENU    = 7    ;; menu music  (upbeat FEVER_MIX)
-SUBSONG_GAME    = 0    ;; in-game music
-SUBSONG_WIN     = 4    ;; win jingle
-SUBSONG_SILENCE = 6    ;; silent subsong
+SUBSONG_GAME = 1
+SUBSONG_MENU = 0
+SUBSONG_WIN  = 2
+SUBSONG_LOSE = 3
 
 ;;
 ;; AY channel indices for PLY_AKG_PLAYSOUNDEFFECT
@@ -44,4 +45,6 @@ SND_CH_C = 2
 .globl sys_sound_stop
 .globl sys_sound_start_music
 .globl sys_sound_start_menu_music
+.globl sys_sound_start_win_music
+.globl sys_sound_start_lose_music
 .globl sys_sound_play_sfx
