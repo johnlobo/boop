@@ -87,7 +87,7 @@ sys_util_h_times_e::
   ret
 
 ;;-----------------------------------------------------------------;; 
-;;  sys_util_h_times_e
+;;  sys_util_hl_div_c
 ;;
 ;;Inputs:
 ;;     HL is the numerator
