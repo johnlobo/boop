@@ -143,8 +143,32 @@ _match_trio_choice_key_actions:
 
 _match_choose_trio_msg: .asciz "CHOOSE A TRIO"
 
+;; Graduate-choice (_match_collect_graduate_candidates, _match_graduate_or_win,
+;; _match_graduate_choice_ui). Same "0/1 direct, 2+ ask the player" pattern
+;; as the trio candidates above, but over single-cell kitten candidates.
+_match_graduate_candidates::      .ds MATCH_MAX_GRADUATE_CANDIDATES  ;; board offsets (0-35)
+_match_graduate_candidate_count:: .db 0
+_match_graduate_candidate_sel:    .db 0   ;; index into _match_graduate_candidates
+_match_graduate_chosen_offset:    .db 0   ;; board offset finally graduated
+_mgcu_blink_on:                   .db 0   ;; 1 = candidate frame currently drawn
+_mgcu_blink_timer:                .db 0
+_mgcu_confirmed:                  .db 0   ;; Enter pressed
+_mgcu_esc_resumed:                .db 0   ;; ESC opened+closed the abandon dialog
+
+_match_graduate_choice_key_actions:
+   .dw Key_CursorLeft,  _mgcu_key_left
+   .dw Key_CursorRight, _mgcu_key_right
+   .dw Key_CursorUp,    _mgcu_key_left    ;; Up/Down double as Left/Right —
+   .dw Key_CursorDown,  _mgcu_key_right   ;; candidates are a flat list, no 2D layout
+   .dw Key_Return,      _mgcu_key_enter
+   .dw Key_Esc,         _mgcu_key_esc
+   .dw 0
+
+_match_choose_kitten_msg: .asciz "CHOOSE A KITTEN TO GRADUATE"
+
 .if BOOP_DEBUG_BUILD
 _match_debug_key_was_down: .db 0   ;; debounce for the in-game D→fill-board trigger
+_match_debug_key_g_was_down: .db 0 ;; debounce for the in-game G→graduate-board trigger
 .endif
 
 ;;
@@ -273,6 +297,21 @@ _match_debug_board_multitrio:
    .db 0,0,0,0,0,0
    .db 0,0,0,0,0,0
    .db 0,0,0,0,0,0
+
+;; Debug preset: P1 has 7 kittens scattered on the board (0,0) (0,3) (1,5)
+;; (2,1) (3,4) (4,0) (5,2) — no 3 share a row/col/diagonal, so nothing
+;; auto-resolves — and exactly 1 kitten left in reserve (0 cats). Placing
+;; that last kitten anywhere empty (e.g. (5,5), which has no occupied
+;; neighbours either, so it won't boop or complete a trio) drops the
+;; reserve to 0/0 with all 8 pieces on board as kittens — exercises
+;; _match_graduate_choice_ui with the maximum 8 candidates.
+_match_debug_board_graduate:
+   .db 2,0,0,2,0,0
+   .db 0,0,0,0,0,2
+   .db 0,2,0,0,0,0
+   .db 0,0,0,0,2,0
+   .db 2,0,0,0,0,0
+   .db 0,0,2,0,0,0
 .endif
 
 ;;
@@ -1244,11 +1283,14 @@ _mpp_cursor_p1:
 ;; _match_graduate_or_win
 ;;
 ;;  Called when a player's reserve just hit 0 cats AND 0 kittens (all 8
-;;  of their pieces are on the board). Scans the board for that player's
-;;  first kitten:
-;;   - found → "graduation": remove it from the board, add 1 cat to
-;;     their reserve (so they have something to place next turn)
-;;   - none found (all 8 on-board pieces are already cats) → they win
+;;  of their pieces are on the board). Collects every on-board kitten of
+;;  that player (_match_collect_graduate_candidates):
+;;   - 0 found (all 8 on-board pieces are already cats) → they win
+;;   - 1 found → "graduation": remove it from the board, add 1 cat to
+;;     their reserve (so they have something to place next turn) — no UI
+;;   - 2+ found → the player picks which one graduates
+;;     (_match_graduate_choice_ui), same pattern as _match_check_lines's
+;;     trio-choice UI
 ;;  Input:  A = 1 (P1) or 2 (P2)
 ;;  Output: -
 ;;  Modified: AF, BC, DE, HL, IX (calls _match_declare_winner on a win —
@@ -1256,34 +1298,47 @@ _mpp_cursor_p1:
 ;;
 _match_graduate_or_win::  ;; exported for tests/run_rules.c
    ld (_mgow_player), a
-   ld hl, #_match_board
-   ld b, #36                          ;; cell counter
-_mgow_scan:
-   ld a, (hl)
+   call _match_collect_graduate_candidates
+   ld a, (_match_graduate_candidate_count)
    or a
-   jr z, _mgow_next                   ;; empty cell
-   ld c, a                            ;; C = board value at this cell
-   ld a, (_mgow_player)
+   jp z, _mgow_no_kitten_win          ;; 0: all cats already — win
    cp #2
-   ld a, c
-   jr z, _mgow_p2
-   cp #BOARD_P1_KITTEN
-   jr z, _mgow_found_kitten
-   jr _mgow_next
-_mgow_p2:
-   cp #BOARD_P2_KITTEN
-   jr z, _mgow_found_kitten
-_mgow_next:
-   inc hl
-   djnz _mgow_scan
+   jr nc, _mgow_choice_flow           ;; 2+: ask the player
 
-   ;; No kitten found for this player anywhere on the board → all 8 of
-   ;; their pieces are adult cats → they win.
+   ;; Exactly 1: graduate it directly, no banner/UI.
+   ld a, (_match_graduate_candidates)
+   ld (_match_graduate_chosen_offset), a
+   jp _mgow_do_graduate
+
+_mgow_choice_flow:
+   call _match_graduate_choice_ui     ;; blocking; sets
+                                       ;; _match_graduate_chosen_offset,
+                                       ;; or _match_cancelled on abandon
+   ld a, (_match_cancelled)
+   or a
+   ret nz                             ;; abandoned mid-selection
+   jp _mgow_do_graduate
+
+_mgow_no_kitten_win:
    ld a, (_mgow_player)
    jp _match_declare_winner           ;; no return; sets _match_cancelled
 
-_mgow_found_kitten:
-   ;; HL points at this player's first kitten cell — graduate it.
+_mgow_do_graduate:
+   ld a, (_match_graduate_chosen_offset)
+   call _match_offset_to_rowcol       ;; B=row, C=col
+   ld hl, #_match_board
+   ld d, #0
+   ld a, b
+   ;; A = row*6 + col
+   add a, a
+   ld e, a
+   add a, a
+   add a, e
+   add a, c
+   ld e, a
+   add hl, de                        ;; HL = &board[row][col]
+
+   ;; HL points at this player's chosen kitten cell — graduate it.
    ld (hl), #BOARD_EMPTY
    ld a, (_mgow_player)
    cp #2
@@ -1299,6 +1354,59 @@ _mgow_grad_inc:
                                        ;; redraw already ran earlier
    call _match_redraw_all
    call man_match_draw_hud
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_collect_graduate_candidates
+;;
+;;  Scans every board cell for the given player's on-board kittens,
+;;  appending each matching offset (0-35) to _match_graduate_candidates
+;;  in board-scan order. Never mutates the board.
+;;  Input:  A = 1 (P1) or 2 (P2) (also left in _mgow_player by the caller)
+;;  Output: _match_graduate_candidate_count / _match_graduate_candidates
+;;  Modified: AF, BC, DE, HL
+;;
+_match_collect_graduate_candidates:
+   xor a
+   ld (_match_graduate_candidate_count), a
+   ld hl, #_match_board
+   ld b, #0                          ;; B = offset (0-35)
+_mcgc_scan:
+   ld a, (hl)
+   or a
+   jr z, _mcgc_next                  ;; empty cell
+   ld c, a                           ;; C = board value at this cell
+   ld a, (_mgow_player)
+   cp #2
+   ld a, c
+   jr z, _mcgc_p2
+   cp #BOARD_P1_KITTEN
+   jr z, _mcgc_found
+   jr _mcgc_next
+_mcgc_p2:
+   cp #BOARD_P2_KITTEN
+   jr nz, _mcgc_next
+_mcgc_found:
+   ld a, (_match_graduate_candidate_count)
+   cp #MATCH_MAX_GRADUATE_CANDIDATES  ;; bounds check (unreachable: at most
+   jr nc, _mcgc_next                  ;; 8 pieces total exist once this runs)
+   push hl
+   ld hl, #_match_graduate_candidates
+   ld d, #0
+   ld e, a
+   add hl, de
+   ld (hl), b
+   pop hl
+   ld a, (_match_graduate_candidate_count)
+   inc a
+   ld (_match_graduate_candidate_count), a
+_mcgc_next:
+   inc hl
+   inc b
+   ld a, b
+   cp #36
+   jr nz, _mcgc_scan
    ret
 
 ;;-----------------------------------------------------------------
@@ -2793,6 +2901,183 @@ _mtcu_key_esc:
 
 ;;-----------------------------------------------------------------
 ;;
+;; _match_graduate_choice_ui
+;;
+;;  Blocking selection UI for 2+ on-board kittens when a player's reserve
+;;  hits 0/0 (real Boop rule: the player picks which one graduates). Same
+;;  shape as _match_trio_choice_ui, but over single-cell candidates
+;;  instead of 3-cell windows: draws via _match_draw_cell_frame /
+;;  restores via _match_restore_cell_and_sliver directly, no window
+;;  geometry decode needed.
+;;  Input:  _match_graduate_candidates/_match_graduate_candidate_count
+;;          (already filled)
+;;  Output: _match_graduate_chosen_offset set, or _match_cancelled=1 on
+;;          abandon
+;;  Modified: AF, BC, DE, HL, IX, IY
+;;
+_match_graduate_choice_ui:
+   ;; Show HUD state fresh right away — belt-and-braces in case anything
+   ;; upstream left a stale reserve digit before this UI takes over.
+   call man_match_draw_hud
+
+   m_msg_w_background 10             ;; pen 10 = Cyan, same as "CHOOSE A TRIO"
+   ld e, #2
+   ld d, #78
+   ld b, #22
+   ld c, #76                          ;; wider: "CHOOSE A KITTEN TO GRADUATE"
+                                       ;; is much longer than "CHOOSE A TRIO"
+   ld a, #2                           ;; auto-dismiss
+   ld hl, #_match_choose_kitten_msg
+   call sys_messages_show
+
+   xor a
+   ld (_match_graduate_candidate_sel), a
+   ld a, #1
+   ld (_mgcu_blink_on), a
+   xor a
+   ld (_mgcu_blink_timer), a
+   ld (_mgcu_confirmed), a
+   ld (_mgcu_esc_resumed), a
+   call _mgcu_draw_selected
+
+_mgcu_loop:
+   ld b, #2                           ;; poll every ~2 vsyncs
+   call sys_util_delay
+   ld iy, #_match_graduate_choice_key_actions
+   call sys_input_debounced_update
+
+   ld a, (_match_cancelled)
+   or a
+   ret nz                             ;; abandoned: caller unwinds
+
+   ld a, (_mgcu_esc_resumed)
+   or a
+   jr z, _mgcu_check_confirmed
+   xor a
+   ld (_mgcu_esc_resumed), a
+   ld a, #1
+   ld (_mgcu_blink_on), a
+   xor a
+   ld (_mgcu_blink_timer), a
+   call _mgcu_draw_selected           ;; clean ON redraw after the dialog closes
+
+_mgcu_check_confirmed:
+   ld a, (_mgcu_confirmed)
+   or a
+   jr z, _mgcu_tick
+
+   ld a, (_mgcu_blink_on)
+   or a
+   call nz, _mgcu_restore_selected    ;; don't leave a stray frame behind
+   ld a, (_match_graduate_candidate_sel)
+   ld hl, #_match_graduate_candidates
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   ld (_match_graduate_chosen_offset), a
+   ret
+
+_mgcu_tick:
+   ld hl, #_mgcu_blink_timer
+   inc (hl)
+   ld a, (hl)
+   cp #3                              ;; same ~6-frame half-cycle as the trio UI
+   jr c, _mgcu_loop
+   xor a
+   ld (_mgcu_blink_timer), a
+   ld a, (_mgcu_blink_on)
+   xor #1
+   ld (_mgcu_blink_on), a
+   or a
+   jr z, _mgcu_off
+   call _mgcu_draw_selected
+   jr _mgcu_loop
+_mgcu_off:
+   call _mgcu_restore_selected
+   jr _mgcu_loop
+
+;; ON: draw the currently-selected candidate's frame
+_mgcu_draw_selected:
+   ld a, (_match_graduate_candidate_sel)
+   ld hl, #_match_graduate_candidates
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   call _match_offset_to_rowcol       ;; B=row, C=col
+   ld a, #TRIO_SELECT_COLOR
+   jp _match_draw_cell_frame          ;; tail call
+
+;; OFF: restore the currently-selected candidate's cell
+_mgcu_restore_selected:
+   ld a, (_match_graduate_candidate_sel)
+   ld hl, #_match_graduate_candidates
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   call _match_offset_to_rowcol       ;; B=row, C=col
+   jp _match_restore_cell_and_sliver  ;; tail call
+
+_mgcu_key_left:
+   ld a, (_mgcu_blink_on)
+   or a
+   call nz, _mgcu_restore_selected
+   ld a, (_match_graduate_candidate_sel)
+   or a
+   jr nz, _mgcu_kl_dec
+   ld a, (_match_graduate_candidate_count)
+_mgcu_kl_dec:
+   dec a
+   ld (_match_graduate_candidate_sel), a
+   ld a, #1
+   ld (_mgcu_blink_on), a
+   xor a
+   ld (_mgcu_blink_timer), a
+   call _mgcu_draw_selected
+   ret
+
+_mgcu_key_right:
+   ld a, (_mgcu_blink_on)
+   or a
+   call nz, _mgcu_restore_selected
+   ld a, (_match_graduate_candidate_sel)
+   inc a
+   ld b, a                            ;; B = sel+1
+   ld a, (_match_graduate_candidate_count)
+   cp b
+   jr z, _mgcu_kr_wrap                ;; count == sel+1 → wrap
+   jr c, _mgcu_kr_wrap                ;; count < sel+1 → wrap (defensive)
+   jr _mgcu_kr_ok
+_mgcu_kr_wrap:
+   ld b, #0
+_mgcu_kr_ok:
+   ld a, b
+   ld (_match_graduate_candidate_sel), a
+   ld a, #1
+   ld (_mgcu_blink_on), a
+   xor a
+   ld (_mgcu_blink_timer), a
+   call _mgcu_draw_selected
+   ret
+
+_mgcu_key_enter:
+   ld a, #1
+   ld (_mgcu_confirmed), a
+   ret
+
+_mgcu_key_esc:
+   call _match_confirm_cancel
+   ld a, (_match_cancelled)
+   or a
+   ret nz                             ;; abandoning: outer loop will see this
+   ld a, #1
+   ld (_mgcu_esc_resumed), a
+   ret
+
+;;-----------------------------------------------------------------
+;;
 ;; _match_declare_winner
 ;;
 ;;  Shows "PLAYER X WINS!" window (waits for any key, restores bg)
@@ -3483,6 +3768,50 @@ _match_debug_fill_board:
    call man_match_draw_hud
    call _match_draw_cursor
    ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_debug_fill_board_graduate
+;;
+;;  Debug-only (see BOOP_DEBUG_BUILD, match.h.s). Loads
+;;  _match_debug_board_graduate into _match_board — P1: 1 kitten left in
+;;  reserve, 7 already on the board; P2: fresh 8 kittens. Placing P1's
+;;  last kitten on any empty cell with no occupied neighbours (e.g.
+;;  (5,5)) drops P1's reserve to 0/0 with 8 on-board kittens, triggering
+;;  _match_graduate_choice_ui with the maximum candidate count. Triggered
+;;  by man_match_update when Key_G is pressed (see
+;;  _match_debug_key_g_was_down for the debounce).
+;;  Input:  -
+;;  Output: -
+;;  Modified: AF, BC, DE, HL, IX
+;;
+_match_debug_fill_board_graduate:
+   ld hl, #_match_debug_board_graduate
+   ld de, #_match_board
+   ld bc, #36
+   ldir
+
+   ld a, #1
+   ld (man_match_player1 + Player_kittens), a
+   xor a
+   ld (man_match_player1 + Player_cats), a
+   ld a, #MATCH_INITIAL_KITTENS
+   ld (man_match_player2 + Player_kittens), a
+   xor a
+   ld (man_match_player2 + Player_cats), a
+
+   xor a
+   ld (_match_state), a
+   ld (_cursor_row), a
+   ld (_cursor_col), a
+   ld a, #PIECE_KITTEN
+   ld (_cursor_piece), a
+
+   call sys_render_draw_grid
+   call _match_draw_board
+   call man_match_draw_hud
+   call _match_draw_cursor
+   ret
 .endif
 
 ;;-----------------------------------------------------------------
@@ -3518,7 +3847,8 @@ man_match_init::
 
 .if BOOP_DEBUG_BUILD
    xor a
-   ld (_match_debug_key_was_down), a  ;; fresh debounce state for this match
+   ld (_match_debug_key_was_down), a    ;; fresh debounce state for this match
+   ld (_match_debug_key_g_was_down), a
 .endif
 
    ;; initialise cursor, turn state and cancel flag
@@ -3607,6 +3937,24 @@ _mmu_debug_key_up:
    xor a
    ld (_match_debug_key_was_down), a
 _mmu_debug_done:
+
+   ;; Debug-only: press G to force-load the graduate-choice test board
+   ;; (_match_debug_fill_board_graduate). Same press-once debounce as D.
+   ld hl, #Key_G
+   call cpct_isKeyPressed_asm
+   or a
+   jr z, _mmu_debug_g_key_up
+   ld a, (_match_debug_key_g_was_down)
+   or a
+   jr nz, _mmu_debug_g_done           ;; still held from a previous frame
+   ld a, #1
+   ld (_match_debug_key_g_was_down), a
+   call _match_debug_fill_board_graduate
+   jr _mmu_debug_g_done
+_mmu_debug_g_key_up:
+   xor a
+   ld (_match_debug_key_g_was_down), a
+_mmu_debug_g_done:
 .endif
 
    ;; 1-player mode: when it is P2's turn, delegate entirely to AI

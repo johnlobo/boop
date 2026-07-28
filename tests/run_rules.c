@@ -461,17 +461,17 @@ static void test_trio_diagonal_candidate_detected(struct Machine *machine) {
            candidate_list_contains(machine, WINDOW_DIAG1_0_7_14));
 }
 
-static void test_graduate_picks_first_kitten_in_scan_order(struct Machine *machine) {
-    /* Reserve is already 0/0 after reset_fixture. Two P1 kittens on the
-     * board at offsets 10 and 20 — board-scan order must graduate the
-     * lower offset (10) and leave the other untouched. */
+static void test_graduate_single_kitten_auto_graduates(struct Machine *machine) {
+    /* Reserve is already 0/0 after reset_fixture. Exactly 1 on-board
+     * kitten must graduate directly, no choice UI (that path needs real
+     * keyboard input the headless harness can't supply — see
+     * _match_graduate_choice_ui). With 2+ kittens this would now block
+     * on player input instead of auto-picking, unlike the old behaviour. */
     reset_fixture(machine);
     place(machine, 1, 4, P1_KITTEN);   /* offset 10 */
-    place(machine, 3, 2, P1_KITTEN);   /* offset 20 */
     graduate_or_win(machine, 1);
-    report("graduation picks the first on-board kitten in scan order",
+    report("graduation auto-resolves when exactly one on-board kitten exists",
            *cell(machine, 1, 4) == EMPTY &&
-           *cell(machine, 3, 2) == P1_KITTEN &&
            machine->memory[machine->symbols.player1 + PLAYER_CATS] == 1 &&
            machine->memory[machine->symbols.player1 + PLAYER_KITTENS] == 0);
 }
@@ -566,7 +566,7 @@ int main(int argc, char **argv) {
     test_trio_mixed_cat_kitten_is_valid_candidate(&machine);
     test_trio_inactive_player_pieces_ignored(&machine);
     test_trio_diagonal_candidate_detected(&machine);
-    test_graduate_picks_first_kitten_in_scan_order(&machine);
+    test_graduate_single_kitten_auto_graduates(&machine);
     test_cat_line_horizontal_win_detected(&machine);
     test_cat_line_vertical_win_detected(&machine);
     test_cat_line_diagonal_win_detected(&machine);

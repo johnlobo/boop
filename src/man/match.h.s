@@ -19,7 +19,7 @@
 ;; (not just disabled: the .if/.endif blocks it guards are excluded from
 ;; assembly entirely). See _match_debug_fill_board in match.s.
 ;;------------------------------------------------------------------------------
-BOOP_DEBUG_BUILD = 1
+BOOP_DEBUG_BUILD = 0
 
 ;;------------------------------------------------------------------------------
 ;; Player struct layout (offsets, no macro dependency)
@@ -94,6 +94,11 @@ GRID_ROWS            = 6
 ;; windows (any orientation) fully coverable by 8 cells on this 6x6 board is
 ;; 6 (verified by exhaustive local search), so 8 leaves headroom.
 MATCH_MAX_TRIO_CANDIDATES = 8
+
+;; Max on-board kittens a player can have when _match_graduate_or_win runs.
+;; It only runs once that player's reserve is 0 cats/0 kittens, i.e. all 8
+;; of their pieces are already on the board — trivially at most 8 kittens.
+MATCH_MAX_GRADUATE_CANDIDATES = 8
 
 ;;------------------------------------------------------------------------------
 ;; Cursor color: pen 6 (bright yellow, firmware 24) encoded for Mode 0 solid-box
