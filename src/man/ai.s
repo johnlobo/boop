@@ -101,6 +101,7 @@ _ai_line_win:           .db 0
 _ai_lines_resolved:     .db 0
 _ai_line_invalid:       .db 0
 _ai_line_has_kitten:    .db 0
+_ai_cat_win_target:     .db 0
 
 ;;------------------------------------------------------------------------------
 ;; Profile table: 4 profiles × AI_PROFILE_SIZE(6) bytes
@@ -856,173 +857,50 @@ _asre_no:
 ;;  Modified: AF, BC, DE, HL
 ;;
 _ai_has_p2_cat_win:
-   ;; Horizontal scan
-   ld b, #0
-_ahpcw_hrow:
-   ld c, #0
-_ahpcw_hcol:
+   ld a, #BOARD_P2_CAT
+   jp _ai_has_cat_win
+
+;; _ai_has_cat_win
+;;
+;; Shared table-driven scanner for either player's cat win. Walks the same
+;; 80 horizontal/vertical/diagonal windows used by tactical analysis and
+;; simulated line resolution.
+;; Input:  A = BOARD_P1_CAT or BOARD_P2_CAT
+;; Output: A = 1 if a matching three-cat window exists, 0 otherwise
+;; Modified: AF, BC, DE, HL, IY
+_ai_has_cat_win:
+   ld (_ai_cat_win_target), a
+   ld iy, #_ai_threat_windows
+   ld b, #80
+_ahcw_window:
    push bc
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld e, a
+   ld c, #3
+_ahcw_cell:
+   ld e, 0(iy)
+   inc iy
    ld d, #0
+   ld hl, #_match_board
    add hl, de
    ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr nz, _ahpcw_hnext
-   inc hl
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr nz, _ahpcw_hnext
-   inc hl
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr nz, _ahpcw_hnext
+   ld hl, #_ai_cat_win_target
+   cp (hl)
+   jr nz, _ahcw_mismatch
+   dec c
+   jr nz, _ahcw_cell
    pop bc
    ld a, #1
    ret
-_ahpcw_hnext:
+_ahcw_mismatch:
+   ;; IY already passed the mismatching offset; skip the rest of this trio.
+   dec c
+   jr z, _ahcw_next
+_ahcw_skip:
+   inc iy
+   dec c
+   jr nz, _ahcw_skip
+_ahcw_next:
    pop bc
-   inc c
-   ld a, c
-   cp #(GRID_COLS - 2)   ;; window start: 0..3
-   jr c, _ahpcw_hcol
-   inc b
-   ld a, b
-   cp #GRID_ROWS
-   jr c, _ahpcw_hrow
-
-   ;; Vertical scan
-   ld c, #0
-_ahpcw_vcol:
-   ld b, #0
-_ahpcw_vrow:
-   push bc
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld e, a
-   ld d, #0
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr nz, _ahpcw_vnext
-   ld de, #6
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr nz, _ahpcw_vnext
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr nz, _ahpcw_vnext
-   pop bc
-   ld a, #1
-   ret
-_ahpcw_vnext:
-   pop bc
-   inc b
-   ld a, b
-   cp #(GRID_ROWS - 2)   ;; window start: 0..3
-   jr c, _ahpcw_vrow
-   inc c
-   ld a, c
-   cp #GRID_COLS
-   jr c, _ahpcw_vcol
-
-   ;; Diagonal "\" scan (row+1, col+1)
-   ld b, #0
-_ahpcw_d1row:
-   ld c, #0
-_ahpcw_d1col:
-   push bc
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld e, a
-   ld d, #0
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr nz, _ahpcw_d1next
-   ld de, #7
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr nz, _ahpcw_d1next
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr nz, _ahpcw_d1next
-   pop bc
-   ld a, #1
-   ret
-_ahpcw_d1next:
-   pop bc
-   inc c
-   ld a, c
-   cp #(GRID_COLS - 2)
-   jr c, _ahpcw_d1col
-   inc b
-   ld a, b
-   cp #(GRID_ROWS - 2)
-   jr c, _ahpcw_d1row
-
-   ;; Diagonal "/" scan (row+1, col-1)
-   ld b, #0
-_ahpcw_d2row:
-   ld c, #2
-_ahpcw_d2col:
-   push bc
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld e, a
-   ld d, #0
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr nz, _ahpcw_d2next
-   ld de, #5
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr nz, _ahpcw_d2next
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr nz, _ahpcw_d2next
-   pop bc
-   ld a, #1
-   ret
-_ahpcw_d2next:
-   pop bc
-   inc c
-   ld a, c
-   cp #GRID_COLS
-   jr c, _ahpcw_d2col
-   inc b
-   ld a, b
-   cp #(GRID_ROWS - 2)
-   jr c, _ahpcw_d2row
-
+   djnz _ahcw_window
    xor a
    ret
 
@@ -1179,175 +1057,8 @@ _atp1cr_coords:
 ;;  Modified: AF, BC, DE, HL
 ;;
 _ai_has_p1_cat_win:
-   ;; Horizontal scan
-   ld b, #0
-_ahp1cw_hrow:
-   ld c, #0
-_ahp1cw_hcol:
-   push bc
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld e, a
-   ld d, #0
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P1_CAT
-   jr nz, _ahp1cw_hnext
-   inc hl
-   ld a, (hl)
-   cp #BOARD_P1_CAT
-   jr nz, _ahp1cw_hnext
-   inc hl
-   ld a, (hl)
-   cp #BOARD_P1_CAT
-   jr nz, _ahp1cw_hnext
-   pop bc
-   ld a, #1
-   ret
-_ahp1cw_hnext:
-   pop bc
-   inc c
-   ld a, c
-   cp #(GRID_COLS - 2)   ;; window start: 0..3
-   jr c, _ahp1cw_hcol
-   inc b
-   ld a, b
-   cp #GRID_ROWS
-   jr c, _ahp1cw_hrow
-
-   ;; Vertical scan
-   ld c, #0
-_ahp1cw_vcol:
-   ld b, #0
-_ahp1cw_vrow:
-   push bc
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld e, a
-   ld d, #0
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P1_CAT
-   jr nz, _ahp1cw_vnext
-   ld de, #6
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P1_CAT
-   jr nz, _ahp1cw_vnext
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P1_CAT
-   jr nz, _ahp1cw_vnext
-   pop bc
-   ld a, #1
-   ret
-_ahp1cw_vnext:
-   pop bc
-   inc b
-   ld a, b
-   cp #(GRID_ROWS - 2)   ;; window start: 0..3
-   jr c, _ahp1cw_vrow
-   inc c
-   ld a, c
-   cp #GRID_COLS
-   jr c, _ahp1cw_vcol
-
-   ;; Diagonal "\" scan (row+1, col+1)
-   ld b, #0
-_ahp1cw_d1row:
-   ld c, #0
-_ahp1cw_d1col:
-   push bc
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld e, a
-   ld d, #0
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P1_CAT
-   jr nz, _ahp1cw_d1next
-   ld de, #7
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P1_CAT
-   jr nz, _ahp1cw_d1next
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P1_CAT
-   jr nz, _ahp1cw_d1next
-   pop bc
-   ld a, #1
-   ret
-_ahp1cw_d1next:
-   pop bc
-   inc c
-   ld a, c
-   cp #(GRID_COLS - 2)
-   jr c, _ahp1cw_d1col
-   inc b
-   ld a, b
-   cp #(GRID_ROWS - 2)
-   jr c, _ahp1cw_d1row
-
-   ;; Diagonal "/" scan (row+1, col-1)
-   ld b, #0
-_ahp1cw_d2row:
-   ld c, #2
-_ahp1cw_d2col:
-   push bc
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld e, a
-   ld d, #0
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P1_CAT
-   jr nz, _ahp1cw_d2next
-   ld de, #5
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P1_CAT
-   jr nz, _ahp1cw_d2next
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P1_CAT
-   jr nz, _ahp1cw_d2next
-   pop bc
-   ld a, #1
-   ret
-_ahp1cw_d2next:
-   pop bc
-   inc c
-   ld a, c
-   cp #GRID_COLS
-   jr c, _ahp1cw_d2col
-   inc b
-   ld a, b
-   cp #(GRID_ROWS - 2)
-   jr c, _ahp1cw_d2row
-
-   xor a
-   ret
+   ld a, #BOARD_P1_CAT
+   jp _ai_has_cat_win
 
 ;;-----------------------------------------------------------------
 ;;
@@ -1655,187 +1366,6 @@ _a2pp_d2next:
    ld a, b
    cp #(GRID_ROWS - 1)
    jr c, _a2pp_d2row
-
-   ld a, (_ai_pair_count)
-   ret
-
-;;-----------------------------------------------------------------
-;;
-;; _ai_count_p2_three_in_row
-;;
-;;  Counts windows of 3 consecutive P2 pieces (values >= 3) in
-;;  _match_board, both horizontal and vertical.
-;;  On the simulated board, any count > 0 means placing this piece
-;;  would trigger a kitten→cat conversion for P2.
-;;  Output: A = count (typically 0-2)
-;;  Modified: AF, BC, DE, HL
-;;
-_ai_count_p2_three_in_row:
-   xor a
-   ld (_ai_pair_count), a
-
-   ;; Horizontal: rows 0..5, col window 0..3
-   ld b, #0
-_a2tir_hrow:
-   ld c, #0
-_a2tir_hcol:
-   push bc
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld e, a
-   ld d, #0
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr c, _a2tir_hnext
-   inc hl
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr c, _a2tir_hnext
-   inc hl
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr c, _a2tir_hnext
-   ld hl, #_ai_pair_count
-   inc (hl)
-_a2tir_hnext:
-   pop bc
-   inc c
-   ld a, c
-   cp #(GRID_COLS - 2)
-   jr c, _a2tir_hcol
-   inc b
-   ld a, b
-   cp #GRID_ROWS
-   jr c, _a2tir_hrow
-
-   ;; Vertical: rows 0..3, cols 0..5
-   ld c, #0
-_a2tir_vcol:
-   ld b, #0
-_a2tir_vrow:
-   push bc
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld e, a
-   ld d, #0
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr c, _a2tir_vnext
-   ld de, #6
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr c, _a2tir_vnext
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr c, _a2tir_vnext
-   ld hl, #_ai_pair_count
-   inc (hl)
-_a2tir_vnext:
-   pop bc
-   inc b
-   ld a, b
-   cp #(GRID_ROWS - 2)
-   jr c, _a2tir_vrow
-   inc c
-   ld a, c
-   cp #GRID_COLS
-   jr c, _a2tir_vcol
-
-   ;; Diagonal "\": row/col window start 0..3
-   ld b, #0
-_a2tir_d1row:
-   ld c, #0
-_a2tir_d1col:
-   push bc
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld e, a
-   ld d, #0
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr c, _a2tir_d1next
-   ld de, #7
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr c, _a2tir_d1next
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr c, _a2tir_d1next
-   ld hl, #_ai_pair_count
-   inc (hl)
-_a2tir_d1next:
-   pop bc
-   inc c
-   ld a, c
-   cp #(GRID_COLS - 2)
-   jr c, _a2tir_d1col
-   inc b
-   ld a, b
-   cp #(GRID_ROWS - 2)
-   jr c, _a2tir_d1row
-
-   ;; Diagonal "/": row start 0..3, col start 2..5
-   ld b, #0
-_a2tir_d2row:
-   ld c, #2
-_a2tir_d2col:
-   push bc
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld e, a
-   ld d, #0
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr c, _a2tir_d2next
-   ld de, #5
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr c, _a2tir_d2next
-   add hl, de
-   ld a, (hl)
-   cp #BOARD_P2_CAT
-   jr c, _a2tir_d2next
-   ld hl, #_ai_pair_count
-   inc (hl)
-_a2tir_d2next:
-   pop bc
-   inc c
-   ld a, c
-   cp #GRID_COLS
-   jr c, _a2tir_d2col
-   inc b
-   ld a, b
-   cp #(GRID_ROWS - 2)
-   jr c, _a2tir_d2row
 
    ld a, (_ai_pair_count)
    ret
