@@ -32,6 +32,9 @@
 .globl sys_input_update
 .globl sys_input_menu_update
 .globl sys_input_match_update
+.globl sys_input_debounced_update  ;; shared debounced table-dispatch core;
+                                    ;; match.s reuses it for the trio-choice
+                                    ;; UI's own key-action table
 
 ;;.globl sys_input_main_screen_keys
 ;;.globl sys_input_update

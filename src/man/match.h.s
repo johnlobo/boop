@@ -15,6 +15,13 @@
 ;;-------------------------------------------------------------------------------
 
 ;;------------------------------------------------------------------------------
+;; Debug build flag — set to 0 to produce a build with NO debug code at all
+;; (not just disabled: the .if/.endif blocks it guards are excluded from
+;; assembly entirely). See _match_debug_fill_board in match.s.
+;;------------------------------------------------------------------------------
+BOOP_DEBUG_BUILD = 1
+
+;;------------------------------------------------------------------------------
 ;; Player struct layout (offsets, no macro dependency)
 ;;   score   : 4 bytes BCD  (offset 0)
 ;;   cats    : 1 byte       (offset 4)
@@ -81,6 +88,13 @@ GRID_CELL_H          = 24   ;; px pitch between cell origins  (24 px)
 GRID_COLS            = 6
 GRID_ROWS            = 6
 
+;; Max simultaneous trio candidates a single move can create. A player never
+;; has more than 8 pieces on the board (8 kittens/cats total, by construction
+;; — see MATCH_INITIAL_KITTENS/CATS in match.s); the max number of length-3
+;; windows (any orientation) fully coverable by 8 cells on this 6x6 board is
+;; 6 (verified by exhaustive local search), so 8 leaves headroom.
+MATCH_MAX_TRIO_CANDIDATES = 8
+
 ;;------------------------------------------------------------------------------
 ;; Cursor color: pen 6 (bright yellow, firmware 24) encoded for Mode 0 solid-box
 ;;   Both pixels = pen 6 → byte bits [7..0] = 0011 1100 = 0x3C
@@ -98,6 +112,13 @@ LAST_MOVE_COLOR      = 0xFF
 ;; pattern byte as CURSOR_COLOR, fine since the cursor isn't drawn during
 ;; the win sequence.
 WIN_FLASH_COLOR      = 0x3C
+
+;; Trio-choice selector frame: pen 13 (Bright Cyan, firmware 20) — green
+;; (pen 9) was tried first but didn't stand out against the board art;
+;; boop's fixed 16-colour palette has no lighter green, so bright cyan
+;; instead — distinct from the yellow win/combo flashes (still-choosing
+;; vs. resolving) and from the white last-move marker (0xFF).
+TRIO_SELECT_COLOR    = 0xF3
 
 ;; Victory/defeat fanfare duration, in vsync frames (50/sec). The AT3
 ;; export's win/lose subsongs loop forever once started (this player build
@@ -120,6 +141,7 @@ WIN_MUSIC_FRAMES     = 150   ;; ~3 seconds
 .globl _cursor_row                ;; current cursor row    (0..5)
 .globl _cursor_piece              ;; PIECE_CAT or PIECE_KITTEN
 .globl _match_simulation_mode     ;; nonzero while AI evaluates hypothetical moves
+.globl _match_threat_windows      ;; 80 length-3 board-offset windows (h/v/diag)
 
 ;;------------------------------------------------------------------------------
 ;; Global routines

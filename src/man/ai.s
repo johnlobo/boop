@@ -131,35 +131,6 @@ _ai_center_table:
    .db 0, 1, 2, 2, 1, 0   ;; row 4
    .db 0, 0, 1, 1, 0, 0   ;; row 5
 
-;; Every length-three window on the 6x6 board, expressed as board offsets.
-;; The tactical danger check scans this compact table for exactly two P1 cats
-;; plus one empty cell, then simulates only that critical reply.
-_ai_threat_windows:
-   ;; Horizontal (24)
-   .db 0,1,2, 1,2,3, 2,3,4, 3,4,5
-   .db 6,7,8, 7,8,9, 8,9,10, 9,10,11
-   .db 12,13,14, 13,14,15, 14,15,16, 15,16,17
-   .db 18,19,20, 19,20,21, 20,21,22, 21,22,23
-   .db 24,25,26, 25,26,27, 26,27,28, 27,28,29
-   .db 30,31,32, 31,32,33, 32,33,34, 33,34,35
-   ;; Vertical (24)
-   .db 0,6,12, 6,12,18, 12,18,24, 18,24,30
-   .db 1,7,13, 7,13,19, 13,19,25, 19,25,31
-   .db 2,8,14, 8,14,20, 14,20,26, 20,26,32
-   .db 3,9,15, 9,15,21, 15,21,27, 21,27,33
-   .db 4,10,16, 10,16,22, 16,22,28, 22,28,34
-   .db 5,11,17, 11,17,23, 17,23,29, 23,29,35
-   ;; Diagonal down-right (16)
-   .db 0,7,14, 1,8,15, 2,9,16, 3,10,17
-   .db 6,13,20, 7,14,21, 8,15,22, 9,16,23
-   .db 12,19,26, 13,20,27, 14,21,28, 15,22,29
-   .db 18,25,32, 19,26,33, 20,27,34, 21,28,35
-   ;; Diagonal down-left (16)
-   .db 2,7,12, 3,8,13, 4,9,14, 5,10,15
-   .db 8,13,18, 9,14,19, 10,15,20, 11,16,21
-   .db 14,19,24, 15,20,25, 16,21,26, 17,22,27
-   .db 20,25,30, 21,26,31, 22,27,32, 23,28,33
-
 
 ;;==============================================================================
 ;; CODE
@@ -609,9 +580,10 @@ _asoc_align_ok:
    add a, e
    ld (_ai_score), a
 
-   ;; --- Mixed lines actually resolved by the simulated turn ---
-   ;; Unlike the old pre-resolution count, this mirrors overlapping-line
-   ;; semantics: once a trio is removed, later windows see empty cells.
+   ;; --- Mixed line actually resolved by the simulated turn ---
+   ;; _ai_lines_resolved is now always 0 or 1 (only one trio ever resolves
+   ;; per turn — see _ai_resolve_p2_lines), so this just gates the bonus
+   ;; on/off; the old multi-line clamp is dead but harmless.
    ld a, (_ai_lines_resolved)
    cp #6
    jr c, _asoc_lines_count_ok
@@ -752,18 +724,19 @@ _apna_kitten:
 ;; _ai_resolve_p2_lines
 ;;
 ;;  Pure simulation equivalent of _match_check_lines for a P2 turn. Scans
-;;  windows in the same order (horizontal, vertical, \, /). A window made
-;;  entirely of P2 pieces and containing at least one kitten is removed; all
-;;  three pieces return as cats. All-cat windows remain for the win check.
-;;  Sequential mutation deliberately preserves the real overlapping-line
-;;  behaviour: a removed trio cannot participate in a later window.
-;;  Output: _ai_lines_resolved = number of mixed trios removed
+;;  windows in table order (horizontal, vertical, \, /) and resolves AT MOST
+;;  ONE: the real rule is exactly one trio per turn (if a move creates
+;;  several simultaneous candidates, a human player picks one — the AI just
+;;  takes the first found, same table order). A window made entirely of P2
+;;  pieces and containing at least one kitten is removed; all three pieces
+;;  return as cats. All-cat windows are skipped (that's the win check's job).
+;;  Output: _ai_lines_resolved = 1 if a trio was resolved, 0 otherwise
 ;;  Modified: AF, BC, DE, HL, IY
 ;;
 _ai_resolve_p2_lines:
    xor a
    ld (_ai_lines_resolved), a
-   ld iy, #_ai_threat_windows       ;; same 80 windows, same scan order
+   ld iy, #_match_threat_windows    ;; shared 80-window table (match.s)
    ld b, #80
 _arp2l_window:
    push bc
@@ -820,6 +793,10 @@ _arp2l_cell_done:
    inc (hl)
    ld hl, #_ai_lines_resolved
    inc (hl)
+   pop bc                            ;; unwind the loop's saved counter
+   ret                                ;; only one trio resolves per real turn —
+                                       ;; stop at the first match (table order:
+                                       ;; h, v, diag \, diag /), don't keep scanning
 _arp2l_next:
    pop bc
    djnz _arp2l_window
@@ -897,7 +874,7 @@ _ai_has_p2_cat_win:
 ;; Modified: AF, BC, DE, HL, IY
 _ai_has_cat_win:
    ld (_ai_cat_win_target), a
-   ld iy, #_ai_threat_windows
+   ld iy, #_match_threat_windows
    ld b, #80
 _ahcw_window:
    push bc
@@ -948,7 +925,7 @@ _ai_has_p1_immediate_reply:
    or a
    ret z
 
-   ld iy, #_ai_threat_windows
+   ld iy, #_match_threat_windows
    ld a, #80
    ld (_ai_threat_windows_left), a
 _ahp1ir_loop:

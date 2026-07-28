@@ -81,6 +81,11 @@ _mfwb_w:        .db 0
 _mfwb_h:        .db 0
 _mfwb_horiz:    .db 0   ;; 1 = 3 cols wide (horizontal line), 0 = 3 rows tall
 
+;; Scratch for _match_restore_top_sliver
+_mrts_row:      .db 0
+_mrts_col:      .db 0
+_mrts_w:        .db 0
+
 ;; Set by _match_mark_cats_increased whenever a player's cat reserve grows
 ;; (kitten converted via a 3-in-a-row, or a cat ejected back off the
 ;; board); consumed once by _mpp_do_place right after the HUD redraw, which
@@ -105,6 +110,41 @@ _mfdc_c1:       .db 0
 _mfdc_r2:       .db 0
 _mfdc_c2:       .db 0
 _mfdc_color:    .db 0
+
+;; Trio-candidate collection/choice (_match_collect_trio_candidates,
+;; _match_trio_choice_ui, _match_resolve_window, _match_window_geometry).
+;; When a move creates more than one valid trio, the real rule requires the
+;; player to pick one — see the doc comment on _match_check_lines.
+_match_candidate_list:  .ds MATCH_MAX_TRIO_CANDIDATES  ;; window-table indices (0-79)
+_match_candidate_count: .db 0
+_match_candidate_sel:   .db 0   ;; index into _match_candidate_list, during choice UI
+_match_chosen_window:   .db 0   ;; window-table index finally resolved
+_mctc_invalid:          .db 0   ;; scratch: current window has an empty/wrong-player cell
+_mctc_allcats:          .db 0   ;; scratch: current window all-cats so far (1=yes)
+_mcrw_o0:               .db 0   ;; scratch: chosen/geometry window's 3 board offsets
+_mcrw_o1:               .db 0
+_mcrw_o2:               .db 0
+_mcrw_stride:           .db 0   ;; scratch: o1-o0, used only to classify orientation
+_mcrw_is_diag:          .db 0   ;; 0 = h/v (use _mfwb_*/bbox), 1 = diag (use _mfdc_*)
+_mtcu_blink_on:         .db 0   ;; 1 = candidate frame currently drawn
+_mtcu_blink_timer:      .db 0
+_mtcu_confirmed:        .db 0   ;; Enter pressed
+_mtcu_esc_resumed:      .db 0   ;; ESC opened+closed the abandon dialog without abandoning
+
+_match_trio_choice_key_actions:
+   .dw Key_CursorLeft,  _mtcu_key_left
+   .dw Key_CursorRight, _mtcu_key_right
+   .dw Key_CursorUp,    _mtcu_key_left    ;; Up/Down double as Left/Right —
+   .dw Key_CursorDown,  _mtcu_key_right   ;; candidates are a flat list, no 2D layout
+   .dw Key_Return,      _mtcu_key_enter
+   .dw Key_Esc,         _mtcu_key_esc
+   .dw 0
+
+_match_choose_trio_msg: .asciz "CHOOSE A TRIO"
+
+.if BOOP_DEBUG_BUILD
+_match_debug_key_was_down: .db 0   ;; debounce for the in-game D→fill-board trigger
+.endif
 
 ;;
 ;; Boop animation buffers
@@ -184,6 +224,55 @@ _p2_catty_sprites:
 ;; Mutable P2 sprite pointers — set by man_match_init, used by HUD and cursor
 _p2_cat_ptr:   .dw _s_cat_1
 _p2_catty_ptr: .dw _s_catty_1
+
+;; Every length-three window on the 6x6 board, expressed as board offsets.
+;; Shared by the trio-candidate scan below and by ai.s (win detection,
+;; simulated trio resolution, tactical threat search) — one authoritative
+;; copy of the board's window geometry instead of three.
+_match_threat_windows::
+   ;; Horizontal (24)
+   .db 0,1,2, 1,2,3, 2,3,4, 3,4,5
+   .db 6,7,8, 7,8,9, 8,9,10, 9,10,11
+   .db 12,13,14, 13,14,15, 14,15,16, 15,16,17
+   .db 18,19,20, 19,20,21, 20,21,22, 21,22,23
+   .db 24,25,26, 25,26,27, 26,27,28, 27,28,29
+   .db 30,31,32, 31,32,33, 32,33,34, 33,34,35
+   ;; Vertical (24)
+   .db 0,6,12, 6,12,18, 12,18,24, 18,24,30
+   .db 1,7,13, 7,13,19, 13,19,25, 19,25,31
+   .db 2,8,14, 8,14,20, 14,20,26, 20,26,32
+   .db 3,9,15, 9,15,21, 15,21,27, 21,27,33
+   .db 4,10,16, 10,16,22, 16,22,28, 22,28,34
+   .db 5,11,17, 11,17,23, 17,23,29, 23,29,35
+   ;; Diagonal down-right (16)
+   .db 0,7,14, 1,8,15, 2,9,16, 3,10,17
+   .db 6,13,20, 7,14,21, 8,15,22, 9,16,23
+   .db 12,19,26, 13,20,27, 14,21,28, 15,22,29
+   .db 18,25,32, 19,26,33, 20,27,34, 21,28,35
+   ;; Diagonal down-left (16)
+   .db 2,7,12, 3,8,13, 4,9,14, 5,10,15
+   .db 8,13,18, 9,14,19, 10,15,20, 11,16,21
+   .db 14,19,24, 15,20,25, 16,21,26, 17,22,27
+   .db 20,25,30, 21,26,31, 22,27,32, 23,28,33
+
+.if BOOP_DEBUG_BUILD
+;; Debug preset: P1 has kittens at (0,1)-(0,2), (1,0)-(2,0), and (1,1)-(2,2)
+;; — 6 on the board, 2 left in reserve. Placing a P1 kitten at (0,0)
+;; simultaneously completes a horizontal trio ((0,0)-(0,1)-(0,2)), a
+;; vertical trio ((0,0)-(1,0)-(2,0)), and a diagonal "\" trio
+;; ((0,0)-(1,1)-(2,2)) — exercises the trio-choice UI with all three
+;; orientations on the very first move. (0,2)-(1,1)-(2,0) also happens to
+;; already be a complete diagonal "/" trio before that placement, which is
+;; a deliberate bonus case: it checks that candidate collection finds
+;; trios that don't involve the last-placed piece too.)
+_match_debug_board_multitrio:
+   .db 0,2,2,0,0,0
+   .db 2,2,0,0,0,0
+   .db 2,0,2,0,0,0
+   .db 0,0,0,0,0,0
+   .db 0,0,0,0,0,0
+   .db 0,0,0,0,0,0
+.endif
 
 ;;
 ;; Start of _CODE area
@@ -547,12 +636,12 @@ _match_draw_cell_frame:
    ;; Both callers rely on B=row/C=col surviving this call — everything below
    ;; clobbers B/C freely (getScreenPtr's B=y/C=x, drawSolidBox's B=h/C=w), so
    ;; save/restore around it. Colour (A) is stashed too since it's clobbered
-   ;; the same way. HL is also preserved: _match_check_lines calls the
-   ;; sibling _match_draw_bbox_frame while HL still points at a board cell
-   ;; it's about to read — silently corrupting that pointer previously left
-   ;; the board data unmodified after a "cleared" line, so it re-matched
-   ;; every following turn. Preserve HL here too so no caller can hit that
-   ;; same trap.
+   ;; the same way. HL is also preserved: a past caller (see match.s history,
+   ;; "V.054") called the sibling _match_draw_bbox_frame while HL still
+   ;; pointed at a board cell it was about to read — silently corrupting
+   ;; that pointer left the board data unmodified after a "cleared" line,
+   ;; so it re-matched every following turn. Preserve HL here too so no
+   ;; caller can hit that same trap.
    push hl
    push bc
    ld (_lmm_color), a
@@ -653,8 +742,8 @@ _match_draw_cell_frame:
 ;;
 _match_draw_bbox_frame:
    ;; HL is preserved (see _match_draw_cell_frame's comment on why this
-   ;; matters): _match_check_lines calls this while HL still points at a
-   ;; board cell it's about to read/clear.
+   ;; matters) — cheap insurance for any caller that holds a live board
+   ;; pointer in HL across this call.
    push hl
    push bc
    ld (_lmm_color), a
@@ -1034,6 +1123,10 @@ _mpp_do_place:
    xor a
    ld (_snd_lines_found), a
    call _match_check_lines           ;; check for 3 same-color pieces in a row
+   ld a, (_match_cancelled)
+   or a
+   ret nz                            ;; abandoned mid trio-choice (_match_trio_choice_ui):
+                                      ;; nothing below is safe to run against a torn-down match
    ld a, (_snd_lines_found)
    or a
    jr z, _mpp_no_line_sfx
@@ -1348,6 +1441,129 @@ _mrc_next:
    inc de
    pop af
    jp _match_draw_cell_sprite          ;; tail call
+
+;;-----------------------------------------------------------------
+;;
+;; _match_restore_cell_and_sliver
+;;
+;;  Same as _match_restore_cell, but also restores the 1px sliver directly
+;;  above the cell (see _match_restore_top_sliver). Only needed by callers
+;;  erasing something drawn with the -1px Y nudge (win/combo/selector box
+;;  and diag frames, the last-move marker) — NOT a general replacement for
+;;  _match_restore_cell: calling this on every plain cursor move repaints
+;;  a scanline nothing ever touched there, which is harmless on paper but
+;;  visibly glitches (confirmed empirically) — keep it scoped to those
+;;  specific erase call sites only.
+;;  Input:  B = row, C = col
+;;  Output: -
+;;  Modified: AF, BC, DE, HL
+;;
+_match_restore_cell_and_sliver:
+   push bc
+   ld d, #GRID_CELL_W
+   call _match_restore_top_sliver
+   pop bc
+   jp _match_restore_cell            ;; tail call
+
+;;-----------------------------------------------------------------
+;;
+;; _match_restore_top_sliver
+;;
+;;  _match_draw_bbox_frame/_match_draw_cell_frame nudge a frame's Y origin
+;;  up 1px from the cell boundary (matches the last-move marker's look —
+;;  see the "-1: nudge" comment on both). _match_restore_cell only ever
+;;  restores a cell's own GRID_CELL_H-row span, so that extra pixel row
+;;  above a frame's top edge is never touched when the frame is erased,
+;;  leaving a 1px line behind. This restores exactly that missing row,
+;;  using the same _bg_grid math as _match_restore_cell but with the
+;;  source Y one row earlier (row*24+3 instead of +4).
+;;  Input:  B = row, C = col, D = width in bytes
+;;  Output: -
+;;  Modified: AF, BC, DE, HL
+;;
+_match_restore_top_sliver:
+   ld a, b
+   ld (_mrts_row), a
+   ld a, c
+   ld (_mrts_col), a
+   ld a, d
+   ld (_mrts_w), a
+
+   ;; Source: &_bg_grid[(row*24+3)*44 + (col*7+1)]
+   ld a, (_mrts_row)
+   add a, a
+   add a, a
+   add a, a
+   ld l, a
+   add a, a
+   add a, l
+   add a, #3
+   ld l, a
+   ld h, #0             ;; HL = sprite_y
+   ;; HL * 44 = HL*32 + HL*8 + HL*4 (same idiom as _match_restore_cell —
+   ;; BUG FIX: this previously pushed after *2 and *4 instead of *4 and
+   ;; *8, computing sprite_y*22 instead of *44 — read garbage from
+   ;; _bg_grid, painting wrong-coloured pixels into the sliver row on
+   ;; every single cell restore, including plain cursor movement)
+   add hl, hl           ;; *2
+   add hl, hl           ;; *4
+   push hl              ;; [*4]
+   add hl, hl           ;; *8
+   push hl              ;; [*8, *4]
+   add hl, hl           ;; *16
+   add hl, hl           ;; *32
+   pop de                ;; DE = *8
+   add hl, de            ;; *40
+   pop de                ;; DE = *4
+   add hl, de            ;; *44
+
+   ld a, (_mrts_col)
+   ld c, a
+   add a, a
+   add a, a
+   add a, a
+   sub c
+   add a, #1
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld de, #_bg_grid
+   add hl, de              ;; HL = source ptr
+
+   ;; Dest: same Y formula the frame itself uses for its top edge
+   ;; (GRID_FIRST_CELL_Y + row*24 - 1), so source and dest line up exactly.
+   push hl
+   ld a, (_mrts_row)
+   add a, a                  ;; row*2
+   add a, a                  ;; row*4
+   add a, a                  ;; row*8
+   ld e, a                   ;; E = row*8 (NOT row*4 — dropping this third
+   add a, a                  ;; row*16    add left the total at row*12, which
+   add a, e                  ;; row*24    put the sliver 12px above where it
+   add a, #(GRID_FIRST_CELL_Y - 1)   ;;   belonged, painting the grid's dark
+   ld b, a                           ;;   separator row into a neighbour cell)
+   ld a, (_mrts_col)
+   ld e, a
+   add a, a
+   add a, a
+   add a, a
+   sub e
+   add a, #GRID_FIRST_CELL_X
+   ld c, a
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm
+   ex de, hl
+   pop hl                    ;; HL = source, DE = dest
+
+   ld a, (_mrts_w)
+   ld b, a
+_mrts_copy:
+   ld a, (hl)
+   ld (de), a
+   inc hl
+   inc de
+   djnz _mrts_copy
+   ret
 
 ;;-----------------------------------------------------------------
 ;; Match input action routines — called by sys_input_match_update
@@ -2043,454 +2259,535 @@ _miap_inactive:
 ;;
 ;; _match_check_lines
 ;;
-;;  After any placement + boop, scans every row/col/diagonal for 3
-;;  consecutive pieces belonging to the SAME PLAYER, any mix of cats and
-;;  kittens (e.g. cat-kitten-cat counts) — confirmed against the
-;;  rulebook. All 3 pieces come off the board; the owner gets +1 cat in
-;;  reserve for each one, whether it was a kitten (graduating) or already
-;;  a cat (simply returning). An all-cats trio is skipped here — that's a
-;;  win-line, handled by _match_check_cat_lines instead.
-;;  Only the active player's trios resolve this turn — see
-;;  _match_is_inactive_piece.
-;;
-;;  Horizontal windows: col 0..3 in each row (0..5)
-;;  Vertical   windows: row 0..3 in each col (0..5)
-;;  Diagonal windows:   "\" and "/", row/col window start per direction
-;;
+;;  After any placement + boop, finds every valid trio for the ACTIVE
+;;  player (_match_state) — same player in all 3 cells (enforced by
+;;  _match_is_inactive_piece), any mix of cats/kittens, excluding an
+;;  all-cats window (that's a win-line, left for _match_check_cat_lines).
+;;  If more than one candidate exists, the real rule says the player picks
+;;  one (_match_trio_choice_ui); with 0 or 1 candidates it resolves
+;;  directly, same as before. Only one trio ever resolves per turn — any
+;;  other candidate is left on the board for that player's next turn.
 ;;  Input:  -
+;;  Output: -
+;;  Modified: AF, BC, DE, HL, IX, IY
+;;
+_match_check_lines::
+   call _match_collect_trio_candidates
+   ld a, (_match_candidate_count)
+   or a
+   ret z                              ;; nothing to do
+
+   cp #2
+   jr nc, _mcl_choice_flow            ;; 2+ candidates: ask the player
+
+   ;; Exactly one candidate: resolve it directly, no banner/UI.
+   ld a, (_match_candidate_list)
+   ld (_match_chosen_window), a
+   jp _match_resolve_window           ;; tail call
+
+_mcl_choice_flow:
+   ;; Hide the white last-move marker for the whole selection — it visually
+   ;; clashes with the cyan selector frame while the player is choosing.
+   ;; (_match_resolve_window also clears it, but only once a trio is
+   ;; actually confirmed — too late to keep it off the screen during
+   ;; the choice UI itself.)
+   ld a, (_last_move_row)
+   cp #0xFF
+   jr z, _mcl_no_marker
+   ld b, a
+   ld a, (_last_move_col)
+   ld c, a
+   ld a, #0xFF
+   ld (_last_move_row), a
+   ld (_last_move_col), a
+   call _match_restore_cell_and_sliver ;; erase it (redraws the piece there too)
+_mcl_no_marker:
+   call _match_trio_choice_ui         ;; blocking; sets _match_chosen_window,
+                                       ;; or _match_cancelled on abandon
+   ld a, (_match_cancelled)
+   or a
+   ret nz                             ;; abandoned mid-selection: nothing resolved
+   jp _match_resolve_window           ;; tail call
+
+;;-----------------------------------------------------------------
+;;
+;; _match_collect_trio_candidates
+;;
+;;  Scans all 80 windows (_match_threat_windows) and collects every one
+;;  that's a valid trio for the active player: all 3 cells belong to
+;;  _match_state's player (_match_is_inactive_piece), and at least one
+;;  cell is a kitten (an all-cats window is a win-line, not a trio —
+;;  left for _match_check_cat_lines). Never writes to _match_board, so
+;;  candidates that share a cell (overlapping windows) are both detected
+;;  against the same, unmutated board.
+;;  Output: _match_candidate_list[0.._match_candidate_count-1] = window
+;;          indices (0-79) of every valid candidate
+;;  Modified: AF, BC, DE, HL, IY
+;;
+_match_collect_trio_candidates:
+   xor a
+   ld (_match_candidate_count), a
+   ld iy, #_match_threat_windows
+   ld b, #0                           ;; B = window index (0-79)
+_mctc_window:
+   xor a
+   ld (_mctc_invalid), a
+   ld a, #1
+   ld (_mctc_allcats), a              ;; assume all-cats until a kitten shows up
+   ld c, #3
+_mctc_cell:
+   ld e, 0(iy)
+   inc iy
+   ld d, #0
+   ld hl, #_match_board
+   add hl, de
+   ld a, (hl)
+   or a
+   jr z, _mctc_cell_invalid           ;; empty
+   call _match_is_inactive_piece      ;; preserves A; carry = wrong player
+   jr c, _mctc_cell_invalid
+   bit 0, a
+   jr nz, _mctc_cell_done             ;; cat: "allcats" stays as-is
+   xor a
+   ld (_mctc_allcats), a              ;; kitten seen: not an all-cats window
+   jr _mctc_cell_done
+_mctc_cell_invalid:
+   ld a, #1
+   ld (_mctc_invalid), a
+_mctc_cell_done:
+   dec c
+   jr nz, _mctc_cell
+
+   ld a, (_mctc_invalid)
+   or a
+   jr nz, _mctc_next
+   ld a, (_mctc_allcats)
+   or a
+   jr nz, _mctc_next                  ;; all cats: skip, win-check handles it
+
+   ;; Valid trio candidate: append window index B (bounds-checked — should
+   ;; be unreachable given MATCH_MAX_TRIO_CANDIDATES's proof, see match.h.s)
+   ld a, (_match_candidate_count)
+   cp #MATCH_MAX_TRIO_CANDIDATES
+   jr nc, _mctc_next
+   ld hl, #_match_candidate_list
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld (hl), b
+   ld a, (_match_candidate_count)
+   inc a
+   ld (_match_candidate_count), a
+
+_mctc_next:
+   inc b
+   ld a, b
+   cp #80
+   jr nz, _mctc_window
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_offset_to_rowcol
+;;
+;;  Input:  A = board offset (0-35)
+;;  Output: B = row, C = col
+;;  Modified: AF
+;;
+_match_offset_to_rowcol:
+   ld c, a
+   ld b, #0
+_moto_loop:
+   ld a, c
+   cp #GRID_COLS
+   ret c
+   sub #GRID_COLS
+   ld c, a
+   inc b
+   jr _moto_loop
+
+;;-----------------------------------------------------------------
+;;
+;; _match_window_geometry
+;;
+;;  Decodes a window-table index into board offsets and screen geometry.
+;;  Orientation is derived from the stride between offsets (o1-o0): +1 =
+;;  horizontal, +6 = vertical, +7 = diag "\", +5 = diag "/" — this reads
+;;  the window's actual shape rather than assuming the table's authoring
+;;  order, so it stays correct even if _match_threat_windows is reordered.
+;;  Input:  A = window index (0-79)
+;;  Output: _mcrw_o0/o1/o2 = the window's 3 board offsets
+;;          _mcrw_is_diag  = 0 (h/v: _mfwb_row/col/w/h/horiz populated,
+;;                           for _match_flash_combo_box/_match_flash_win_box)
+;;                           or 1 (diag: _mfdc_r0/c0/r1/c1/r2/c2 populated,
+;;                           for _match_flash_combo_diag/_match_flash_win_diag)
+;;  Modified: AF, BC, DE, HL
+;;
+_match_window_geometry:
+   ;; HL = &_match_threat_windows + A*3
+   ld l, a
+   ld h, #0
+   add hl, hl                         ;; *2
+   ld d, h
+   ld e, l
+   ld l, a
+   ld h, #0
+   add hl, de                         ;; *3
+   ld de, #_match_threat_windows
+   add hl, de
+
+   ld a, (hl)
+   ld (_mcrw_o0), a
+   ld b, a                            ;; B = o0, for the stride calc
+   inc hl
+   ld a, (hl)
+   ld (_mcrw_o1), a
+   sub b                              ;; A = o1 - o0 = stride
+   ld (_mcrw_stride), a
+   inc hl
+   ld a, (hl)
+   ld (_mcrw_o2), a
+
+   ld a, (_mcrw_stride)
+   cp #1
+   jr z, _mwg_horiz
+   cp #GRID_COLS
+   jr z, _mwg_vert
+   cp #7
+   jr z, _mwg_diag1
+   jr _mwg_diag2                      ;; stride == 5
+
+_mwg_horiz:
+   xor a
+   ld (_mcrw_is_diag), a
+   ld a, (_mcrw_o0)
+   call _match_offset_to_rowcol       ;; B=row, C=col
+   ld a, b
+   ld (_mfwb_row), a
+   ld a, c
+   ld (_mfwb_col), a
+   ld a, #(3 * GRID_CELL_W)
+   ld (_mfwb_w), a
+   ld a, #GRID_CELL_H
+   ld (_mfwb_h), a
+   ld a, #1
+   ld (_mfwb_horiz), a
+   ret
+
+_mwg_vert:
+   xor a
+   ld (_mcrw_is_diag), a
+   ld a, (_mcrw_o0)
+   call _match_offset_to_rowcol
+   ld a, b
+   ld (_mfwb_row), a
+   ld a, c
+   ld (_mfwb_col), a
+   ld a, #GRID_CELL_W
+   ld (_mfwb_w), a
+   ld a, #(3 * GRID_CELL_H)
+   ld (_mfwb_h), a
+   xor a
+   ld (_mfwb_horiz), a
+   ret
+
+_mwg_diag1:                          ;; "\": (row,col),(row+1,col+1),(row+2,col+2)
+   ld a, #1
+   ld (_mcrw_is_diag), a
+   ld a, (_mcrw_o0)
+   call _match_offset_to_rowcol
+   ld a, b
+   ld (_mfdc_r0), a
+   ld a, c
+   ld (_mfdc_c0), a
+   inc a
+   ld (_mfdc_c1), a
+   inc a
+   ld (_mfdc_c2), a
+   ld a, b
+   inc a
+   ld (_mfdc_r1), a
+   inc a
+   ld (_mfdc_r2), a
+   ret
+
+_mwg_diag2:                          ;; "/": (row,col),(row+1,col-1),(row+2,col-2)
+   ld a, #1
+   ld (_mcrw_is_diag), a
+   ld a, (_mcrw_o0)
+   call _match_offset_to_rowcol
+   ld a, b
+   ld (_mfdc_r0), a
+   ld a, c
+   ld (_mfdc_c0), a
+   dec a
+   ld (_mfdc_c1), a
+   dec a
+   ld (_mfdc_c2), a
+   ld a, b
+   inc a
+   ld (_mfdc_r1), a
+   inc a
+   ld (_mfdc_r2), a
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_resolve_window
+;;
+;;  Resolves the trio at window _match_chosen_window (0-79): flashes it,
+;;  then clears its 3 cells and gives the owner +1 cat each — regardless
+;;  of cat/kitten (_mrl_process_trio_piece already handles the mix). No
+;;  live board HL is held across the flash call here (offsets are
+;;  captured into scratch first, unlike the old sequential-scan code —
+;;  see the V.054 history elsewhere in this file for what goes wrong when
+;;  that isn't true), so no push hl/pop hl dance is needed.
+;;  Input:  _match_chosen_window
 ;;  Output: -
 ;;  Modified: AF, BC, DE, HL, IX
 ;;
-_match_check_lines::
-   ;; === Horizontal scan ===
-   ld b, #0                          ;; B = row (0..5)
-_mcl_h_rowloop:
-   ld c, #0                          ;; C = col window start (0..3)
-_mcl_h_colloop:
-   push bc                           ;; save row/col
+_match_resolve_window:
+   ld a, (_match_chosen_window)
+   call _match_window_geometry
 
-   ;; Compute HL = &board[row][col]
-   ld a, b
-   add a, a                          ;; row*2
-   add a, a                          ;; row*4
-   add a, b                          ;; row*5
-   add a, b                          ;; row*6
-   add a, c
-   ld hl, #_match_board
-   ld d, #0
-   ld e, a
-   add hl, de                        ;; HL = &board[row][col]
-
-   ld a, (hl)
-   or a
-   jp z, _mcl_h_next                 ;; empty → skip
-   ld d, a                           ;; D = v0
-   call _match_is_inactive_piece
-   jp c, _mcl_h_next                 ;; not the active player's piece → skip
-
-   ;; Boop's real rule: a trio needs the SAME PLAYER, any mix of sizes
-   ;; (cat-kitten-cat counts too) — confirmed against the rulebook. Only
-   ;; the exact "all 3 already cats" case is excluded below (that's a
-   ;; win-line, not a trio removal).
-   inc hl
-   ld a, (hl)
-   or a
-   jp z, _mcl_h_next                 ;; v1 empty → mismatch
-   ld e, a                           ;; E = v1
-   call _match_is_inactive_piece
-   jp c, _mcl_h_next                 ;; v1 wrong player → mismatch
-   inc hl
-   ld a, (hl)
-   or a
-   jp z, _mcl_h_next                 ;; v2 empty → mismatch
-   call _match_is_inactive_piece
-   jp c, _mcl_h_next                 ;; v2 wrong player → mismatch
-
-_mcl_h_match:
-   ;; HL = ptr+2, A = v2, D = v0, E = v1; process each cell
-
-   ;; A trio of all-cats is a win-line, not a removal — leave it to
-   ;; _match_check_cat_lines (run later, after the final board redraw)
-   ;; instead of firing the yellow trio flash here for a window with
-   ;; nothing to graduate, ahead of (and visually competing with) the
-   ;; real win flash.
-   bit 0, a                          ;; v2 odd (cat)?
-   jr z, _mcl_h_do_match             ;; v2 is a kitten → real trio
-   bit 0, d                          ;; v0 odd (cat)?
-   jr z, _mcl_h_do_match             ;; v0 is a kitten → real trio
-   bit 0, e                          ;; v1 odd (cat)?
-   jr z, _mcl_h_do_match             ;; v1 is a kitten → real trio
-   jp _mcl_h_next                    ;; all 3 already cats → skip
-
-_mcl_h_do_match:
-   ;; Yellow flash for this conversion (same colour as the win flash, but
-   ;; ends erased — only the game-ending combo stays lit). Clear the
-   ;; last-move marker first so its white frame doesn't reappear (in
-   ;; _match_restore_cell's redraw) during the flash's off-phase.
    ld a, #0xFF
    ld (_last_move_row), a
    ld (_last_move_col), a
-   push hl                           ;; preserve v2 ptr — _match_flash_combo_box
-                                      ;; (via _match_restore_cell) clobbers HL
-   ld d, #(3 * GRID_CELL_W)
-   ld e, #GRID_CELL_H
+
+   ld a, (_mcrw_is_diag)
+   or a
+   jr nz, _mrw_diag_flash
+   ld a, (_mfwb_row)
+   ld b, a
+   ld a, (_mfwb_col)
+   ld c, a
+   ld a, (_mfwb_w)
+   ld d, a
+   ld a, (_mfwb_h)
+   ld e, a
    call _match_flash_combo_box
-   pop hl
-
-   ld a, #1
-   ld (_snd_lines_found), a
-
-   ld a, (hl)                        ;; reload v2 (A was clobbered by store above)
-   call _mrl_process_trio_piece          ;; v2
-   dec hl
-   ld a, (hl)
-   call _mrl_process_trio_piece          ;; v1
-   dec hl
-   ld a, (hl)
-   call _mrl_process_trio_piece          ;; v0
-_mcl_h_next:
-   pop bc
-   inc c
-   ld a, c
-   cp #(GRID_COLS - 2)
-   jp c, _mcl_h_colloop
-   inc b
-   ld a, b
-   cp #GRID_ROWS
-   jp c, _mcl_h_rowloop
-
-   ;; === Vertical scan ===
-   ld c, #0                          ;; C = col (0..5)
-_mcl_v_colloop:
-   ld b, #0                          ;; B = row window start (0..3)
-_mcl_v_rowloop:
-   push bc                           ;; save row/col
-
-   ;; Compute HL = &board[row][col]
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld d, #0
-   ld e, a
-   add hl, de                        ;; HL = &board[row][col]
-
-   ld a, (hl)
-   or a
-   jp z, _mcl_v_next                 ;; empty → skip
-   ld d, a                           ;; D = v0
-   call _match_is_inactive_piece
-   jp c, _mcl_v_next                 ;; not the active player's piece → skip
-
-   ;; Boop's real rule: a trio needs the SAME PLAYER, any mix of sizes —
-   ;; see the matching note on the horizontal scan above.
-   ;; NOTE: step HL by GRID_COLS via six `inc hl`, not `ld de,#GRID_COLS` —
-   ;; that would clobber D (holding v0) with 0 (GRID_COLS' high byte). See
-   ;; the historical bug note on the horizontal scan's do_match block.
-   push hl                           ;; [ptr0, BC_outer]
-   inc hl
-   inc hl
-   inc hl
-   inc hl
-   inc hl
-   inc hl                             ;; HL = ptr1 (row stride = GRID_COLS)
-   ld a, (hl)
-   or a
-   jp z, _mcl_v_nm1                   ;; v1 empty → mismatch
-   ld e, a                            ;; E = v1
-   call _match_is_inactive_piece
-   jp c, _mcl_v_nm1                   ;; v1 wrong player → mismatch
-   push hl                           ;; [ptr1, ptr0, BC_outer]
-   inc hl
-   inc hl
-   inc hl
-   inc hl
-   inc hl
-   inc hl                             ;; HL = ptr2 (row stride = GRID_COLS)
-   ld a, (hl)
-   or a
-   jp z, _mcl_v_nm2                   ;; v2 empty → mismatch
-   call _match_is_inactive_piece
-   jp c, _mcl_v_nm2                   ;; v2 wrong player → mismatch
-
-_mcl_v_match:
-   ;; HL = ptr2, A = v2, D = v0, E = v1; stack = [ptr1, ptr0, BC_outer]
-
-   ;; A trio of all-cats is a win-line, not a removal — see the matching
-   ;; note on _mcl_h_match.
-   bit 0, a                          ;; v2 odd (cat)?
-   jr z, _mcl_v_do_match             ;; v2 is a kitten → real trio
-   bit 0, d                          ;; v0 odd (cat)?
-   jr z, _mcl_v_do_match
-   bit 0, e                          ;; v1 odd (cat)?
-   jr z, _mcl_v_do_match
-   jp _mcl_v_nm2                     ;; all 3 already cats → skip, unwind like a mismatch
-
-_mcl_v_do_match:
-   ;; Yellow flash — see the matching note on _mcl_h_do_match.
-   ld a, #0xFF
-   ld (_last_move_row), a
-   ld (_last_move_col), a
-   push hl                           ;; preserve v2 ptr (see _mcl_h_do_match note)
-   ld d, #GRID_CELL_W
-   ld e, #(3 * GRID_CELL_H)
-   call _match_flash_combo_box
-   pop hl
-
-   ld a, #1
-   ld (_snd_lines_found), a
-
-   ld a, (hl)                        ;; reload v2 (A clobbered by store above)
-   call _mrl_process_trio_piece          ;; v2
-   pop hl                            ;; HL = ptr1
-   ld a, (hl)
-   call _mrl_process_trio_piece          ;; v1
-   pop hl                            ;; HL = ptr0
-   ld a, (hl)
-   call _mrl_process_trio_piece          ;; v0
-   jr _mcl_v_next
-
-_mcl_v_nm2:
-   pop hl                            ;; pop ptr1
-_mcl_v_nm1:
-   pop hl                            ;; pop ptr0
-_mcl_v_next:
-   pop bc
-   inc b
-   ld a, b
-   cp #(GRID_ROWS - 2)
-   jp c, _mcl_v_rowloop
-
-   inc c
-   ld a, c
-   cp #GRID_COLS
-   jp c, _mcl_v_colloop
-
-   ;; === Diagonal "\" scan (row+1, col+1): row/col window start 0..3 ===
-   ld b, #0
-_mcl_d1_rowloop:
-   ld c, #0
-_mcl_d1_colloop:
-   push bc                           ;; save row/col
-
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld d, #0
-   ld e, a
-   add hl, de                        ;; HL = &board[row][col]
-
-   ld a, (hl)
-   or a
-   jp z, _mcl_d1_next                ;; empty → skip
-   ld d, a                           ;; D = v0
-   call _match_is_inactive_piece
-   jp c, _mcl_d1_next                ;; not the active player's piece → skip
-
-   push hl                           ;; [ptr0, BC_outer]
-   inc hl
-   inc hl
-   inc hl
-   inc hl
-   inc hl
-   inc hl
-   inc hl                            ;; HL = ptr0 + 7 = ptr1 (row+1,col+1)
-   ld a, (hl)
-   or a
-   jp z, _mcl_d1_nm1                 ;; v1 empty → mismatch
-   ld e, a                           ;; E = v1
-   call _match_is_inactive_piece
-   jp c, _mcl_d1_nm1                 ;; v1 wrong player → mismatch
-   push hl                           ;; [ptr1, ptr0, BC_outer]
-   inc hl
-   inc hl
-   inc hl
-   inc hl
-   inc hl
-   inc hl
-   inc hl                            ;; HL = ptr1 + 7 = ptr2
-   ld a, (hl)
-   or a
-   jp z, _mcl_d1_nm2                 ;; v2 empty → mismatch
-   call _match_is_inactive_piece
-   jp c, _mcl_d1_nm2                 ;; v2 wrong player → mismatch
-
-   ;; A trio of all-cats is a win-line, not a removal — see the matching
-   ;; note on the horizontal scan.
-   bit 0, a                          ;; v2 odd (cat)?
-   jr z, _mcl_d1_realtrio
-   bit 0, d                          ;; v0 odd (cat)?
-   jr z, _mcl_d1_realtrio
-   bit 0, e                          ;; v1 odd (cat)?
-   jr z, _mcl_d1_realtrio
-   jp _mcl_d1_nm2                    ;; all 3 already cats → skip
-_mcl_d1_realtrio:
-
-   ;; Yellow flash on the 3 diagonal cells (row,col), (row+1,col+1), (row+2,col+2)
-   ld a, #0xFF
-   ld (_last_move_row), a
-   ld (_last_move_col), a
-   ld a, b
-   ld (_mfdc_r0), a
-   ld a, c
-   ld (_mfdc_c0), a
-   inc a
-   ld (_mfdc_c1), a
-   inc a
-   ld (_mfdc_c2), a
-   ld a, b
-   inc a
-   ld (_mfdc_r1), a
-   inc a
-   ld (_mfdc_r2), a
-   push hl                           ;; preserve v2 ptr — flash clobbers HL
+   jr _mrw_flashed
+_mrw_diag_flash:
    call _match_flash_combo_diag
-   pop hl
+_mrw_flashed:
 
    ld a, #1
    ld (_snd_lines_found), a
 
-   ld a, (hl)                        ;; reload v2
-   call _mrl_process_trio_piece          ;; v2
-   pop hl                            ;; HL = ptr1
-   ld a, (hl)
-   call _mrl_process_trio_piece          ;; v1
-   pop hl                            ;; HL = ptr0
-   ld a, (hl)
-   call _mrl_process_trio_piece          ;; v0
-   jp _mcl_d1_next
-
-_mcl_d1_nm2:
-   pop hl                            ;; pop ptr1
-_mcl_d1_nm1:
-   pop hl                            ;; pop ptr0
-_mcl_d1_next:
-   pop bc
-   inc c
-   ld a, c
-   cp #(GRID_COLS - 2)
-   jp c, _mcl_d1_colloop
-   inc b
-   ld a, b
-   cp #(GRID_ROWS - 2)
-   jp c, _mcl_d1_rowloop
-
-   ;; === Diagonal "/" scan (row+1, col-1): row start 0..3, col start 2..5 ===
-   ld b, #0
-_mcl_d2_rowloop:
-   ld c, #2
-_mcl_d2_colloop:
-   push bc                           ;; save row/col
-
-   ld a, b
-   add a, a
-   add a, a
-   add a, b
-   add a, b
-   add a, c
-   ld hl, #_match_board
-   ld d, #0
+   ld a, (_mcrw_o0)
    ld e, a
-   add hl, de                        ;; HL = &board[row][col]
-
+   ld d, #0
+   ld hl, #_match_board
+   add hl, de
    ld a, (hl)
-   or a
-   jp z, _mcl_d2_next                ;; empty → skip
-   ld d, a                           ;; D = v0
-   call _match_is_inactive_piece
-   jp c, _mcl_d2_next                ;; not the active player's piece → skip
+   call _mrl_process_trio_piece
 
-   push hl                           ;; [ptr0, BC_outer]
-   inc hl
-   inc hl
-   inc hl
-   inc hl
-   inc hl                            ;; HL = ptr0 + 5 = ptr1 (row+1,col-1)
+   ld a, (_mcrw_o1)
+   ld e, a
+   ld d, #0
+   ld hl, #_match_board
+   add hl, de
    ld a, (hl)
-   or a
-   jp z, _mcl_d2_nm1                 ;; v1 empty → mismatch
-   ld e, a                           ;; E = v1
-   call _match_is_inactive_piece
-   jp c, _mcl_d2_nm1                 ;; v1 wrong player → mismatch
-   push hl                           ;; [ptr1, ptr0, BC_outer]
-   inc hl
-   inc hl
-   inc hl
-   inc hl
-   inc hl                            ;; HL = ptr1 + 5 = ptr2
+   call _mrl_process_trio_piece
+
+   ld a, (_mcrw_o2)
+   ld e, a
+   ld d, #0
+   ld hl, #_match_board
+   add hl, de
    ld a, (hl)
-   or a
-   jp z, _mcl_d2_nm2                 ;; v2 empty → mismatch
-   call _match_is_inactive_piece
-   jp c, _mcl_d2_nm2                 ;; v2 wrong player → mismatch
+   call _mrl_process_trio_piece
 
-   ;; A trio of all-cats is a win-line, not a removal — see the matching
-   ;; note on the horizontal scan.
-   bit 0, a                          ;; v2 odd (cat)?
-   jr z, _mcl_d2_realtrio
-   bit 0, d                          ;; v0 odd (cat)?
-   jr z, _mcl_d2_realtrio
-   bit 0, e                          ;; v1 odd (cat)?
-   jr z, _mcl_d2_realtrio
-   jp _mcl_d2_nm2                    ;; all 3 already cats → skip
-_mcl_d2_realtrio:
+   ret
 
-   ;; Yellow flash on the 3 diagonal cells (row,col), (row+1,col-1), (row+2,col-2)
-   ld a, #0xFF
-   ld (_last_move_row), a
-   ld (_last_move_col), a
-   ld a, b
-   ld (_mfdc_r0), a
-   ld a, c
-   ld (_mfdc_c0), a
-   dec a
-   ld (_mfdc_c1), a
-   dec a
-   ld (_mfdc_c2), a
-   ld a, b
-   inc a
-   ld (_mfdc_r1), a
-   inc a
-   ld (_mfdc_r2), a
-   push hl                           ;; preserve v2 ptr — flash clobbers HL
-   call _match_flash_combo_diag
-   pop hl
+;;-----------------------------------------------------------------
+;;
+;; _match_trio_choice_ui
+;;
+;;  Blocking selection UI for 2+ simultaneous trio candidates (real Boop
+;;  rule: the player must pick one). Shows a "CHOOSE A TRIO" banner (auto-
+;;  dismiss, same pattern as _match_show_turn_message), then blinks the
+;;  first candidate and lets the player cycle with Left/Right and confirm
+;;  with Enter. Esc opens the normal abandon dialog (_match_confirm_cancel)
+;;  — same as during regular play.
+;;  Input:  _match_candidate_list/_match_candidate_count (already filled)
+;;  Output: _match_chosen_window set, or _match_cancelled=1 on abandon
+;;  Modified: AF, BC, DE, HL, IX, IY
+;;
+_match_trio_choice_ui:
+   m_msg_w_background 10             ;; pen 10 = Cyan (distinct from the
+                                      ;; green selector frame and every
+                                      ;; other message window's background)
+   ld e, #6
+   ld d, #78
+   ld b, #22
+   ld c, #50
+   ld a, #2                           ;; auto-dismiss
+   ld hl, #_match_choose_trio_msg
+   call sys_messages_show
 
+   xor a
+   ld (_match_candidate_sel), a
    ld a, #1
-   ld (_snd_lines_found), a
+   ld (_mtcu_blink_on), a
+   xor a
+   ld (_mtcu_blink_timer), a
+   ld (_mtcu_confirmed), a
+   ld (_mtcu_esc_resumed), a
+   call _mtcu_draw_selected
 
-   ld a, (hl)                        ;; reload v2
-   call _mrl_process_trio_piece          ;; v2
-   pop hl                            ;; HL = ptr1
-   ld a, (hl)
-   call _mrl_process_trio_piece          ;; v1
-   pop hl                            ;; HL = ptr0
-   ld a, (hl)
-   call _mrl_process_trio_piece          ;; v0
-   jp _mcl_d2_next
+_mtcu_loop:
+   ld b, #2                           ;; poll every ~2 vsyncs
+   call sys_util_delay
+   ld iy, #_match_trio_choice_key_actions
+   call sys_input_debounced_update
 
-_mcl_d2_nm2:
-   pop hl                            ;; pop ptr1
-_mcl_d2_nm1:
-   pop hl                            ;; pop ptr0
-_mcl_d2_next:
-   pop bc
-   inc c
-   ld a, c
-   cp #GRID_COLS
-   jp c, _mcl_d2_colloop
-   inc b
+   ld a, (_match_cancelled)
+   or a
+   ret nz                             ;; abandoned: caller unwinds
+
+   ld a, (_mtcu_esc_resumed)
+   or a
+   jr z, _mtcu_check_confirmed
+   xor a
+   ld (_mtcu_esc_resumed), a
+   ld a, #1
+   ld (_mtcu_blink_on), a
+   xor a
+   ld (_mtcu_blink_timer), a
+   call _mtcu_draw_selected           ;; clean ON redraw after the dialog closes
+
+_mtcu_check_confirmed:
+   ld a, (_mtcu_confirmed)
+   or a
+   jr z, _mtcu_tick
+
+   ld a, (_mtcu_blink_on)
+   or a
+   call nz, _mtcu_restore_selected    ;; don't leave a stray frame behind
+   ld a, (_match_candidate_sel)
+   ld hl, #_match_candidate_list
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   ld (_match_chosen_window), a
+   ret
+
+_mtcu_tick:
+   ld hl, #_mtcu_blink_timer
+   inc (hl)
+   ld a, (hl)
+   cp #3                              ;; ~3*2=6-frame half-cycle: clearly
+   jr c, _mtcu_loop                   ;; faster than the resolve flash's 15
+   xor a
+   ld (_mtcu_blink_timer), a
+   ld a, (_mtcu_blink_on)
+   xor #1
+   ld (_mtcu_blink_on), a
+   or a
+   jr z, _mtcu_off
+   call _mtcu_draw_selected
+   jr _mtcu_loop
+_mtcu_off:
+   call _mtcu_restore_selected
+   jr _mtcu_loop
+
+;; ON: draw the currently-selected candidate's frame
+_mtcu_draw_selected:
+   ld a, (_match_candidate_sel)
+   ld hl, #_match_candidate_list
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   call _match_window_geometry
+   ld a, (_mcrw_is_diag)
+   or a
+   jr nz, _mtds_diag
+   ld a, (_mfwb_row)
+   ld b, a
+   ld a, (_mfwb_col)
+   ld c, a
+   ld a, (_mfwb_w)
+   ld d, a
+   ld a, (_mfwb_h)
+   ld e, a
+   ld a, #TRIO_SELECT_COLOR
+   jp _match_draw_bbox_frame          ;; tail call
+_mtds_diag:
+   ld a, #TRIO_SELECT_COLOR
+   ld (_mfdc_color), a
+   jp _mfdc_draw_on                   ;; tail call
+
+;; OFF: restore the currently-selected candidate's 3 cells
+_mtcu_restore_selected:
+   ld a, (_match_candidate_sel)
+   ld hl, #_match_candidate_list
+   ld e, a
+   ld d, #0
+   add hl, de
+   ld a, (hl)
+   call _match_window_geometry
+   ld a, (_mcrw_is_diag)
+   or a
+   jp z, _mfwb_restore_off            ;; tail call
+   jp _mfdc_restore_off               ;; tail call
+
+_mtcu_key_left:
+   ld a, (_mtcu_blink_on)
+   or a
+   call nz, _mtcu_restore_selected
+   ld a, (_match_candidate_sel)
+   or a
+   jr nz, _mtcu_kl_dec
+   ld a, (_match_candidate_count)
+_mtcu_kl_dec:
+   dec a
+   ld (_match_candidate_sel), a
+   ld a, #1
+   ld (_mtcu_blink_on), a
+   xor a
+   ld (_mtcu_blink_timer), a
+   call _mtcu_draw_selected
+   ret
+
+_mtcu_key_right:
+   ld a, (_mtcu_blink_on)
+   or a
+   call nz, _mtcu_restore_selected
+   ld a, (_match_candidate_sel)
+   inc a
+   ld b, a                            ;; B = sel+1
+   ld a, (_match_candidate_count)
+   cp b
+   jr z, _mtcu_kr_wrap                ;; count == sel+1 → wrap
+   jr c, _mtcu_kr_wrap                ;; count < sel+1 → wrap (defensive)
+   jr _mtcu_kr_ok
+_mtcu_kr_wrap:
+   ld b, #0
+_mtcu_kr_ok:
    ld a, b
-   cp #(GRID_ROWS - 2)
-   jp c, _mcl_d2_rowloop
+   ld (_match_candidate_sel), a
+   ld a, #1
+   ld (_mtcu_blink_on), a
+   xor a
+   ld (_mtcu_blink_timer), a
+   call _mtcu_draw_selected
+   ret
 
+_mtcu_key_enter:
+   ld a, #1
+   ld (_mtcu_confirmed), a
+   ret
+
+_mtcu_key_esc:
+   call _match_confirm_cancel
+   ld a, (_match_cancelled)
+   or a
+   ret nz                             ;; abandoning: outer loop will see this
+   ld a, #1
+   ld (_mtcu_esc_resumed), a
    ret
 
 ;;-----------------------------------------------------------------
@@ -2647,6 +2944,9 @@ _mfwb_draw_on:
 
 ;; OFF: restore the 3 cells (redraws the cats too)
 _mfwb_restore_off:
+   ;; Each cell restore also needs the 1px sliver above it (see
+   ;; _match_restore_cell_and_sliver) — this frame was drawn with the -1px
+   ;; Y nudge, so erasing it must repaint that row too.
    ld a, (_mfwb_horiz)
    or a
    jr z, _mfwb_off_v
@@ -2655,38 +2955,38 @@ _mfwb_restore_off:
    ld b, a
    ld a, (_mfwb_col)
    ld c, a
-   call _match_restore_cell
+   call _match_restore_cell_and_sliver
    ld a, (_mfwb_row)
    ld b, a
    ld a, (_mfwb_col)
    inc a
    ld c, a
-   call _match_restore_cell
+   call _match_restore_cell_and_sliver
    ld a, (_mfwb_row)
    ld b, a
    ld a, (_mfwb_col)
    add a, #2
    ld c, a
-   jp _match_restore_cell            ;; tail call
+   jp _match_restore_cell_and_sliver ;; tail call
 
 _mfwb_off_v:
    ld a, (_mfwb_row)
    ld b, a
    ld a, (_mfwb_col)
    ld c, a
-   call _match_restore_cell
+   call _match_restore_cell_and_sliver
    ld a, (_mfwb_row)
    inc a
    ld b, a
    ld a, (_mfwb_col)
    ld c, a
-   call _match_restore_cell
+   call _match_restore_cell_and_sliver
    ld a, (_mfwb_row)
    add a, #2
    ld b, a
    ld a, (_mfwb_col)
    ld c, a
-   jp _match_restore_cell            ;; tail call
+   jp _match_restore_cell_and_sliver ;; tail call
 
 ;;-----------------------------------------------------------------
 ;;
@@ -2758,21 +3058,24 @@ _mfdc_draw_on:
 
 ;; OFF: restore the 3 cells (redraws the pieces too)
 _mfdc_restore_off:
+   ;; Each cell restore also needs the 1px sliver above it (see
+   ;; _match_restore_cell_and_sliver) — this frame was drawn with the -1px
+   ;; Y nudge, so erasing it must repaint that row too.
    ld a, (_mfdc_r0)
    ld b, a
    ld a, (_mfdc_c0)
    ld c, a
-   call _match_restore_cell
+   call _match_restore_cell_and_sliver
    ld a, (_mfdc_r1)
    ld b, a
    ld a, (_mfdc_c1)
    ld c, a
-   call _match_restore_cell
+   call _match_restore_cell_and_sliver
    ld a, (_mfdc_r2)
    ld b, a
    ld a, (_mfdc_c2)
    ld c, a
-   jp _match_restore_cell            ;; tail call
+   jp _match_restore_cell_and_sliver ;; tail call
 
 ;;-----------------------------------------------------------------
 ;;
@@ -3136,6 +3439,51 @@ _mccl_d2_next:
 
    ret
 
+.if BOOP_DEBUG_BUILD
+;;-----------------------------------------------------------------
+;;
+;; _match_debug_fill_board
+;;
+;;  Debug-only (see BOOP_DEBUG_BUILD, match.h.s). Loads
+;;  _match_debug_board_multitrio into _match_board — usable at any point
+;;  during a match, not just at the start — resets both players' reserves
+;;  to match it (P1: 2 kittens left, 6 already on the board; P2: fresh
+;;  8 kittens), resets the turn to P1 and the cursor to the top-left
+;;  corner, then redraws everything. Triggered by man_match_update when
+;;  Key_D is pressed (see _match_debug_key_was_down for the debounce).
+;;  Input:  -
+;;  Output: -
+;;  Modified: AF, BC, DE, HL, IX
+;;
+_match_debug_fill_board:
+   ld hl, #_match_debug_board_multitrio
+   ld de, #_match_board
+   ld bc, #36
+   ldir
+
+   ld a, #2
+   ld (man_match_player1 + Player_kittens), a
+   xor a
+   ld (man_match_player1 + Player_cats), a
+   ld a, #MATCH_INITIAL_KITTENS
+   ld (man_match_player2 + Player_kittens), a
+   xor a
+   ld (man_match_player2 + Player_cats), a
+
+   xor a
+   ld (_match_state), a
+   ld (_cursor_row), a
+   ld (_cursor_col), a
+   ld a, #PIECE_KITTEN
+   ld (_cursor_piece), a
+
+   call sys_render_draw_grid
+   call _match_draw_board
+   call man_match_draw_hud
+   call _match_draw_cursor
+   ret
+.endif
+
 ;;-----------------------------------------------------------------
 ;;
 ;; man_match_init
@@ -3166,6 +3514,11 @@ man_match_init::
    ld bc, #35
    ld (hl), #BOARD_EMPTY
    ldir
+
+.if BOOP_DEBUG_BUILD
+   xor a
+   ld (_match_debug_key_was_down), a  ;; fresh debounce state for this match
+.endif
 
    ;; initialise cursor, turn state and cancel flag
    xor a
@@ -3234,6 +3587,27 @@ _mmi_skip_ai:
 ;;  Modified: AF, BC, DE, HL
 ;;
 man_match_update::
+.if BOOP_DEBUG_BUILD
+   ;; Debug-only: press D at any point during a match to force-load the
+   ;; test board (_match_debug_fill_board). Simple press-once debounce so
+   ;; holding the key doesn't reload every frame.
+   ld hl, #Key_D
+   call cpct_isKeyPressed_asm
+   or a
+   jr z, _mmu_debug_key_up
+   ld a, (_match_debug_key_was_down)
+   or a
+   jr nz, _mmu_debug_done             ;; still held from a previous frame
+   ld a, #1
+   ld (_match_debug_key_was_down), a
+   call _match_debug_fill_board
+   jr _mmu_debug_done
+_mmu_debug_key_up:
+   xor a
+   ld (_match_debug_key_was_down), a
+_mmu_debug_done:
+.endif
+
    ;; 1-player mode: when it is P2's turn, delegate entirely to AI
    ld a, (man_match_num_players)
    cp #1

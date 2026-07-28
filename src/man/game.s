@@ -25,6 +25,7 @@
 .include "sys/render.h.s"
 .include "sys/messages.h.s"
 .include "sys/input.h.s"
+.include "sys/text.h.s"
 
 .module game_system
 
@@ -42,7 +43,11 @@ GAME_STATE_AI_SELECT = 3   ;; AI level picker (1-player only)
 .area _DATA
 
 _game_state:         .db 0
-_game_loaded_string: .asciz " GAME LOADED - V.077"
+_game_loaded_string: .asciz " GAME LOADED - V.088"
+
+.if BOOP_DEBUG_BUILD
+_match_debug_banner_msg: .asciz "** DEBUG **"
+.endif
 
 ;;
 ;; Start of _CODE area
@@ -93,7 +98,42 @@ sys_game_init::
 ;;
 sys_game_update::
    call cpct_waitVSYNC_asm
+   call _sgu_dispatch
+.if BOOP_DEBUG_BUILD
+   call _match_debug_draw_banner    ;; always redrawn last, so it stays on top
+.endif
+   ret
 
+.if BOOP_DEBUG_BUILD
+;;-----------------------------------------------------------------
+;;
+;; _match_debug_draw_banner
+;;
+;;  Debug-only (BOOP_DEBUG_BUILD, match.h.s). Draws "** DEBUG **" centered
+;;  at the top of the screen. Called every frame, after whatever the
+;;  current game state drew, so it's never overwritten.
+;;  11 chars * 2 bytes/char = 22 bytes wide; x = (80-22)/2 = 29.
+;;  Input:  -
+;;  Output: -
+;;  Modified: AF, BC, DE, HL
+;;
+_match_debug_draw_banner:
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 29, 0
+   ld hl, #_match_debug_banner_msg
+   ;; sys_text_draw_string's C is NOT a pen index — it's a 0-5 index into
+   ;; text.s's _swapColors table (only 6 hardcoded font colours exist).
+   ;; 1 = Bright Yellow. (Using a raw pen number here, e.g. 6, reads past
+   ;; the table into unrelated memory — corrupted/invisible glyphs.)
+   ld c, #1                            ;; Bright Yellow
+   call sys_text_draw_string
+   ret
+.endif
+
+;; The actual per-state dispatch — a real subroutine (not inlined into
+;; sys_game_update) so every one of its many early "ret"s below still
+;; converges back to the single call site above, letting the debug banner
+;; draw unconditionally after every frame regardless of which branch ran.
+_sgu_dispatch:
    ld a, (_game_state)
    or a
    jr z, _sgu_menu
