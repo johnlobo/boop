@@ -2512,7 +2512,7 @@ _mdw_music_ready:
    m_msg_w_background 3
    ld e, #6
    ld d, #78
-   ld b, #35
+   ld b, #39                         ;; room for 9px PRESS ANY KEY + bottom padding
    ld c, #50
    pop af                            ;; restore winner number
    cp #2
