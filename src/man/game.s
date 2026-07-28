@@ -43,7 +43,7 @@ GAME_STATE_AI_SELECT = 3   ;; AI level picker (1-player only)
 .area _DATA
 
 _game_state:         .db 0
-_game_loaded_string: .asciz " GAME LOADED - V.089"
+_game_loaded_string: .asciz " GAME LOADED - V.090"
 
 .if BOOP_DEBUG_BUILD
 _match_debug_banner_msg: .asciz "** DEBUG **"

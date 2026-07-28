@@ -66,7 +66,7 @@ _cursor_piece:: .db 0   ;; PIECE_CAT or PIECE_KITTEN (exported for AI module)
 ;; Last-move marker: row/col of the most recently placed piece, so its cell
 ;; can be highlighted. 0xFF = no marker (start of match). Set at the end of
 ;; _match_place_piece; reset in man_match_init.
-_last_move_row: .db 0xFF
+_last_move_row:: .db 0xFF   ;; exported for tests/run_rules.c
 _last_move_col: .db 0xFF
 _lmm_x:         .db 0   ;; scratch: box byte-column origin (_match_draw_cell_frame / _match_draw_bbox_frame)
 _lmm_y:         .db 0   ;; scratch: box pixel-row origin
@@ -3147,7 +3147,7 @@ _mfwd_loop:
 ;;  Output: -
 ;;  Modified: AF, BC, DE, HL
 ;;
-_match_check_cat_lines:
+_match_check_cat_lines::  ;; exported for tests/run_rules.c
    ;; === Horizontal scan ===
    ld b, #0                          ;; B = row (0..5)
 _mccl_h_rowloop:

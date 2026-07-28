@@ -41,6 +41,9 @@ struct Symbols {
     uint16_t candidate_count;
     uint16_t graduate_or_win;
     uint16_t wait_vsync_start;
+    uint16_t check_cat_lines;
+    uint16_t last_move_row;
+    uint16_t declare_winner;
 };
 
 struct Machine {
@@ -128,6 +131,9 @@ static uint16_t *symbol_slot(struct Symbols *symbols, const char *name) {
     if (!strcmp(name, "_match_candidate_count")) return &symbols->candidate_count;
     if (!strcmp(name, "_match_graduate_or_win")) return &symbols->graduate_or_win;
     if (!strcmp(name, "cpct_waitVSYNCStart_asm")) return &symbols->wait_vsync_start;
+    if (!strcmp(name, "_match_check_cat_lines")) return &symbols->check_cat_lines;
+    if (!strcmp(name, "_last_move_row")) return &symbols->last_move_row;
+    if (!strcmp(name, "_match_declare_winner")) return &symbols->declare_winner;
     return NULL;
 }
 
@@ -153,7 +159,9 @@ static void load_symbols(struct Machine *machine, const char *path) {
         !machine->symbols.boop_cat || !machine->symbols.match_state ||
         !machine->symbols.collect_trio_candidates ||
         !machine->symbols.candidate_list || !machine->symbols.candidate_count ||
-        !machine->symbols.graduate_or_win || !machine->symbols.wait_vsync_start) {
+        !machine->symbols.graduate_or_win || !machine->symbols.wait_vsync_start ||
+        !machine->symbols.check_cat_lines || !machine->symbols.last_move_row ||
+        !machine->symbols.declare_winner) {
         die("one or more required symbols are missing from the .noi file", NULL);
     }
 
@@ -164,6 +172,13 @@ static void load_symbols(struct Machine *machine, const char *path) {
      * out. Patch it to an immediate RET: harmless for pure rules logic,
      * which never depends on frame timing. */
     machine->image[machine->symbols.wait_vsync_start] = 0xc9; /* ret */
+
+    /* _match_declare_winner shows a "PLAYER X WINS" window and blocks on
+     * sys_messages_show's wait-for-keypress — no real keyboard exists here
+     * either. Patch it to an immediate RET too: win-line tests instead
+     * observe the win-branch's own side effect (_last_move_row cleared to
+     * 0xFF right before the call) as proof the line was detected. */
+    machine->image[machine->symbols.declare_winner] = 0xc9; /* ret */
 }
 
 static void reset_fixture(struct Machine *machine) {
@@ -224,6 +239,21 @@ static int candidate_list_contains(struct Machine *machine, int window_index) {
         if (machine->memory[machine->symbols.candidate_list + i] == window_index) return 1;
     }
     return 0;
+}
+
+/* _last_move_row starts at 0xFF by default (its own reset value), so a
+ * distinct sentinel is needed to tell "cleared by the win branch" apart
+ * from "untouched". */
+enum { LAST_MOVE_ROW_SENTINEL = 0x2a };
+
+static void check_cat_lines(struct Machine *machine, int active_player) {
+    machine->memory[machine->symbols.match_state] = (uint8_t)active_player;
+    machine->memory[machine->symbols.last_move_row] = LAST_MOVE_ROW_SENTINEL;
+    run_routine(machine, machine->symbols.check_cat_lines);
+}
+
+static int cat_line_win_detected(struct Machine *machine) {
+    return machine->memory[machine->symbols.last_move_row] == 0xff;
 }
 
 /* Runs _match_graduate_or_win(A=player). Only safe to call when at least
@@ -446,6 +476,67 @@ static void test_graduate_picks_first_kitten_in_scan_order(struct Machine *machi
            machine->memory[machine->symbols.player1 + PLAYER_KITTENS] == 0);
 }
 
+static void test_cat_line_horizontal_win_detected(struct Machine *machine) {
+    reset_fixture(machine);
+    place(machine, 0, 0, P1_CAT);
+    place(machine, 0, 1, P1_CAT);
+    place(machine, 0, 2, P1_CAT);
+    check_cat_lines(machine, 0);
+    report("3 active-player cats in a row is detected as a win",
+           cat_line_win_detected(machine));
+}
+
+static void test_cat_line_vertical_win_detected(struct Machine *machine) {
+    reset_fixture(machine);
+    place(machine, 0, 3, P2_CAT);
+    place(machine, 1, 3, P2_CAT);
+    place(machine, 2, 3, P2_CAT);
+    check_cat_lines(machine, 1);
+    report("3 active-player cats in a column is detected as a win",
+           cat_line_win_detected(machine));
+}
+
+static void test_cat_line_diagonal_win_detected(struct Machine *machine) {
+    reset_fixture(machine);
+    place(machine, 3, 0, P1_CAT);
+    place(machine, 4, 1, P1_CAT);
+    place(machine, 5, 2, P1_CAT);
+    check_cat_lines(machine, 0);
+    report("3 active-player cats diagonally is detected as a win",
+           cat_line_win_detected(machine));
+}
+
+static void test_cat_line_wrong_colour_no_win(struct Machine *machine) {
+    /* P2 is active but the 3-in-a-row on the board is P1's cats — only
+     * the active player's own colour can win on their turn. */
+    reset_fixture(machine);
+    place(machine, 0, 0, P1_CAT);
+    place(machine, 0, 1, P1_CAT);
+    place(machine, 0, 2, P1_CAT);
+    check_cat_lines(machine, 1);
+    report("the inactive player's cat line does not trigger a win",
+           !cat_line_win_detected(machine));
+}
+
+static void test_cat_line_kittens_do_not_win(struct Machine *machine) {
+    reset_fixture(machine);
+    place(machine, 0, 0, P1_KITTEN);
+    place(machine, 0, 1, P1_KITTEN);
+    place(machine, 0, 2, P1_KITTEN);
+    check_cat_lines(machine, 0);
+    report("3 kittens in a row is not a cat-line win",
+           !cat_line_win_detected(machine));
+}
+
+static void test_cat_line_two_cats_no_win(struct Machine *machine) {
+    reset_fixture(machine);
+    place(machine, 0, 0, P1_CAT);
+    place(machine, 0, 1, P1_CAT);
+    check_cat_lines(machine, 0);
+    report("only 2 cats in a row is not a win",
+           !cat_line_win_detected(machine));
+}
+
 int main(int argc, char **argv) {
     struct Machine machine;
 
@@ -476,6 +567,12 @@ int main(int argc, char **argv) {
     test_trio_inactive_player_pieces_ignored(&machine);
     test_trio_diagonal_candidate_detected(&machine);
     test_graduate_picks_first_kitten_in_scan_order(&machine);
+    test_cat_line_horizontal_win_detected(&machine);
+    test_cat_line_vertical_win_detected(&machine);
+    test_cat_line_diagonal_win_detected(&machine);
+    test_cat_line_wrong_colour_no_win(&machine);
+    test_cat_line_kittens_do_not_win(&machine);
+    test_cat_line_two_cats_no_win(&machine);
     printf("1..%d\n", tests_run);
 
     z80ex_destroy(machine.cpu);

@@ -150,6 +150,8 @@ WIN_MUSIC_FRAMES     = 150   ;; ~3 seconds
 .globl _match_candidate_list
 .globl _match_candidate_count
 .globl _match_graduate_or_win
+.globl _match_check_cat_lines
+.globl _last_move_row
 
 ;;------------------------------------------------------------------------------
 ;; Global routines
