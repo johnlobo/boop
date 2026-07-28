@@ -187,8 +187,18 @@ _boop_transit_buf: .ds 16     ;; destinations in-transit: 8 × (offset byte, val
 _boop_transit_cnt: .db 0      ;; number of valid entries in _boop_transit_buf
 
 _match_cancel_msg:  .asciz " ABANDON MATCH? (Y/N)"
-_match_p1_wins_msg: .asciz "    PLAYER 1 WINS!"
-_match_p2_wins_msg: .asciz "    PLAYER 2 WINS!"
+_match_p1_wins_msg: .asciz "PLAYER 1 WINS!"
+_match_p2_wins_msg: .asciz "PLAYER 2 WINS!"
+
+;; 1-player mode: P2 winning shows the AI's catty name instead of
+;; "PLAYER 2 WINS!" (see man_ai_level / _menu_level_name_ptrs, menu_level.s,
+;; for the same 4 names shown on the difficulty picker). Each string's
+;; length differs, so each gets its own precomputed centering (see
+;; _match_ai_win_msg): window_x = (80 - len*2)/2 - 3.
+_match_ai0_wins_msg: .asciz "GATITO TIMIDO WINS!"
+_match_ai1_wins_msg: .asciz "GATO JUGUETON WINS!"
+_match_ai2_wins_msg: .asciz "GATA ASTUTA WINS!"
+_match_ai3_wins_msg: .asciz "MAESTRO FELINO WINS!"
 _match_p1_turn_msg: .asciz "PLAYER 1 TURN"
 _match_p2_turn_msg: .asciz "PLAYER 2 TURN"
 
@@ -1303,9 +1313,15 @@ _match_graduate_or_win::  ;; exported for tests/run_rules.c
    or a
    jp z, _mgow_no_kitten_win          ;; 0: all cats already — win
    cp #2
-   jr nc, _mgow_choice_flow           ;; 2+: ask the player
+   jr c, _mgow_direct                 ;; exactly 1: direct resolve
 
-   ;; Exactly 1: graduate it directly, no banner/UI.
+   ;; 2+ candidates: the AI resolves automatically (first found, scan
+   ;; order); a human player is asked to choose.
+   call _match_is_ai_turn
+   or a
+   jr z, _mgow_choice_flow            ;; not the AI's turn: ask the player
+
+_mgow_direct:
    ld a, (_match_graduate_candidates)
    ld (_match_graduate_chosen_offset), a
    jp _mgow_do_graduate
@@ -2326,6 +2342,35 @@ _mpk_add:
 
 ;;-----------------------------------------------------------------
 ;;
+;; _match_is_ai_turn
+;;
+;;  AI (P2) executes its real moves through the same _match_place_piece
+;;  path as a human (see ai.s Phase 3), so the trio-choice and
+;;  graduate-choice UIs would otherwise pop up and block waiting for the
+;;  human to pick on the AI's behalf. This lets both call sites skip
+;;  straight to the "first candidate" auto-resolve when it's really the
+;;  AI moving — matching the AI's existing "first found in scan order,
+;;  no heuristic" rule for both trios and graduation.
+;;  Input:  -
+;;  Output: A = 1 (Z clear) if it's the AI's turn (1-player mode, P2
+;;          active), else A = 0 (Z set)
+;;  Modified: AF
+;;
+_match_is_ai_turn:
+   ld a, (man_match_num_players)
+   cp #1
+   jr nz, _miat_no                    ;; 2-player mode: never AI
+   ld a, (_match_state)
+   cp #MATCH_STATE_P2
+   jr nz, _miat_no
+   ld a, #1
+   ret
+_miat_no:
+   xor a
+   ret
+
+;;-----------------------------------------------------------------
+;;
 ;; _match_is_inactive_piece
 ;;
 ;;  Per the real Boop rules, only the ACTIVE player (the one who just
@@ -2387,9 +2432,15 @@ _match_check_lines::
    ret z                              ;; nothing to do
 
    cp #2
-   jr nc, _mcl_choice_flow            ;; 2+ candidates: ask the player
+   jr c, _mcl_direct                  ;; exactly 1 candidate: direct resolve
 
-   ;; Exactly one candidate: resolve it directly, no banner/UI.
+   ;; 2+ candidates: the AI resolves automatically (first found, scan
+   ;; order); a human player is asked to choose.
+   call _match_is_ai_turn
+   or a
+   jr z, _mcl_choice_flow             ;; not the AI's turn: ask the player
+
+_mcl_direct:
    ld a, (_match_candidate_list)
    ld (_match_chosen_window), a
    jp _match_resolve_window           ;; tail call
@@ -3105,23 +3156,68 @@ _mdw_music_ready:
    pop af
    push af                           ;; save winner number (macro clobbers AF)
    m_msg_w_background 3
-   ld e, #6
+   ;; "PLAYER X WINS!" is 14 chars * 2 bytes/char = 28 bytes; sys_messages_show
+   ;; draws the message at window_x+3, un-centered — so window_x is chosen
+   ;; here to center the text itself on the 80-byte screen:
+   ;; (80-28)/2 = 26, minus the +3 draw offset = 23.
+   ld e, #23
    ld d, #78
    ld b, #39                         ;; room for 9px PRESS ANY KEY + bottom padding
    ld c, #50
    pop af                            ;; restore winner number
    cp #2
    jr z, _mdw_p2
-   ld a, #1
    ld hl, #_match_p1_wins_msg
    jr _mdw_show
 _mdw_p2:
-   ld a, #1
+   ld a, (man_match_num_players)
+   cp #1
+   jr nz, _mdw_p2_human
+   call _match_ai_win_msg            ;; sets HL=message, E=window_x for the AI's name
+   jr _mdw_show
+_mdw_p2_human:
    ld hl, #_match_p2_wins_msg
 _mdw_show:
+   ld a, #1
    call sys_messages_show            ;; blocks until key pressed, restores bg
    ld a, #1
    ld (_match_cancelled), a          ;; signal game loop to return to menu
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _match_ai_win_msg
+;;
+;;  1-player mode, P2 (the AI) won: picks its catty-name win message and
+;;  the window_x that centers it on screen (each name is a different
+;;  length — see the precomputed value on each _match_aiN_wins_msg
+;;  string above).
+;;  Input:  man_ai_level (0-3)
+;;  Output: HL = message pointer, E = window_x
+;;  Modified: AF, HL, E
+;;
+_match_ai_win_msg:
+   ld a, (man_ai_level)
+   or a
+   jr z, _mawm_0
+   cp #1
+   jr z, _mawm_1
+   cp #2
+   jr z, _mawm_2
+   ld hl, #_match_ai3_wins_msg
+   ld e, #17
+   ret
+_mawm_0:
+   ld hl, #_match_ai0_wins_msg
+   ld e, #18
+   ret
+_mawm_1:
+   ld hl, #_match_ai1_wins_msg
+   ld e, #18
+   ret
+_mawm_2:
+   ld hl, #_match_ai2_wins_msg
+   ld e, #20
    ret
 
 ;;-----------------------------------------------------------------
