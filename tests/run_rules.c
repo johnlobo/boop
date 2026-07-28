@@ -35,6 +35,12 @@ struct Symbols {
     uint16_t player2;
     uint16_t boop;
     uint16_t boop_cat;
+    uint16_t match_state;
+    uint16_t collect_trio_candidates;
+    uint16_t candidate_list;
+    uint16_t candidate_count;
+    uint16_t graduate_or_win;
+    uint16_t wait_vsync_start;
 };
 
 struct Machine {
@@ -116,6 +122,12 @@ static uint16_t *symbol_slot(struct Symbols *symbols, const char *name) {
     if (!strcmp(name, "man_match_player2")) return &symbols->player2;
     if (!strcmp(name, "_match_boop")) return &symbols->boop;
     if (!strcmp(name, "_match_boop_cat")) return &symbols->boop_cat;
+    if (!strcmp(name, "_match_state")) return &symbols->match_state;
+    if (!strcmp(name, "_match_collect_trio_candidates")) return &symbols->collect_trio_candidates;
+    if (!strcmp(name, "_match_candidate_list")) return &symbols->candidate_list;
+    if (!strcmp(name, "_match_candidate_count")) return &symbols->candidate_count;
+    if (!strcmp(name, "_match_graduate_or_win")) return &symbols->graduate_or_win;
+    if (!strcmp(name, "cpct_waitVSYNCStart_asm")) return &symbols->wait_vsync_start;
     return NULL;
 }
 
@@ -138,9 +150,20 @@ static void load_symbols(struct Machine *machine, const char *path) {
         !machine->symbols.cursor_row || !machine->symbols.cursor_piece ||
         !machine->symbols.simulation_mode || !machine->symbols.player1 ||
         !machine->symbols.player2 || !machine->symbols.boop ||
-        !machine->symbols.boop_cat) {
+        !machine->symbols.boop_cat || !machine->symbols.match_state ||
+        !machine->symbols.collect_trio_candidates ||
+        !machine->symbols.candidate_list || !machine->symbols.candidate_count ||
+        !machine->symbols.graduate_or_win || !machine->symbols.wait_vsync_start) {
         die("one or more required symbols are missing from the .noi file", NULL);
     }
+
+    /* cpct_waitVSYNCStart_asm polls real CRTC hardware — there's no VSYNC
+     * in this headless CPU-only emulation, so any routine that calls it
+     * (via sys_util_delay, used by real-time blink animations like
+     * _match_blink_cats_hud) would spin until the instruction budget runs
+     * out. Patch it to an immediate RET: harmless for pure rules logic,
+     * which never depends on frame timing. */
+    machine->image[machine->symbols.wait_vsync_start] = 0xc9; /* ret */
 }
 
 static void reset_fixture(struct Machine *machine) {
@@ -182,6 +205,46 @@ static void boop_from(struct Machine *machine, int row, int col, int cat) {
     machine->memory[machine->symbols.cursor_col] = (uint8_t)col;
     machine->memory[machine->symbols.cursor_piece] = cat ? 0 : 1;
     run_routine(machine, cat ? machine->symbols.boop_cat : machine->symbols.boop);
+}
+
+static void collect_trio_candidates(struct Machine *machine, int active_player) {
+    /* _match_state: 0 = P1 active, 1 = P2 active */
+    machine->memory[machine->symbols.match_state] = (uint8_t)active_player;
+    run_routine(machine, machine->symbols.collect_trio_candidates);
+}
+
+static int candidate_count(struct Machine *machine) {
+    return machine->memory[machine->symbols.candidate_count];
+}
+
+static int candidate_list_contains(struct Machine *machine, int window_index) {
+    int count = candidate_count(machine);
+    int i;
+    for (i = 0; i < count; ++i) {
+        if (machine->memory[machine->symbols.candidate_list + i] == window_index) return 1;
+    }
+    return 0;
+}
+
+/* Runs _match_graduate_or_win(A=player). Only safe to call when at least
+ * one on-board kitten exists for that player — the "no kitten found" branch
+ * tail-calls _match_declare_winner, which blocks on a keypress the headless
+ * harness can never supply. */
+static void graduate_or_win(struct Machine *machine, int player) {
+    uint16_t sp = STACK_ADDRESS - 2;
+    machine->memory[sp] = RETURN_ADDRESS & 0xff;
+    machine->memory[sp + 1] = RETURN_ADDRESS >> 8;
+    z80ex_set_reg(machine->cpu, regSP, sp);
+    z80ex_set_reg(machine->cpu, regAF, ((uint16_t)player) << 8);
+    z80ex_set_reg(machine->cpu, regPC, machine->symbols.graduate_or_win);
+    {
+        unsigned steps;
+        for (steps = 0; steps < MAX_STEPS; ++steps) {
+            z80ex_step(machine->cpu);
+            if (z80ex_doing_halt(machine->cpu)) return;
+        }
+        die("Z80 routine did not return before the instruction limit", NULL);
+    }
 }
 
 static void report(const char *name, int passed) {
@@ -289,6 +352,100 @@ static void test_all_eight_directions(struct Machine *machine) {
     report("a cat applies boop in all eight directions", board_equals(machine, expected));
 }
 
+/* Window-table indices (_match_threat_windows, match.s): 0 = horizontal
+ * (0,1,2), 24 = vertical (0,6,12), 48 = diagonal "\" (0,7,14). */
+enum { WINDOW_H_0_1_2 = 0, WINDOW_V_0_6_12 = 24, WINDOW_DIAG1_0_7_14 = 48 };
+
+static void test_trio_single_horizontal_candidate(struct Machine *machine) {
+    reset_fixture(machine);
+    place(machine, 0, 0, P1_KITTEN);
+    place(machine, 0, 1, P1_KITTEN);
+    place(machine, 0, 2, P1_KITTEN);
+    collect_trio_candidates(machine, 0);
+    report("a single horizontal trio yields exactly one candidate",
+           candidate_count(machine) == 1 &&
+           candidate_list_contains(machine, WINDOW_H_0_1_2));
+}
+
+static void test_trio_overlapping_candidates_both_kept(struct Machine *machine) {
+    /* (0,0)-(0,1)-(0,2) horizontal and (0,0)-(1,0)-(2,0) vertical share
+     * cell (0,0) — decision: overlapping trios must both surface as
+     * separate candidates (detected against the un-mutated board). */
+    reset_fixture(machine);
+    place(machine, 0, 0, P1_KITTEN);
+    place(machine, 0, 1, P1_KITTEN);
+    place(machine, 0, 2, P1_KITTEN);
+    place(machine, 1, 0, P1_KITTEN);
+    place(machine, 2, 0, P1_KITTEN);
+    collect_trio_candidates(machine, 0);
+    report("overlapping horizontal and vertical trios both appear as candidates",
+           candidate_count(machine) == 2 &&
+           candidate_list_contains(machine, WINDOW_H_0_1_2) &&
+           candidate_list_contains(machine, WINDOW_V_0_6_12));
+}
+
+static void test_trio_all_cats_window_excluded(struct Machine *machine) {
+    /* Three cats in a row is a WIN, resolved by _match_check_cat_lines —
+     * it must not also show up as a "choose a trio" candidate. */
+    reset_fixture(machine);
+    place(machine, 0, 0, P1_CAT);
+    place(machine, 0, 1, P1_CAT);
+    place(machine, 0, 2, P1_CAT);
+    collect_trio_candidates(machine, 0);
+    report("an all-cats window is excluded from trio candidates (win-check handles it)",
+           candidate_count(machine) == 0);
+}
+
+static void test_trio_mixed_cat_kitten_is_valid_candidate(struct Machine *machine) {
+    reset_fixture(machine);
+    place(machine, 0, 0, P1_CAT);
+    place(machine, 0, 1, P1_CAT);
+    place(machine, 0, 2, P1_KITTEN);
+    collect_trio_candidates(machine, 0);
+    report("a mixed cat/kitten trio (at least one kitten) is a valid candidate",
+           candidate_count(machine) == 1 &&
+           candidate_list_contains(machine, WINDOW_H_0_1_2));
+}
+
+static void test_trio_inactive_player_pieces_ignored(struct Machine *machine) {
+    /* _match_state = 0 means P1 is active; a P2 trio must not be offered
+     * as a candidate on P1's turn (only the active player's own lines
+     * are ever resolved — see _match_is_inactive_piece). */
+    reset_fixture(machine);
+    place(machine, 0, 0, P2_KITTEN);
+    place(machine, 0, 1, P2_KITTEN);
+    place(machine, 0, 2, P2_KITTEN);
+    collect_trio_candidates(machine, 0);
+    report("the inactive player's trio is not offered as a candidate",
+           candidate_count(machine) == 0);
+}
+
+static void test_trio_diagonal_candidate_detected(struct Machine *machine) {
+    reset_fixture(machine);
+    place(machine, 0, 0, P1_KITTEN);
+    place(machine, 1, 1, P1_KITTEN);
+    place(machine, 2, 2, P1_KITTEN);
+    collect_trio_candidates(machine, 0);
+    report("a diagonal trio is detected as a candidate",
+           candidate_count(machine) == 1 &&
+           candidate_list_contains(machine, WINDOW_DIAG1_0_7_14));
+}
+
+static void test_graduate_picks_first_kitten_in_scan_order(struct Machine *machine) {
+    /* Reserve is already 0/0 after reset_fixture. Two P1 kittens on the
+     * board at offsets 10 and 20 — board-scan order must graduate the
+     * lower offset (10) and leave the other untouched. */
+    reset_fixture(machine);
+    place(machine, 1, 4, P1_KITTEN);   /* offset 10 */
+    place(machine, 3, 2, P1_KITTEN);   /* offset 20 */
+    graduate_or_win(machine, 1);
+    report("graduation picks the first on-board kitten in scan order",
+           *cell(machine, 1, 4) == EMPTY &&
+           *cell(machine, 3, 2) == P1_KITTEN &&
+           machine->memory[machine->symbols.player1 + PLAYER_CATS] == 1 &&
+           machine->memory[machine->symbols.player1 + PLAYER_KITTENS] == 0);
+}
+
 int main(int argc, char **argv) {
     struct Machine machine;
 
@@ -312,6 +469,13 @@ int main(int argc, char **argv) {
     test_kitten_ejection_returns_reserve(&machine);
     test_cat_ejection_returns_reserve(&machine);
     test_all_eight_directions(&machine);
+    test_trio_single_horizontal_candidate(&machine);
+    test_trio_overlapping_candidates_both_kept(&machine);
+    test_trio_all_cats_window_excluded(&machine);
+    test_trio_mixed_cat_kitten_is_valid_candidate(&machine);
+    test_trio_inactive_player_pieces_ignored(&machine);
+    test_trio_diagonal_candidate_detected(&machine);
+    test_graduate_picks_first_kitten_in_scan_order(&machine);
     printf("1..%d\n", tests_run);
 
     z80ex_destroy(machine.cpu);

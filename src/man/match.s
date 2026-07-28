@@ -58,7 +58,7 @@ _match_board:: .ds 36
 ;; Turn / cursor state
 ;;
 _match_cancelled:: .db 0 ;; set to 1 when player confirms ESC → abandon match
-_match_state:      .db 0 ;; MATCH_STATE_P1 or MATCH_STATE_P2
+_match_state::     .db 0 ;; MATCH_STATE_P1 or MATCH_STATE_P2 (exported for tests/run_rules.c)
 _cursor_col::   .db 0   ;; 0 .. GRID_COLS-1  (exported for AI module)
 _cursor_row::   .db 0   ;; 0 .. GRID_ROWS-1  (exported for AI module)
 _cursor_piece:: .db 0   ;; PIECE_CAT or PIECE_KITTEN (exported for AI module)
@@ -115,8 +115,9 @@ _mfdc_color:    .db 0
 ;; _match_trio_choice_ui, _match_resolve_window, _match_window_geometry).
 ;; When a move creates more than one valid trio, the real rule requires the
 ;; player to pick one — see the doc comment on _match_check_lines.
-_match_candidate_list:  .ds MATCH_MAX_TRIO_CANDIDATES  ;; window-table indices (0-79)
-_match_candidate_count: .db 0
+_match_candidate_list::  .ds MATCH_MAX_TRIO_CANDIDATES  ;; window-table indices (0-79);
+                                                          ;; exported for tests/run_rules.c
+_match_candidate_count:: .db 0   ;; exported for tests/run_rules.c
 _match_candidate_sel:   .db 0   ;; index into _match_candidate_list, during choice UI
 _match_chosen_window:   .db 0   ;; window-table index finally resolved
 _mctc_invalid:          .db 0   ;; scratch: current window has an empty/wrong-player cell
@@ -1253,7 +1254,7 @@ _mpp_cursor_p1:
 ;;  Modified: AF, BC, DE, HL, IX (calls _match_declare_winner on a win —
 ;;            no return in that case, sets _match_cancelled)
 ;;
-_match_graduate_or_win:
+_match_graduate_or_win::  ;; exported for tests/run_rules.c
    ld (_mgow_player), a
    ld hl, #_match_board
    ld b, #36                          ;; cell counter
@@ -2324,7 +2325,7 @@ _mcl_no_marker:
 ;;          indices (0-79) of every valid candidate
 ;;  Modified: AF, BC, DE, HL, IY
 ;;
-_match_collect_trio_candidates:
+_match_collect_trio_candidates::  ;; exported for tests/run_rules.c
    xor a
    ld (_match_candidate_count), a
    ld iy, #_match_threat_windows

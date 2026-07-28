@@ -142,6 +142,14 @@ WIN_MUSIC_FRAMES     = 150   ;; ~3 seconds
 .globl _cursor_piece              ;; PIECE_CAT or PIECE_KITTEN
 .globl _match_simulation_mode     ;; nonzero while AI evaluates hypothetical moves
 .globl _match_threat_windows      ;; 80 length-3 board-offset windows (h/v/diag)
+.globl _match_state               ;; MATCH_STATE_P1/P2 (exported for tests/run_rules.c)
+
+;; Exported for tests/run_rules.c only (headless rules coverage) — not used
+;; cross-module otherwise.
+.globl _match_collect_trio_candidates
+.globl _match_candidate_list
+.globl _match_candidate_count
+.globl _match_graduate_or_win
 
 ;;------------------------------------------------------------------------------
 ;; Global routines
