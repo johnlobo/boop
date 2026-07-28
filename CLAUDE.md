@@ -198,7 +198,7 @@ Single-player opponent, always **Player 2** (blue cats). Active when `man_match_
 
 **AI profile struct** (6B at `_ai_profiles + level*6`): `delay_frames, W_defense, W_align, W_center, W_kitten, rand_mask`.
 
-**Simulation** — `_ai_score_one_candidate` saves board + both player structs (36+6+6B), calls `_ai_place_no_animate` (tail-calls `_match_boop`/`_match_boop_cat`), evaluates, restores. No animation/line-check during simulation.
+**Simulation** — `_ai_score_one_candidate` saves board + both player structs (36+6+6B), calls `_ai_place_no_animate` (tail-calls `_match_boop`/`_match_boop_cat`), resolves mixed trios in real scan order via `_ai_resolve_p2_lines`, checks cat-line wins, applies empty-reserve graduation/win, evaluates, then restores. Animation, sound/UI line effects, and winner dialogs are omitted.
 
 **Integration points:**
 - `man_ai_init` — called from `man_match_init` and after each AI move; resets phase, eval position, and sets a random fallback move.

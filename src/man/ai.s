@@ -97,6 +97,10 @@ _ai_threat_invalid:     .db 0
 _ai_reply_offset:       .db 0
 _ai_reply_wins:         .db 0
 _ai_reject_candidate:   .db 0
+_ai_line_win:           .db 0
+_ai_lines_resolved:     .db 0
+_ai_line_invalid:       .db 0
+_ai_line_has_kitten:    .db 0
 
 ;;------------------------------------------------------------------------------
 ;; Profile table: 4 profiles × AI_PROFILE_SIZE(6) bytes
@@ -497,11 +501,12 @@ _ai_score_one_candidate:
    ;; === Place piece + boop (no animation) ===
    call _ai_place_no_animate
 
-   ;; If this move empties P2's reserve, apply the real "graduate or
-   ;; win" resolution to the simulated state (see _ai_simulate_reserve_empty
-   ;; and match.s's _match_graduate_or_win) so the heuristics below see
-   ;; an accurate post-move board/reserve, not a state the real game
-   ;; would never actually leave on the board.
+   ;; Apply the same rule order as _match_place_piece:
+   ;;   boop -> mixed-line conversion -> cat win -> empty-reserve resolution.
+   ;; UI, sound and animation are intentionally omitted.
+   call _ai_resolve_p2_lines
+   call _ai_has_p2_cat_win
+   ld (_ai_line_win), a
    call _ai_simulate_reserve_empty
    ld (_ai_grad_win), a              ;; 1 = this move wins via graduation exhaustion
 
@@ -516,7 +521,7 @@ _ai_score_one_candidate:
    ;; Priority 1: immediate win — either a 3-cat line, or this move
    ;; leaving P2 with all 8 pieces already cats (graduation exhaustion)
    ;; → sentinel score, early exit.
-   call _ai_has_p2_cat_win
+   ld a, (_ai_line_win)
    or a
    jr nz, _asoc_win
    ld a, (_ai_grad_win)
@@ -586,8 +591,14 @@ _asoc_align_ok:
    add a, e
    ld (_ai_score), a
 
-   ;; --- Kitten 3-in-a-row lines created ---
-   call _ai_count_p2_three_in_row  ;; A = count
+   ;; --- Mixed lines actually resolved by the simulated turn ---
+   ;; Unlike the old pre-resolution count, this mirrors overlapping-line
+   ;; semantics: once a trio is removed, later windows see empty cells.
+   ld a, (_ai_lines_resolved)
+   cp #6
+   jr c, _asoc_lines_count_ok
+   ld a, #5                         ;; keep weighted score below win sentinel
+_asoc_lines_count_ok:
    ld e, a
    ld a, 4(ix)      ;; W_kitten
    call _ai_mul_e_a
@@ -707,6 +718,84 @@ _apna_kitten:
    dec Player_kittens(ix)
    ld (hl), #BOARD_P2_KITTEN
    jp _match_boop       ;; tail call
+
+;;-----------------------------------------------------------------
+;;
+;; _ai_resolve_p2_lines
+;;
+;;  Pure simulation equivalent of _match_check_lines for a P2 turn. Scans
+;;  windows in the same order (horizontal, vertical, \, /). A window made
+;;  entirely of P2 pieces and containing at least one kitten is removed; all
+;;  three pieces return as cats. All-cat windows remain for the win check.
+;;  Sequential mutation deliberately preserves the real overlapping-line
+;;  behaviour: a removed trio cannot participate in a later window.
+;;  Output: _ai_lines_resolved = number of mixed trios removed
+;;  Modified: AF, BC, DE, HL, IY
+;;
+_ai_resolve_p2_lines:
+   xor a
+   ld (_ai_lines_resolved), a
+   ld iy, #_ai_threat_windows       ;; same 80 windows, same scan order
+   ld b, #80
+_arp2l_window:
+   push bc
+   xor a
+   ld (_ai_line_invalid), a
+   ld (_ai_line_has_kitten), a
+   ld c, #3
+_arp2l_cell:
+   ld e, 0(iy)
+   inc iy
+   ld d, #0
+   ld hl, #_match_board
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P2_CAT
+   jr z, _arp2l_cell_done
+   cp #BOARD_P2_KITTEN
+   jr nz, _arp2l_invalid
+   ld a, #1
+   ld (_ai_line_has_kitten), a
+   jr _arp2l_cell_done
+_arp2l_invalid:
+   ld a, #1
+   ld (_ai_line_invalid), a
+_arp2l_cell_done:
+   dec c
+   jr nz, _arp2l_cell
+
+   ld a, (_ai_line_invalid)
+   or a
+   jr nz, _arp2l_next
+   ld a, (_ai_line_has_kitten)
+   or a
+   jr z, _arp2l_next                ;; all cats: preserve winning line
+
+   ;; IY points to the next entry; clear the three offsets just consumed.
+   ld e, -3(iy)
+   ld d, #0
+   ld hl, #_match_board
+   add hl, de
+   ld (hl), #BOARD_EMPTY
+   ld e, -2(iy)
+   ld hl, #_match_board
+   add hl, de
+   ld (hl), #BOARD_EMPTY
+   ld e, -1(iy)
+   ld hl, #_match_board
+   add hl, de
+   ld (hl), #BOARD_EMPTY
+
+   ld hl, #(man_match_player2 + Player_cats)
+   inc (hl)
+   inc (hl)
+   inc (hl)
+   ld hl, #_ai_lines_resolved
+   inc (hl)
+_arp2l_next:
+   pop bc
+   djnz _arp2l_window
+   ret
 
 ;;-----------------------------------------------------------------
 ;;
