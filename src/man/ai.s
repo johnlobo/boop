@@ -83,6 +83,21 @@ _ai_score:         .db 0
 ;; wins by graduation exhaustion (leaves P2 with all 8 pieces as cats).
 _ai_grad_win:      .db 0
 
+;; Tactical P1-reply analysis (levels 2-3 only). A second save area is
+;; required because _ai_board_backup contains the position before P2's
+;; candidate; these buffers preserve the position after that candidate while
+;; a critical P1 cat reply is tested.
+_ai_reply_board_backup: .ds 36
+_ai_reply_p1_backup:    .ds 6
+_ai_reply_p2_backup:    .ds 6
+_ai_threat_windows_left:.db 0
+_ai_threat_cat_count:   .db 0
+_ai_threat_empty:       .db #0xFF
+_ai_threat_invalid:     .db 0
+_ai_reply_offset:       .db 0
+_ai_reply_wins:         .db 0
+_ai_reject_candidate:   .db 0
+
 ;;------------------------------------------------------------------------------
 ;; Profile table: 4 profiles × AI_PROFILE_SIZE(6) bytes
 ;;   delay, W_defense, W_align, W_center, W_kitten, rand_mask
@@ -104,6 +119,35 @@ _ai_center_table:
    .db 1, 2, 3, 3, 2, 1   ;; row 3
    .db 0, 1, 2, 2, 1, 0   ;; row 4
    .db 0, 0, 1, 1, 0, 0   ;; row 5
+
+;; Every length-three window on the 6x6 board, expressed as board offsets.
+;; The tactical danger check scans this compact table for exactly two P1 cats
+;; plus one empty cell, then simulates only that critical reply.
+_ai_threat_windows:
+   ;; Horizontal (24)
+   .db 0,1,2, 1,2,3, 2,3,4, 3,4,5
+   .db 6,7,8, 7,8,9, 8,9,10, 9,10,11
+   .db 12,13,14, 13,14,15, 14,15,16, 15,16,17
+   .db 18,19,20, 19,20,21, 20,21,22, 21,22,23
+   .db 24,25,26, 25,26,27, 26,27,28, 27,28,29
+   .db 30,31,32, 31,32,33, 32,33,34, 33,34,35
+   ;; Vertical (24)
+   .db 0,6,12, 6,12,18, 12,18,24, 18,24,30
+   .db 1,7,13, 7,13,19, 13,19,25, 19,25,31
+   .db 2,8,14, 8,14,20, 14,20,26, 20,26,32
+   .db 3,9,15, 9,15,21, 15,21,27, 21,27,33
+   .db 4,10,16, 10,16,22, 16,22,28, 22,28,34
+   .db 5,11,17, 11,17,23, 17,23,29, 23,29,35
+   ;; Diagonal down-right (16)
+   .db 0,7,14, 1,8,15, 2,9,16, 3,10,17
+   .db 6,13,20, 7,14,21, 8,15,22, 9,16,23
+   .db 12,19,26, 13,20,27, 14,21,28, 15,22,29
+   .db 18,25,32, 19,26,33, 20,27,34, 21,28,35
+   ;; Diagonal down-left (16)
+   .db 2,7,12, 3,8,13, 4,9,14, 5,10,15
+   .db 8,13,18, 9,14,19, 10,15,20, 11,16,21
+   .db 14,19,24, 15,20,25, 16,21,26, 17,22,27
+   .db 20,25,30, 21,26,31, 22,27,32, 23,28,33
 
 
 ;;==============================================================================
@@ -423,6 +467,9 @@ _ascbp_try_cat:
 ;;  Modified: AF, BC, DE, HL, IX, IY
 ;;
 _ai_score_one_candidate:
+   xor a
+   ld (_ai_reject_candidate), a
+
    ;; === Save board and player reserves ===
    ld hl, #_match_board
    ld de, #_ai_board_backup
@@ -564,11 +611,13 @@ _asoc_align_ok:
    ld a, (man_ai_level)
    cp #2
    jr c, _asoc_restore     ;; level 0-1: skip danger check
-   call _ai_has_p1_cat_win
+   call _ai_has_p1_immediate_reply
    or a
    jr z, _asoc_restore     ;; no danger: keep heuristic score
    xor a
-   ld (_ai_score), a       ;; danger: this move loses the game, discard score
+   ld (_ai_score), a
+   inc a
+   ld (_ai_reject_candidate), a  ;; do not let the equal-score tiebreak revive it
 
 _asoc_restore:
    ;; === Restore board and player reserves ===
@@ -586,6 +635,10 @@ _asoc_restore:
    ld de, #man_match_player2
    ld bc, #sizeof_Player
    ldir
+
+   ld a, (_ai_reject_candidate)
+   or a
+   ret nz                    ;; confirmed tactical loss: candidate is forbidden
 
    ;; === Compare with current best ===
    ld a, (_ai_score)  ;; score
@@ -882,6 +935,148 @@ _ahpcw_d2next:
    jr c, _ahpcw_d2row
 
    xor a
+   ret
+
+;;-----------------------------------------------------------------
+;;
+;; _ai_has_p1_immediate_reply
+;;
+;;  CPC-friendly one-ply tactical check. It does not enumerate every legal P1
+;;  move. Instead it finds all three-cell windows containing exactly two P1
+;;  cats and one empty cell, and simulates a cat placement only in those
+;;  critical holes. Stops at the first winning reply.
+;;  Output: A = 1 if P1 has an immediate critical winning reply, 0 otherwise
+;;  Modified: AF, BC, DE, HL, IX, IY
+;;
+_ai_has_p1_immediate_reply:
+   ;; No cat in reserve means none of the critical cat replies is legal.
+   ld a, (man_match_player1 + Player_cats)
+   or a
+   ret z
+
+   ld iy, #_ai_threat_windows
+   ld a, #80
+   ld (_ai_threat_windows_left), a
+_ahp1ir_loop:
+   call _ai_get_critical_hole       ;; advances IY to the next table entry
+   cp #0xFF
+   jr z, _ahp1ir_next
+   push iy                          ;; boop uses/clobbers IY
+   call _ai_test_p1_cat_reply
+   pop iy
+   or a
+   ret nz                           ;; early exit: winning response found
+_ahp1ir_next:
+   ld hl, #_ai_threat_windows_left
+   dec (hl)
+   jr nz, _ahp1ir_loop
+   xor a
+   ret
+
+;; Inspect the three offsets at IY and advance IY by three bytes.
+;; Returns their empty offset in A only for {P1_CAT,P1_CAT,EMPTY}; otherwise FF.
+_ai_get_critical_hole:
+   xor a
+   ld (_ai_threat_cat_count), a
+   ld (_ai_threat_invalid), a
+   dec a
+   ld (_ai_threat_empty), a         ;; FF = no empty seen
+   ld b, #3
+_agch_loop:
+   ld e, 0(iy)
+   inc iy
+   ld d, #0
+   ld hl, #_match_board
+   add hl, de
+   ld a, (hl)
+   cp #BOARD_P1_CAT
+   jr z, _agch_cat
+   or a
+   jr z, _agch_empty
+   ld a, #1
+   ld (_ai_threat_invalid), a       ;; kitten/opponent piece in window
+   jr _agch_next
+_agch_cat:
+   ld hl, #_ai_threat_cat_count
+   inc (hl)
+   jr _agch_next
+_agch_empty:
+   ld a, e
+   ld (_ai_threat_empty), a
+_agch_next:
+   djnz _agch_loop
+   ld a, (_ai_threat_invalid)
+   or a
+   jr nz, _agch_not_critical
+   ld a, (_ai_threat_cat_count)
+   cp #2
+   jr nz, _agch_not_critical
+   ld a, (_ai_threat_empty)
+   ret
+_agch_not_critical:
+   ld a, #0xFF
+   ret
+
+;; Simulate a P1 cat placement at board offset A, including cat boop, and test
+;; the resulting board for a P1 cat line. Restores board and both reserves.
+_ai_test_p1_cat_reply:
+   ld (_ai_reply_offset), a
+
+   ld hl, #_match_board
+   ld de, #_ai_reply_board_backup
+   ld bc, #36
+   ldir
+   ld hl, #man_match_player1
+   ld de, #_ai_reply_p1_backup
+   ld bc, #sizeof_Player
+   ldir
+   ld hl, #man_match_player2
+   ld de, #_ai_reply_p2_backup
+   ld bc, #sizeof_Player
+   ldir
+
+   ;; Convert offset to row/column.
+   ld a, (_ai_reply_offset)
+   ld b, #0
+_atp1cr_div6:
+   cp #6
+   jr c, _atp1cr_coords
+   sub #6
+   inc b
+   jr _atp1cr_div6
+_atp1cr_coords:
+   ld (_cursor_col), a
+   ld a, b
+   ld (_cursor_row), a
+   ld a, #PIECE_CAT
+   ld (_cursor_piece), a
+
+   ld a, (man_match_player1 + Player_cats)
+   dec a
+   ld (man_match_player1 + Player_cats), a
+   ld a, (_ai_reply_offset)
+   ld e, a
+   ld d, #0
+   ld hl, #_match_board
+   add hl, de
+   ld (hl), #BOARD_P1_CAT
+   call _match_boop_cat
+   call _ai_has_p1_cat_win
+   ld (_ai_reply_wins), a
+
+   ld hl, #_ai_reply_board_backup
+   ld de, #_match_board
+   ld bc, #36
+   ldir
+   ld hl, #_ai_reply_p1_backup
+   ld de, #man_match_player1
+   ld bc, #sizeof_Player
+   ldir
+   ld hl, #_ai_reply_p2_backup
+   ld de, #man_match_player2
+   ld bc, #sizeof_Player
+   ldir
+   ld a, (_ai_reply_wins)
    ret
 
 ;;-----------------------------------------------------------------
@@ -1696,4 +1891,3 @@ _am6_loop:
    ret c        ;; A < 6: done
    sub #6
    jr _am6_loop
-
