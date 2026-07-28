@@ -46,6 +46,8 @@ sys_sound_init::
 ;;  (Re)initializes with the game subsong and enables playback.
 ;;
 sys_sound_start_music::
+   xor a
+   ld (_snd_music_active), a   ;; prevent interrupt playback while AKG state is rebuilt
    ld hl, #_START
    ld a, #SUBSONG_GAME
    call _PLY_AKG_INIT
@@ -61,6 +63,8 @@ sys_sound_start_music::
 ;;  Call when entering any menu screen (main menu, help, AI select).
 ;;
 sys_sound_start_menu_music::
+   xor a
+   ld (_snd_music_active), a   ;; prevent interrupt playback while AKG state is rebuilt
    ld hl, #_START
    ld a, #SUBSONG_MENU
    call _PLY_AKG_INIT
@@ -72,6 +76,8 @@ sys_sound_start_menu_music::
 ;; Starts the one-position victory fanfare.
 ;;
 sys_sound_start_win_music::
+   xor a
+   ld (_snd_music_active), a   ;; prevent interrupt playback while AKG state is rebuilt
    ld hl, #_START
    ld a, #SUBSONG_WIN
    call _PLY_AKG_INIT
@@ -83,6 +89,8 @@ sys_sound_start_win_music::
 ;; Starts the one-position defeat fanfare.
 ;;
 sys_sound_start_lose_music::
+   xor a
+   ld (_snd_music_active), a   ;; prevent interrupt playback while AKG state is rebuilt
    ld hl, #_START
    ld a, #SUBSONG_LOSE
    call _PLY_AKG_INIT
