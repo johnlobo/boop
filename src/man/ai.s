@@ -102,6 +102,12 @@ _ai_lines_resolved:     .db 0
 _ai_line_invalid:       .db 0
 _ai_line_has_kitten:    .db 0
 _ai_cat_win_target:     .db 0
+_ai_cursor_col_backup:  .db 0
+_ai_cursor_row_backup:  .db 0
+_ai_cursor_piece_backup:.db 0
+_ai_reply_cursor_col:   .db 0
+_ai_reply_cursor_row:   .db 0
+_ai_reply_cursor_piece: .db 0
 
 ;;------------------------------------------------------------------------------
 ;; Profile table: 4 profiles × AI_PROFILE_SIZE(6) bytes
@@ -475,6 +481,17 @@ _ai_score_one_candidate:
    xor a
    ld (_ai_reject_candidate), a
 
+   ;; Preserve live UI cursor state; candidate simulation reuses the match
+   ;; cursor variables as rule-engine inputs.
+   ld a, (_cursor_col)
+   ld (_ai_cursor_col_backup), a
+   ld a, (_cursor_row)
+   ld (_ai_cursor_row_backup), a
+   ld a, (_cursor_piece)
+   ld (_ai_cursor_piece_backup), a
+   ld a, #1
+   ld (_match_simulation_mode), a
+
    ;; === Save board and player reserves ===
    ld hl, #_match_board
    ld de, #_ai_board_backup
@@ -647,6 +664,16 @@ _asoc_restore:
    ld de, #man_match_player2
    ld bc, #sizeof_Player
    ldir
+
+   ;; Restore UI-only state and disable simulation mode on every exit path.
+   ld a, (_ai_cursor_col_backup)
+   ld (_cursor_col), a
+   ld a, (_ai_cursor_row_backup)
+   ld (_cursor_row), a
+   ld a, (_ai_cursor_piece_backup)
+   ld (_cursor_piece), a
+   xor a
+   ld (_match_simulation_mode), a
 
    ld a, (_ai_reject_candidate)
    or a
@@ -989,6 +1016,13 @@ _agch_not_critical:
 _ai_test_p1_cat_reply:
    ld (_ai_reply_offset), a
 
+   ld a, (_cursor_col)
+   ld (_ai_reply_cursor_col), a
+   ld a, (_cursor_row)
+   ld (_ai_reply_cursor_row), a
+   ld a, (_cursor_piece)
+   ld (_ai_reply_cursor_piece), a
+
    ld hl, #_match_board
    ld de, #_ai_reply_board_backup
    ld bc, #36
@@ -1043,6 +1077,12 @@ _atp1cr_coords:
    ld de, #man_match_player2
    ld bc, #sizeof_Player
    ldir
+   ld a, (_ai_reply_cursor_col)
+   ld (_cursor_col), a
+   ld a, (_ai_reply_cursor_row)
+   ld (_cursor_row), a
+   ld a, (_ai_reply_cursor_piece)
+   ld (_cursor_piece), a
    ld a, (_ai_reply_wins)
    ret
 

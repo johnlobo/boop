@@ -87,6 +87,7 @@ _mfwb_horiz:    .db 0   ;; 1 = 3 cols wide (horizontal line), 0 = 3 rows tall
 ;; blinks that player's "cats" digit via _match_blink_cats_hud.
 _cats_blink_p1: .db 0
 _cats_blink_p2: .db 0
+_match_simulation_mode:: .db 0   ;; suppress UI/SFX side effects during AI simulation
 _mbch_addr:     .dw 0   ;; scratch: digit screen address (_match_blink_cats_hud)
 _mbch_digit:    .db 0   ;; scratch: digit value, across the delay calls
 _mbch_player:   .db 0   ;; scratch: 1/2, needed again for the backdrop restore
@@ -351,6 +352,9 @@ man_match_draw_hud::
 ;;  for what goes wrong if that pointer gets clobbered.
 ;;
 _match_mark_cats_increased:
+   ld a, (_match_simulation_mode)
+   or a
+   ret nz                           ;; simulated reserve changes must not touch HUD state
    push hl
    push ix
    pop hl                            ;; HL = IX
@@ -1709,7 +1713,7 @@ _mb_dir_loop:
    jp m, _mb_next_dir                ;; nr < 0 → out of bounds
    ld d, a                           ;; D = nr
    cp #GRID_ROWS
-   jr nc, _mb_next_dir               ;; nr >= 6 → out of bounds
+   jp nc, _mb_next_dir               ;; nr >= 6 → out of bounds
 
    ;; -- compute neighbor col: nc = cursor_col + dc --
    ld a, (_cursor_col)
@@ -1796,8 +1800,12 @@ _mb_dest_out:
    pop hl                            ;; source cell ptr
    ld (hl), #BOARD_EMPTY
    push af
+   ld a, (_match_simulation_mode)
+   or a
+   jr nz, _mb_eject_sfx_done
    ld a, #SFX_EJECT
    call sys_sound_play_sfx
+_mb_eject_sfx_done:
    pop af
    cp #BOARD_P2_KITTEN
    jr z, _mb_eject_p2
@@ -1929,8 +1937,12 @@ _mbc_dest_out:
    pop hl                            ;; source cell ptr
    ld (hl), #BOARD_EMPTY
    push af
+   ld a, (_match_simulation_mode)
+   or a
+   jr nz, _mbc_eject_sfx_done
    ld a, #SFX_EJECT
    call sys_sound_play_sfx
+_mbc_eject_sfx_done:
    pop af
    ;; owner: values 1,2 = P1; values 3,4 = P2
    cp #3
@@ -3169,6 +3181,7 @@ man_match_init::
    xor a
    ld (_cats_blink_p1), a            ;; no pending cats-increased blink either
    ld (_cats_blink_p2), a
+   ld (_match_simulation_mode), a
    ;; Set P2 sprite pointers: AI level for 1-player, default (level 0) for 2-player
    ld a, (man_match_num_players)
    cp #1

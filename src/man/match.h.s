@@ -119,6 +119,7 @@ WIN_MUSIC_FRAMES     = 150   ;; ~3 seconds
 .globl _cursor_col                ;; current cursor column (0..5)
 .globl _cursor_row                ;; current cursor row    (0..5)
 .globl _cursor_piece              ;; PIECE_CAT or PIECE_KITTEN
+.globl _match_simulation_mode     ;; nonzero while AI evaluates hypothetical moves
 
 ;;------------------------------------------------------------------------------
 ;; Global routines
