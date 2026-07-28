@@ -49,3 +49,7 @@ Debug/
 .venv/
 __pycache__/
 *.pyc
+
+# Host-only Z80 rules test runner and downloaded emulator dependency
+tests/.cache/
+tests/run_rules
