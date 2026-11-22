@@ -32,12 +32,14 @@ YELLOW = (255, 255, 0)    # firmware 24
 #   opaque:      copia tal cual (se pinta sin mascara sobre el fondo azul)
 #   transparent: el azul de fondo pasa a alfa 0 (sprite con mascara)
 #   only_yellow: solo el marco amarillo, el resto alfa 0
+#   button:      opaco; borra el texto negro (x 58..110), deja el chevron
 #   icon:        quita el fondo azul y el amarillo de la opcion seleccionada
 # x0 siempre par y ancho par: 2 pixels Mode 0 por byte.
 CROPS = {
-    "logo_big":    ("title.png", 34, 20, 123, 55, "transparent"),
+    "logo_big":    ("title.png", 34, 20, 123, 55, "opaque"),
     "logo_small":  ("match.png", 56, 14, 103, 33, "transparent"),
-    "title_cats":  ("title.png", 46, 69, 117, 99, "transparent"),
+    "title_cats":  ("title.png", 44, 69, 115, 99, "opaque"),
+    "menu_button": ("title.png", 36, 109, 123, 129, "button"),
     "cell_blue":   ("match.png", 50, 75, 59, 93, "opaque"),
     "cell_teal":   ("match.png", 60, 75, 69, 93, "opaque"),
     "cursor":      ("match.png", 50, 55, 59, 73, "only_yellow"),
@@ -59,7 +61,10 @@ def crop(name, spec):
         for x in range(im.width):
             c = im.getpixel((x, y))
             assert c in FW, f"{name}: color {c} no es firmware"
-            keep = {"opaque": True, "transparent": c != BG,
+            if mode == "button" and c == (0, 0, 0) and 58 <= x0 + x <= 110 \
+                    and 112 <= y0 + y <= 121:
+                c = YELLOW
+            keep = {"button": True, "opaque": True, "transparent": c != BG,
                     "only_yellow": c == YELLOW,
                     "icon": c not in (BG, YELLOW)}[mode]
             out.putpixel((x, y), c + (255,) if keep else (0, 0, 0, 0))

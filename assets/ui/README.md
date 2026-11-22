@@ -20,9 +20,10 @@ falla si algun PNG no coincide con su maqueta.
 
 | PNG | Tamano | Bytes Mode 0 | Uso |
 |---|---|---|---|
-| `logo_big` | 90x36 | 1620 | titulo |
+| `logo_big` | 90x36 | 1620 | titulo (opaco) |
 | `logo_small` | 48x20 | 480 | cabecera de partida, IA y ayuda |
-| `title_cats` | 72x31 | 1116 | los tres gatos del titulo |
+| `title_cats` | 72x31 | 1116 | los tres gatos del titulo (opaco) |
+| `menu_button` | 88x21 | 924 | boton amarillo de la opcion elegida, sin texto |
 | `cell_blue`, `cell_teal` | 10x19 | 95 cada uno | casillas del tablero |
 | `cursor` | 10x19 | 95 | marco amarillo del selector |
 | `ai_icon_1..4` | 12x12 | 72 cada uno | iconos de nivel de IA |
@@ -30,13 +31,28 @@ falla si algun PNG no coincide con su maqueta.
 
 ## Uso del framework (GlasnostFWK)
 
-- `ui/text.s`: `fwk_text_draw_big` pinta la fuente a doble altura, con lo que
-  una sola fuente da las dos alturas de las maquetas.
-- `ui/window.s`: `fwk_window_draw` pinta marco y relleno desde un descriptor de
-  7 bytes. Sirve para paneles, botones y caja de ayuda, sin sprites.
-- `resources/zx7b.s` (o `cpct_zx7b_decrunch_s` de CPCtelera): comprimir
-  `logo_big` y `title_cats`, que solo se ven en el titulo.
+- Texto: no se usa `ui/text.s`. Su fuente es de 4x9 (918 bytes) y no es la de
+  las maquetas; `src/sys/uitext.s` con la fuente 3x5 extraida ocupa 295 bytes
+  de datos y pinta las dos alturas con el mismo codigo.
+- `ui/window.s` (`fwk_window_draw`): candidato para paneles P1/P2 y caja de
+  ayuda en las pantallas que faltan.
+- `resources/zx7b.s` (o `cpct_zx7b_decrunch_s` de CPCtelera): no hace falta
+  todavia. El binario ocupa 33 KB (`0x0100..0x81FF`) y la pila esta bajo
+  `0xC000`.
 
-Boop no enlaza GlasnostFWK hoy: hay que copiar esos modulos a `src/` o
-incluirlos en el build, respetando su contrato de registros
-(`docs/reference/architecture-and-api.md` de GlasnostFWK).
+Boop no enlaza GlasnostFWK: para usar un modulo hay que copiarlo a `src/`
+respetando su contrato de registros (`docs/reference/architecture-and-api.md`
+de GlasnostFWK).
+
+## Estado
+
+- Paleta aplicada: `PALETTE0=0 13 2 3 25 15 24 23 16 22 10 14 11 20 1 26`.
+- Fuente 3x5: `build_font.py` la extrae de todos los textos de las maquetas
+  (28 glyphs, cada letra igual en todas sus apariciones) y anade 17 a mano
+  (digitos que faltan, Q, Z, signos y las dos estrellas). 295 bytes, frente a
+  846 de la fuente anterior.
+- Pantalla de titulo: hecha, identica pixel a pixel a `mockups/title.png`
+  (`tests/ui_smoke.py`). El gatito que paseaba por el menu ya no esta: la
+  maqueta no lo tiene. Su PNG sigue en `assets/sprites/`.
+- Pendiente: seleccion de IA, ayuda y partida. Hasta rediseñar la partida, sus
+  casillas oliva salen naranjas y las cestas cambian de color.

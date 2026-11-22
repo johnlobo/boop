@@ -40,9 +40,6 @@
 .globl _s_big_numbers_07
 .globl _s_big_numbers_08
 .globl _s_big_numbers_09
-.globl _s_gatito_walking_0
-.globl _s_gatito_walking_1
-.globl _s_gatito_walking_2
 .globl _s_catty_0
 .globl _s_catty_1
 .globl _s_catty_2
@@ -96,8 +93,6 @@
 BUFFER_SIZE = 10
 ZERO_KEYS_ACTIVATED = #0xFF
 
-S_GATITO_W      = 5    ;; walking cat frame: 10px = 5 bytes
-S_GATITO_H      = 15
 
 S_CATTY_W = 5
 S_CATTY_H = 17
@@ -111,6 +106,29 @@ BG_GRID_H = 148
 
 BG_HEADER_W = 28
 BG_HEADER_H = 16
+
+;; Nuevo interfaz: sprites opacos (src/assets/ui) y pens
+.globl _s_logo_big
+.globl _s_title_cats
+.globl _s_menu_button
+S_LOGO_BIG_W = 45
+S_LOGO_BIG_H = 36
+S_TITLE_CATS_W = 36
+S_TITLE_CATS_H = 31
+S_MENU_BUTTON_W = 44
+S_MENU_BUTTON_H = 21
+
+PEN_BLACK        = 0
+PEN_BRIGHT_BLUE  = 2
+PEN_YELLOW       = 6
+PEN_PASTEL_CYAN  = 7
+PEN_PASTEL_BLUE  = 11
+PEN_SKY_BLUE     = 12
+PEN_BRIGHT_CYAN  = 13
+PEN_BLUE         = 14
+PEN_WHITE        = 15
+PATTERN_BLUE        = 0x3F   ;; pen 14 en los dos pixels
+PATTERN_BRIGHT_BLUE = 0x0C   ;; pen 2 en los dos pixels
 
 ;; Font constants
 FONT_WIDTH = 2
