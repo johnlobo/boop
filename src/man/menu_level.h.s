@@ -17,18 +17,10 @@
 ;;------------------------------------------------------------------------------
 ;; menu_level: AI difficulty level selection screen.
 ;;
-;; Shows 4 difficulty options with coloured catty sprites. On confirmation
+;; Shows 4 difficulty options (icon + name) as in assets/ui/mockups/ai_select.png. On confirmation
 ;; writes man_ai_level (defined in ai.h.s) with the chosen index (0-3).
 ;;------------------------------------------------------------------------------
 
-;; Y positions for each option row (20 px spacing)
-MENU_LEVEL_OPT_Y0  = 55
-MENU_LEVEL_OPT_Y1  = 75
-MENU_LEVEL_OPT_Y2  = 95
-MENU_LEVEL_OPT_Y3  = 115
-MENU_LEVEL_TITLE_Y = 20
-MENU_LEVEL_HINT1_Y = 160
-MENU_LEVEL_HINT2_Y = 172
 
 ;;------------------------------------------------------------------------------
 ;; Public data

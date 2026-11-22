@@ -24,11 +24,15 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 API = "http://127.0.0.1:6128"
 VK_UP, VK_DOWN = 153, 155        # CORE_rVK de los cursores (matriz fila 0)
+VK_ESC = 151                     # matriz fila 8, bit 2
 
 # (nombre, teclas desde la pantalla anterior, maqueta)
 CASES = [
     ("title", [" "], "title.png"),
     ("title_wrap", [VK_DOWN, VK_DOWN, VK_DOWN], "title.png"),
+    ("ai_select", ["\n"], "ai_select.png"),
+    ("ai_select_wrap", [VK_DOWN, VK_DOWN, VK_DOWN, VK_DOWN], "ai_select.png"),
+    ("ai_back", [VK_ESC], "title.png"),
 ]
 
 

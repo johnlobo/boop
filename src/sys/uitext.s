@@ -33,7 +33,7 @@
 ;; Byte de video por par de pixels: indice = (izquierdo << 1) | derecho,
 ;; 1 = tinta, 0 = fondo.
 _ut_combo:  .db 0, 0, 0, 0
-_ut_double: .db 0
+_ut_double: .db 0                   ;; flags de sys_uitext_draw
 _ut_byte0:  .db 0
 
 .area _CODE
@@ -76,7 +76,9 @@ _ut_pens: .dw 0
 ;;   Pinta una cadena terminada en 0 con los colores de
 ;;   sys_uitext_set_colors. Caracteres validos: ' '..'Z'.
 ;;   Entrada: HL = cadena, DE = memoria de video (byte de la celda),
-;;            A  = UITEXT_SINGLE | UITEXT_DOUBLE
+;;            A  = UITEXT_SINGLE | UITEXT_DOUBLE, mas UITEXT_SHIFT para
+;;                 empezar 1 pixel antes (celda en x impar: DE apunta al
+;;                 byte siguiente)
 ;;   Salida:  -
 ;;   Destruye: AF, BC, DE, HL
 ;;
@@ -100,7 +102,12 @@ _ut_char:
    add hl, bc
    ld b, #5
 _ut_row:
+   ld a, (_ut_double)
+   and #UITEXT_SHIFT
    ld a, (hl)
+   jr z, _ut_noshift
+   add a, a                          ;; columnas 1..3 pasan a 0..2
+_ut_noshift:
    inc hl
    push hl
    push bc
@@ -121,7 +128,7 @@ _ut_row:
    ld b, a
    call _ut_put
    ld a, (_ut_double)
-   or a
+   and #UITEXT_DOUBLE
    call nz, _ut_put
    pop bc
    pop hl

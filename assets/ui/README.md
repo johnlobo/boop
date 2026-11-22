@@ -26,7 +26,7 @@ falla si algun PNG no coincide con su maqueta.
 | `menu_button` | 88x21 | 924 | boton amarillo de la opcion elegida, sin texto |
 | `cell_blue`, `cell_teal` | 10x19 | 95 cada uno | casillas del tablero |
 | `cursor` | 10x19 | 95 | marco amarillo del selector |
-| `ai_icon_1..4` | 12x12 | 72 cada uno | iconos de nivel de IA |
+| `ai_icon_1..4` | 12x13 | 156 cada uno con mascara | iconos de nivel de IA (`src/assets/ui/ai_icons.s`) |
 | `panel_p1`, `panel_p2` | 34x75 | 1275 cada uno | solo referencia: se pintan con cajas |
 
 ## Uso del framework (GlasnostFWK)
@@ -54,5 +54,9 @@ de GlasnostFWK).
 - Pantalla de titulo: hecha, identica pixel a pixel a `mockups/title.png`
   (`tests/ui_smoke.py`). El gatito que paseaba por el menu ya no esta: la
   maqueta no lo tiene. Su PNG sigue en `assets/sprites/`.
-- Pendiente: seleccion de IA, ayuda y partida. Hasta rediseñar la partida, sus
+- Seleccion de IA: hecha, identica a `mockups/ai_select.png`. Botones con
+  cajas solidas (no sprites); iconos con mascara generada desde el alfa
+  (`src/assets/ui/ai_icons.s`), porque IMG2SP enmascara el pen 0 y borraba
+  el contorno negro.
+- Pendiente: ayuda y partida. Hasta rediseñar la partida, sus
   casillas oliva salen naranjas y las cestas cambian de color.

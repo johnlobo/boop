@@ -64,6 +64,7 @@
 .globl cpct_disableFirmware_asm
 .globl cpct_getScreenPtr_asm
 .globl cpct_drawSprite_asm
+.globl cpct_drawSpriteMasked_asm
 .globl cpct_setVideoMode_asm
 .globl cpct_setPalette_asm
 .globl cpct_scanKeyboard_if_asm
@@ -111,12 +112,21 @@ BG_HEADER_H = 16
 .globl _s_logo_big
 .globl _s_title_cats
 .globl _s_menu_button
+.globl _s_logo_small
+.globl _s_ai_icon_1
+.globl _s_ai_icon_2
+.globl _s_ai_icon_3
+.globl _s_ai_icon_4
 S_LOGO_BIG_W = 45
 S_LOGO_BIG_H = 36
 S_TITLE_CATS_W = 36
 S_TITLE_CATS_H = 31
 S_MENU_BUTTON_W = 44
 S_MENU_BUTTON_H = 21
+S_LOGO_SMALL_W = 24
+S_LOGO_SMALL_H = 20
+S_AI_ICON_W = 6             ;; mascara entrelazada: 12 bytes por linea
+S_AI_ICON_H = 13
 
 PEN_BLACK        = 0
 PEN_BRIGHT_BLUE  = 2
@@ -129,6 +139,11 @@ PEN_BLUE         = 14
 PEN_WHITE        = 15
 PATTERN_BLUE        = 0x3F   ;; pen 14 en los dos pixels
 PATTERN_BRIGHT_BLUE = 0x0C   ;; pen 2 en los dos pixels
+PAT_YELLOW      = 0x3C       ;; pen 6 / pen 6
+PAT_BLUE_YELLOW = 0x3E       ;; izquierdo pen 14, derecho pen 6
+PAT_BLUE_BBLUE  = 0x2E       ;; izquierdo pen 14, derecho pen 2
+PAT_BBLUE_BLUE  = 0x1D       ;; izquierdo pen 2, derecho pen 14
+PAT_BLACK_BLUE  = 0x15       ;; izquierdo pen 0, derecho pen 14
 
 ;; Font constants
 FONT_WIDTH = 2

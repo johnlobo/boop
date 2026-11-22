@@ -5,6 +5,11 @@ Las maquetas de assets/ui/mockups/ son la referencia: cada pixel es un pixel
 Mode 0 y todos los colores son colores firmware del CPC. Este script es
 determinista: volver a ejecutarlo regenera los mismos PNG en assets/ui/.
 
+Ademas genera src/assets/ui/ai_icons.s: los iconos de IA como sprites con
+mascara entrelazada (byte de mascara, byte de dato) para
+cpct_drawSpriteMasked_asm. La mascara sale del alfa del PNG; IMG2SP la
+sacaria del pen 0 y borraria el contorno negro.
+
 Uso:  python3 assets/ui/extract_ui_assets.py [--check]
 """
 import sys
@@ -13,7 +18,10 @@ from pathlib import Path
 from PIL import Image
 
 HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[1]
 MOCK = HERE / "mockups"
+MASKED_OUT = ROOT / "src" / "assets" / "ui" / "ai_icons.s"
+MASKED = ["ai_icon_1", "ai_icon_2", "ai_icon_3", "ai_icon_4"]
 
 FW = {
     (0, 0, 0): 0, (0, 0, 128): 1, (0, 0, 255): 2, (128, 0, 0): 3,
@@ -37,7 +45,7 @@ YELLOW = (255, 255, 0)    # firmware 24
 # x0 siempre par y ancho par: 2 pixels Mode 0 por byte.
 CROPS = {
     "logo_big":    ("title.png", 34, 20, 123, 55, "opaque"),
-    "logo_small":  ("match.png", 56, 14, 103, 33, "transparent"),
+    "logo_small":  ("match.png", 56, 14, 103, 33, "opaque"),
     "title_cats":  ("title.png", 44, 69, 115, 99, "opaque"),
     "menu_button": ("title.png", 36, 109, 123, 129, "button"),
     "cell_blue":   ("match.png", 50, 75, 59, 93, "opaque"),
@@ -45,10 +53,10 @@ CROPS = {
     "cursor":      ("match.png", 50, 55, 59, 73, "only_yellow"),
     "panel_p1":    ("match.png", 8, 71, 41, 145, "opaque"),
     "panel_p2":    ("match.png", 118, 71, 151, 145, "opaque"),
-    "ai_icon_1":   ("ai_select.png", 28, 60, 39, 71, "icon"),
-    "ai_icon_2":   ("ai_select.png", 28, 85, 39, 96, "transparent"),
-    "ai_icon_3":   ("ai_select.png", 28, 110, 39, 121, "transparent"),
-    "ai_icon_4":   ("ai_select.png", 28, 135, 39, 146, "transparent"),
+    "ai_icon_1":   ("ai_select.png", 32, 62, 43, 74, "icon"),
+    "ai_icon_2":   ("ai_select.png", 32, 87, 43, 99, "icon"),
+    "ai_icon_3":   ("ai_select.png", 32, 112, 43, 124, "icon"),
+    "ai_icon_4":   ("ai_select.png", 32, 137, 43, 149, "icon"),
 }
 
 
@@ -71,6 +79,39 @@ def crop(name, spec):
     return out
 
 
+def palette():
+    """PALETTE0 de cfg/image_conversion.mk: pen -> color firmware."""
+    for line in (ROOT / "cfg" / "image_conversion.mk").read_text().splitlines():
+        if line.startswith("PALETTE0="):
+            return [int(v) for v in line.split("=", 1)[1].split()]
+    sys.exit("PALETTE0 no encontrada")
+
+
+def mode0_byte(left, right):
+    v = 0
+    for bit, (pl, pr) in enumerate([(7, 6), (3, 2), (5, 4), (1, 0)]):
+        v |= ((left >> bit) & 1) << pl | ((right >> bit) & 1) << pr
+    return v
+
+
+def masked_source(images):
+    pen = {fw: i for i, fw in enumerate(palette())}
+    out = [";; GENERADO por assets/ui/extract_ui_assets.py. No editar a mano.",
+           ";; Sprites con mascara entrelazada (mascara, dato) para cpct_drawSpriteMasked_asm.",
+           ".area _CODE"]
+    for name, img in images:
+        out.append(f"_s_{name}::")
+        for y in range(img.height):
+            row = []
+            for x in range(0, img.width, 2):
+                px = [img.getpixel((x + k, y)) for k in (0, 1)]
+                mask = (0xAA if px[0][3] == 0 else 0) | (0x55 if px[1][3] == 0 else 0)
+                pens = [pen[FW[p[:3]]] if p[3] else 0 for p in px]
+                row += [mask, mode0_byte(*pens)]
+            out.append("    .db " + ", ".join(f"0x{v:02X}" for v in row))
+    return "\n".join(out) + "\n"
+
+
 def main():
     check = "--check" in sys.argv
     stale = []
@@ -83,6 +124,12 @@ def main():
         else:
             img.save(path)
             print(f"{name:12s} {img.width:3d}x{img.height:<3d} {img.width // 2 * img.height:5d} bytes")
+    src = masked_source([(n, crop(n, CROPS[n])) for n in MASKED])
+    if check:
+        if not MASKED_OUT.exists() or MASKED_OUT.read_text() != src:
+            stale.append(str(MASKED_OUT.relative_to(ROOT)))
+    else:
+        MASKED_OUT.write_text(src)
     if stale:
         sys.exit("desactualizados: " + ", ".join(stale))
 
