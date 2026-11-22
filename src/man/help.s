@@ -18,129 +18,145 @@
 .include "cpctelera.h.s"
 .include "../common.h.s"
 .include "sys/render.h.s"
-.include "sys/text.h.s"
+.include "sys/uitext.h.s"
 .include "sys/input.h.s"
 .include "sys/util.h.s"
 
 .module man_help
 
 ;;
-;; Color constants (match menu conventions)
-;;
-HELP_COLOR_TITLE   = 1   ;; Bright Yellow  – section headers
-HELP_COLOR_BODY    = 0   ;; Bright White   – body text
+;; Pantalla de ayuda: assets/ui/mockups/help.png.
+;; Dos cajas negras con x 15..144 (borde izquierdo en pixel impar) y textos
+;; en celdas x 21 (byte 11 con UITEXT_SHIFT), x 68 (byte 34) y x 34 (byte 17).
+HELP_BOX_TOP1 = 44
+HELP_BOX_H1   = 63
+HELP_BOX_TOP2 = 112
+HELP_BOX_H2   = 50
+HELP_D        = UITEXT_DOUBLE
+HELP_DS       = UITEXT_DOUBLE|UITEXT_SHIFT
+HELP_SS       = UITEXT_SINGLE|UITEXT_SHIFT
+HELP_S        = UITEXT_SINGLE
 
-;;
-;; Start of _DATA area
-;;
 .area _DATA
 
 man_help_done:: .db 0   ;; set to 1 when player presses Enter to exit
 
-;; Section headers
-_help_str_title:    .asciz "BOOP"
 _help_str_goal_hdr: .asciz "GOAL"
+_help_str_goal1:    .asciz "PLACE CATS AND KITTENS"
+_help_str_goal2:    .asciz "ON A 6X6 BOARD."
+_help_str_goal3:    .asciz "FILL A ROW, COLUMN OR"
+_help_str_goal4:    .asciz "DIAGONAL TO WIN."
 _help_str_ctrl_hdr: .asciz "CONTROLS"
+_help_str_arrows:   .asciz "ARROWS"
+_help_str_move:     .asciz "MOVE CURSOR"
+_help_str_space:    .asciz "SPACE"
+_help_str_toggle:   .asciz "TOGGLE PIECE"
+_help_str_enter:    .asciz "ENTER"
+_help_str_place:    .asciz "PLACE PIECE"
 _help_str_back:     .asciz "PRESS ENTER TO CONTINUE"
 
-;; Goal lines
-_help_str_goal1: .asciz "PLACE CATS AND KITTENS"
-_help_str_goal2: .asciz "ON A 6X6 BOARD."
-_help_str_goal3: .asciz "FILL A ROW, COLUMN OR"
-_help_str_goal4: .asciz "DIAGONAL TO WIN."
+;; x, y, flags, tinta, fondo, cadena
+_help_texts:
+   .db 11,  50, HELP_DS, PEN_YELLOW,        PEN_BLACK
+   .dw _help_str_goal_hdr
+   .db 11,  64, HELP_SS, PEN_WHITE,         PEN_BLACK
+   .dw _help_str_goal1
+   .db 11,  75, HELP_SS, PEN_WHITE,         PEN_BLACK
+   .dw _help_str_goal2
+   .db 11,  86, HELP_SS, PEN_WHITE,         PEN_BLACK
+   .dw _help_str_goal3
+   .db 11,  97, HELP_SS, PEN_WHITE,         PEN_BLACK
+   .dw _help_str_goal4
+   .db 11, 118, HELP_DS, PEN_YELLOW,        PEN_BLACK
+   .dw _help_str_ctrl_hdr
+   .db 11, 131, HELP_SS, PEN_PASTEL_CYAN,   PEN_BLACK
+   .dw _help_str_arrows
+   .db 34, 131, HELP_S,  PEN_WHITE,         PEN_BLACK
+   .dw _help_str_move
+   .db 11, 141, HELP_SS, PEN_PASTEL_CYAN,   PEN_BLACK
+   .dw _help_str_space
+   .db 34, 141, HELP_S,  PEN_WHITE,         PEN_BLACK
+   .dw _help_str_toggle
+   .db 11, 151, HELP_SS, PEN_PASTEL_CYAN,   PEN_BLACK
+   .dw _help_str_enter
+   .db 34, 151, HELP_S,  PEN_WHITE,         PEN_BLACK
+   .dw _help_str_place
+   .db 17, 176, HELP_D,  PEN_PASTEL_YELLOW, PEN_BLUE
+   .dw _help_str_back
+   .db UITEXT_END
 
-;; Control lines  (label left-aligned, action right of gap)
-_help_str_ctrl1: .asciz "ARROWS   MOVE CURSOR"
-_help_str_ctrl2: .asciz "SPACE    TOGGLE PIECE"
-_help_str_ctrl3: .asciz "ENTER    PLACE PIECE"
-
-;;
-;; Start of _CODE area
-;;
 .area _CODE
 
 ;;-----------------------------------------------------------------
+;; _help_box
+;;   Caja negra x 15..144 desde la linea B, C lineas de alto.
+;;   Modified: AF, BC, DE, HL
 ;;
+_help_box:
+   push bc
+   ld c, #7
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm        ;; HL = byte 7 (x 14, 15)
+   pop bc
+   ld b, c                           ;; B = height
+   push hl
+   push bc
+   ex de, hl
+   ld a, #PAT_BLUE_BLACK
+   ld c, #1
+   call cpct_drawSolidBox_asm
+   pop bc
+   pop hl
+   inc hl                            ;; bytes 8..71: two boxes of 32 (max 63)
+   push hl
+   push bc
+   ex de, hl
+   xor a
+   ld c, #32
+   call cpct_drawSolidBox_asm
+   pop bc
+   pop hl
+   ld de, #32
+   add hl, de
+   push hl
+   push bc
+   ex de, hl
+   xor a
+   ld c, #32
+   call cpct_drawSolidBox_asm
+   pop bc
+   pop hl
+   ld de, #32
+   add hl, de                        ;; byte 72 (x 144, 145)
+   ex de, hl
+   ld a, #PAT_BLACK_BLUE
+   ld c, #1
+   jp cpct_drawSolidBox_asm
+
+;;-----------------------------------------------------------------
 ;; man_help_draw
-;;
 ;;  Draws the static help screen content.
-;;  Input:
-;;  Output:
 ;;  Modified: AF, BC, DE, HL
 ;;
 man_help_draw:
+   ld a, #PATTERN_BLUE
+   call sys_render_fill_screen
 
-   ;; ---- Title ------------------------------------------------
-   ;; "BOOP"  centered: 4 chars * 2 bytes = 8 bytes  x=(80-8)/2=36  y=15
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 36, 15
-   ld hl, #_help_str_title
-   ld c, #HELP_COLOR_TITLE
-   call sys_text_draw_string
+   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 28, 19
+   ld hl, #_s_logo_small
+   ld c, #S_LOGO_SMALL_W
+   ld b, #S_LOGO_SMALL_H
+   call cpct_drawSprite_asm
 
-   ;; ---- Goal section header ----------------------------------
-   ;; "GOAL"  4 chars * 2 = 8 bytes  x=36  y=40
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 36, 40
-   ld hl, #_help_str_goal_hdr
-   ld c, #HELP_COLOR_TITLE
-   call sys_text_draw_string
+   ld b, #HELP_BOX_TOP1
+   ld c, #HELP_BOX_H1
+   call _help_box
+   ld b, #HELP_BOX_TOP2
+   ld c, #HELP_BOX_H2
+   call _help_box
 
-   ;; "PLACE CATS AND KITTENS"  22 chars * 2 = 44 bytes  x=(80-44)/2=18  y=55
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 18, 55
-   ld hl, #_help_str_goal1
-   ld c, #HELP_COLOR_BODY
-   call sys_text_draw_string
-
-   ;; "ON A 6X6 BOARD."  16 chars * 2 = 32 bytes  x=(80-32)/2=24  y=67
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 24, 67
-   ld hl, #_help_str_goal2
-   ld c, #HELP_COLOR_BODY
-   call sys_text_draw_string
-
-   ;; "FILL A ROW, COLUMN OR"  21 chars * 2 = 42 bytes  x=(80-42)/2=19  y=79
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 19, 79
-   ld hl, #_help_str_goal3
-   ld c, #HELP_COLOR_BODY
-   call sys_text_draw_string
-
-   ;; "DIAGONAL TO WIN."  16 chars * 2 = 32 bytes  x=24  y=91
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 24, 91
-   ld hl, #_help_str_goal4
-   ld c, #HELP_COLOR_BODY
-   call sys_text_draw_string
-
-   ;; ---- Controls section header ------------------------------
-   ;; "CONTROLS"  8 chars * 2 = 16 bytes  x=(80-16)/2=32  y=115
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 32, 115
-   ld hl, #_help_str_ctrl_hdr
-   ld c, #HELP_COLOR_TITLE
-   call sys_text_draw_string
-
-   ;; "ARROWS   MOVE CURSOR"  20 chars * 2 = 40 bytes  x=(80-40)/2=20  y=130
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 20, 130
-   ld hl, #_help_str_ctrl1
-   ld c, #HELP_COLOR_BODY
-   call sys_text_draw_string
-
-   ;; "SPACE    TOGGLE PIECE"  21 chars * 2 = 42 bytes  x=19  y=142
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 19, 142
-   ld hl, #_help_str_ctrl2
-   ld c, #HELP_COLOR_BODY
-   call sys_text_draw_string
-
-   ;; "ENTER    PLACE PIECE"  20 chars * 2 = 40 bytes  x=20  y=154
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 20, 154
-   ld hl, #_help_str_ctrl3
-   ld c, #HELP_COLOR_BODY
-   call sys_text_draw_string
-
-   ;; ---- Footer prompt ----------------------------------------
-   ;; "PRESS ENTER TO CONTINUE"  23 chars * 2 = 46 bytes  x=(80-46)/2=17  y=180
-   cpctm_screenPtr_asm DE, CPCT_VMEM_START_ASM, 17, 180
-   ld hl, #_help_str_back
-   ld c, #HELP_COLOR_TITLE
-   call sys_text_draw_string
-
-   ret
+   ld hl, #_help_texts
+   jp sys_uitext_draw_list
 
 ;;-----------------------------------------------------------------
 ;;
@@ -156,7 +172,6 @@ man_help_init::
    ld (man_help_done), a
 
    call sys_util_fadeOut
-   call sys_render_clear_buffer
    call man_help_draw
    call sys_util_fadeIn
 

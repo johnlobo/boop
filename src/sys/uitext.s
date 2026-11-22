@@ -161,3 +161,49 @@ _ut_put:
    adc a, #0xC0
    ld d, a
    ret
+
+;;-----------------------------------------------------------------
+;; sys_uitext_draw_list
+;;   Pinta una lista de textos. Cada entrada: x (bytes), y, flags de
+;;   sys_uitext_draw, pen de tinta, pen de fondo, puntero a cadena (.dw).
+;;   La lista acaba con x = UITEXT_END.
+;;   Entrada: HL = lista
+;;   Salida:  -
+;;   Destruye: AF, BC, DE, HL
+;;
+sys_uitext_draw_list::
+   ld a, (hl)
+   cp #UITEXT_END
+   ret z
+   ld c, a                           ;; x
+   inc hl
+   ld b, (hl)                        ;; y
+   inc hl
+   ld a, (hl)
+   ld (_utl_flags), a
+   inc hl
+   ld e, (hl)                        ;; tinta
+   inc hl
+   ld d, (hl)                        ;; fondo
+   inc hl
+   ld a, (hl)
+   ld (_utl_str), a
+   inc hl
+   ld a, (hl)
+   ld (_utl_str + 1), a
+   inc hl
+   push hl                           ;; siguiente entrada
+   push bc
+   ex de, hl                         ;; L = tinta, H = fondo
+   call sys_uitext_set_colors
+   pop bc
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm
+   ex de, hl
+   ld hl, (_utl_str)
+   ld a, (_utl_flags)
+   call sys_uitext_draw
+   pop hl
+   jr sys_uitext_draw_list
+_utl_flags: .db 0
+_utl_str:   .dw 0

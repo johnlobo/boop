@@ -129,6 +129,7 @@ S_AI_ICON_W = 6             ;; mascara entrelazada: 12 bytes por linea
 S_AI_ICON_H = 13
 
 PEN_BLACK        = 0
+PEN_PASTEL_YELLOW = 4
 PEN_BRIGHT_BLUE  = 2
 PEN_YELLOW       = 6
 PEN_PASTEL_CYAN  = 7
@@ -144,6 +145,7 @@ PAT_BLUE_YELLOW = 0x3E       ;; izquierdo pen 14, derecho pen 6
 PAT_BLUE_BBLUE  = 0x2E       ;; izquierdo pen 14, derecho pen 2
 PAT_BBLUE_BLUE  = 0x1D       ;; izquierdo pen 2, derecho pen 14
 PAT_BLACK_BLUE  = 0x15       ;; izquierdo pen 0, derecho pen 14
+PAT_BLUE_BLACK  = 0x2A       ;; izquierdo pen 14, derecho pen 0
 
 ;; Font constants
 FONT_WIDTH = 2

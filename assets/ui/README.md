@@ -58,5 +58,7 @@ de GlasnostFWK).
   cajas solidas (no sprites); iconos con mascara generada desde el alfa
   (`src/assets/ui/ai_icons.s`), porque IMG2SP enmascara el pen 0 y borraba
   el contorno negro.
-- Pendiente: ayuda y partida. Hasta rediseñar la partida, sus
+- Ayuda: hecha, identica a `mockups/help.png`. Cajas negras con cajas solidas
+  y textos desde una tabla (`sys_uitext_draw_list`).
+- Pendiente: partida. Hasta rediseñar la partida, sus
   casillas oliva salen naranjas y las cestas cambian de color.

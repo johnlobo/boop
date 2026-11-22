@@ -19,9 +19,11 @@
 ;;===============================================================================
 .globl sys_uitext_set_colors
 .globl sys_uitext_draw
+.globl sys_uitext_draw_list
 .globl _font3x5
 
 UITEXT_SINGLE = 0      ;; A para sys_uitext_draw: 5 lineas
 UITEXT_DOUBLE = 1      ;; A para sys_uitext_draw: 10 lineas (doble altura)
 UITEXT_SHIFT  = 2      ;; A para sys_uitext_draw: 1 pixel a la izquierda
-UITEXT_CHAR_W = 2      ;; bytes por caracter
+UITEXT_CHAR_W = 2
+UITEXT_END    = 0xFF   ;; fin de lista de sys_uitext_draw_list      ;; bytes por caracter

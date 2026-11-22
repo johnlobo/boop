@@ -33,6 +33,8 @@ CASES = [
     ("ai_select", ["\n"], "ai_select.png"),
     ("ai_select_wrap", [VK_DOWN, VK_DOWN, VK_DOWN, VK_DOWN], "ai_select.png"),
     ("ai_back", [VK_ESC], "title.png"),
+    ("help", [VK_UP, "\n"], "help.png"),
+    ("help_back", ["\n"], "title.png"),
 ]
 
 
