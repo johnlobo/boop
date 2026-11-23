@@ -30,29 +30,6 @@
 .globl _s_small_numbers_07
 .globl _s_small_numbers_08
 .globl _s_small_numbers_09
-.globl _s_big_numbers_00
-.globl _s_big_numbers_01
-.globl _s_big_numbers_02
-.globl _s_big_numbers_03
-.globl _s_big_numbers_04
-.globl _s_big_numbers_05
-.globl _s_big_numbers_06
-.globl _s_big_numbers_07
-.globl _s_big_numbers_08
-.globl _s_big_numbers_09
-.globl _s_catty_0
-.globl _s_catty_1
-.globl _s_catty_2
-.globl _s_catty_3
-.globl _s_catty_4
-.globl _s_cat_0
-.globl _s_cat_1
-.globl _s_cat_2
-.globl _s_cat_3
-.globl _s_cat_4
-.globl _s_basket 
-.globl _bg_header
-.globl _bg_grid
 
 .globl transparency_table
 
@@ -95,18 +72,8 @@ BUFFER_SIZE = 10
 ZERO_KEYS_ACTIVATED = #0xFF
 
 
-S_CATTY_W = 5
-S_CATTY_H = 17
-S_CAT_W = 5
-S_CAT_H = 17
-S_BASKET_W = 18
-S_BASKET_H = 74
 
-BG_GRID_W = 44
-BG_GRID_H = 148
 
-BG_HEADER_W = 28
-BG_HEADER_H = 16
 
 ;; Nuevo interfaz: sprites opacos (src/assets/ui) y pens
 .globl _s_logo_big
@@ -117,6 +84,33 @@ BG_HEADER_H = 16
 .globl _s_ai_icon_2
 .globl _s_ai_icon_3
 .globl _s_ai_icon_4
+.globl _s_cell_blue
+.globl _s_cell_teal
+.globl _s_cat_0
+.globl _s_kitten_0
+.globl _s_hud_cat_0
+.globl _s_hud_kitten_0
+.globl _s_cat_1
+.globl _s_kitten_1
+.globl _s_hud_cat_1
+.globl _s_hud_kitten_1
+.globl _s_cat_2
+.globl _s_kitten_2
+.globl _s_hud_cat_2
+.globl _s_hud_kitten_2
+.globl _s_cat_3
+.globl _s_kitten_3
+.globl _s_hud_cat_3
+.globl _s_hud_kitten_3
+.globl _s_cat_4
+.globl _s_kitten_4
+.globl _s_hud_cat_4
+.globl _s_hud_kitten_4
+S_CELL_W = 5
+S_CELL_H = 19
+S_PIECE_W = 5               ;; mascara entrelazada
+S_PIECE_H = 12
+S_HUD_PIECE_W = 6           ;; mascara entrelazada
 S_LOGO_BIG_W = 45
 S_LOGO_BIG_H = 36
 S_TITLE_CATS_W = 36
@@ -130,6 +124,7 @@ S_AI_ICON_H = 13
 
 PEN_BLACK        = 0
 PEN_PASTEL_YELLOW = 4
+PEN_ORANGE       = 5
 PEN_BRIGHT_BLUE  = 2
 PEN_YELLOW       = 6
 PEN_PASTEL_CYAN  = 7
@@ -159,8 +154,6 @@ S_SMALL_NUMBERS_WIDTH = 2
 S_SMALL_NUMBERS_HEIGHT = 5
 
 ;; Sprites sizes
-S_BIG_NUMBERS_WIDTH = 3
-S_BIG_NUMBERS_HEIGHT = 13
 
 
 ;;===============================================================================
@@ -215,8 +208,11 @@ SFX_LINE    = 3    ;; MERGE 3 CATS
     or h
 .endm
 
+.globl sys_messages_pen_bg
 .mdelete m_msg_w_background
 .macro m_msg_w_background bk
+    ld a, #(bk)                         ;; text background pen (see messages.s)
+    ld (sys_messages_pen_bg), a
     ld h, #(bk)                         ;;
     ld l, #(bk)                         ;;
     call cpct_px2byteM0_asm             ;;

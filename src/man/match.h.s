@@ -33,24 +33,17 @@ Player_kittens = 5
 sizeof_Player  = 6
 
 ;;------------------------------------------------------------------------------
-;; HUD screen positions (bytes / pixels)
-;;   Numbers drawn below the cat and catty sprites (y=68, h=17 → bottom y=84)
-;;   big_numbers are 3 bytes wide; cat/catty sprites are 5 bytes wide
-;;   X centering: sprite_x + (5-3)/2 = sprite_x + 1
+;; HUD positions (bytes / pixels), from assets/ui/mockups/match.png. P1 digits
+;; sit on an odd pixel and are drawn with UITEXT_SHIFT.
 ;;------------------------------------------------------------------------------
-HUD_P1_CATS_X    = 5    ;; below P1 cat   sprite (render x=4,  w=5)
-HUD_P1_KITTENS_X = 10   ;; below P1 catty sprite (render x=9,  w=5)
-HUD_P2_CATS_X    = 67   ;; below P2 cat   sprite (render x=66, w=5)
-HUD_P2_KITTENS_X = 72   ;; below P2 catty sprite (render x=71, w=5)
-HUD_Y            = 89   ;; y = 68 (sprites top) + 17 (height) + 4 (gap)
-
-;; Basket sprite origins (must match sys_render_draw_screen /
-;; man_match_draw_hud's own basket redraw). S_BASKET_H=74 means the basket
-;; art bleeds all the way down under the HUD digit row (Y=89) — the digit
-;; area is NOT flat black background, it's basket artwork.
-HUD_BASKET_P1_X  = 0
-HUD_BASKET_P2_X  = 62
-HUD_BASKET_Y     = 50
+HUD_P1_DIGIT_X   = 15
+HUD_P2_DIGIT_X   = 69
+HUD_P1_ICON_X    = 7
+HUD_P2_ICON_X    = 61
+HUD_CATS_Y       = 96
+HUD_KITTENS_Y    = 122   ;; kitten icon top; its digit starts 1 px above
+TURN_BAR_X       = 33    ;; "Pn TURN" text
+TURN_BAR_Y       = 37
 
 ;;------------------------------------------------------------------------------
 ;; Match state constants
@@ -81,10 +74,12 @@ BOARD_P2_KITTEN      = 4
 ;;   GRID_CELL_H       : cell height in pixels
 ;;   GRID_COLS / ROWS  : grid dimensions
 ;;------------------------------------------------------------------------------
-GRID_FIRST_CELL_X    = 19   ;; byte 18 (bg origin) + 1 left border byte
-GRID_FIRST_CELL_Y    = 24   ;; px  20 (bg origin) + 4 px top gap
-GRID_CELL_W          = 7    ;; byte pitch between cell origins (7 bytes = 4px gap)
-GRID_CELL_H          = 24   ;; px pitch between cell origins  (24 px)
+GRID_FIRST_CELL_X    = 25   ;; px 50
+GRID_FIRST_CELL_Y    = 55
+GRID_CELL_W          = 5    ;; byte pitch (9 px body + 1 px black)
+GRID_CELL_H          = 19   ;; px pitch (17 px body + 2 px black)
+GRID_FRAME_H         = 17   ;; px of the cell covered by cursor/markers
+GRID_PIECE_DY        = 3    ;; piece top inside the cell
 GRID_COLS            = 6
 GRID_ROWS            = 6
 
@@ -105,7 +100,7 @@ MATCH_MAX_GRADUATE_CANDIDATES = 8
 ;;   Both pixels = pen 6 → byte bits [7..0] = 0011 1100 = 0x3C
 ;;------------------------------------------------------------------------------
 CURSOR_COLOR         = 0x3C
-BLOCKED_CURSOR_COLOR = 0xF0  ;; pen 3 (Red) both pixels in Mode 0 → blocked-toggle flash
+BLOCKED_CURSOR_COLOR = 0xF0  ;; pen 5 (Orange) both pixels: blocked-toggle flash
 
 ;; Last-move marker: pen 15 (bright white, firmware 26) — maximum contrast
 ;; against the board art; distinct from cursor (yellow) and the blocked-cursor

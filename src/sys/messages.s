@@ -19,7 +19,7 @@
 .include "cpctelera.h.s"
 .include "../common.h.s"
 .include "sys/util.h.s"
-.include "sys/text.h.s"
+.include "sys/uitext.h.s"
 .include "sys/input.h.s"
 .include "sys/render.h.s"
 
@@ -43,6 +43,7 @@ _window_message: .dw #0000
 _window_wait_for_key: .db #01
 _window_background_color: .db #00
 _window_valid: .db #00
+sys_messages_pen_bg:: .db 0     ;; set by m_msg_w_background
 
 _press_any_key_string: .asciz "PRESS ANY KEY"
 
@@ -299,7 +300,7 @@ sys_messages_show::
     ld a, w_wait_for_key(iy)        ;; check if we have to show the message press any key
     cp #1                           ;;
     jr nz, no_wait4key               ;; 
-    ld a, #10                       ;; B = y + 10
+    ld a, #10                       ;; B = y + 26
     jr y_coord
 no_wait4key:
     ld a, #7                        ;; B = y + 7  (centered in 22px single-line window)
@@ -310,10 +311,9 @@ y_coord:
     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
     ex de, hl                       ;; move screen address to de
 
-    ld c, #0
     ld h, w_message+1(iy)
     ld l, w_message(iy)
-    call sys_text_draw_string
+    call _sms_text
 
     ;; Draw Press Any Key
     ld a, w_wait_for_key(iy)        ;; check if we have to wait for a key
@@ -324,7 +324,6 @@ y_coord:
     cp #2                           ;;
     jr  nz, _sms_exit               ;;
 
-_sms_wait_delay:
     ld b, #50
     call sys_util_delay
     call sys_messages_restore_message_background
@@ -348,15 +347,14 @@ wait_for_key:
     ld c, a                         ;;
 
     ld b, w_y(iy)                   ;;
-    ld a, #26                       ;; B = y + 10
+    ld a, #26                       ;; B = y + 26
     add b                           ;;
     ld b, a                         ;;
     
     call cpct_getScreenPtr_asm      ;; Calculate video memory location and return it in HL
     ex de, hl                       ;; move screen address to de
-    ld c, #0
     ld hl, #_press_any_key_string
-    call sys_text_draw_string
+    call _sms_text
 
     call sys_input_wait4anykey
     push hl                         ;; store number of loops waited
@@ -366,6 +364,20 @@ wait_for_key:
     pop hl                          ;; return number of loops waited
 
     ret
+
+;; Double-height white text on the window background.
+;; Input: HL = string, DE = video address. Modified: AF, BC, DE, HL
+_sms_text:
+    push hl
+    push de
+    ld a, (sys_messages_pen_bg)
+    ld h, a
+    ld l, #PEN_WHITE
+    call sys_uitext_set_colors
+    pop de
+    pop hl
+    ld a, #UITEXT_DOUBLE
+    jp sys_uitext_draw
 
 ;;-----------------------------------------------------------------
 ;;
