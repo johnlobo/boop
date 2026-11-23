@@ -13,6 +13,7 @@ import io
 import json
 import os
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -22,7 +23,7 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-API = "http://127.0.0.1:6128"
+API = ""                         # lo fija main() segun --port
 VK_UP, VK_DOWN = 153, 155        # CORE_rVK de los cursores (matriz fila 0)
 VK_ESC = 151                     # matriz fila 8, bit 2
 
@@ -35,6 +36,9 @@ CASES = [
     ("ai_back", [VK_ESC], "title.png"),
     ("help", [VK_UP, "\n"], "help.png"),
     ("help_back", ["\n"], "title.png"),
+    ("match", ["\n", "\n"], "match.png"),
+    ("match_move", [VK_DOWN, VK_UP], "match.png"),
+    ("match_esc", [VK_ESC, "n"], "match.png"),
 ]
 
 
@@ -84,13 +88,20 @@ def to_cpc(png):
 
 
 def main():
+    global API
     ap = argparse.ArgumentParser()
     ap.add_argument("--emulator", required=True)
     ap.add_argument("--dsk", default=str(ROOT / "boop.dsk"))
     ap.add_argument("--save", type=Path, help="guarda aqui las capturas")
+    ap.add_argument("--port", type=int, default=6138)
     args = ap.parse_args()
+    API = f"http://127.0.0.1:{args.port}"
+    with socket.socket() as probe:         # otro emulador ahi = probar su juego
+        if probe.connect_ex(("127.0.0.1", args.port)) == 0:
+            sys.exit(f"puerto {args.port} ocupado por otro emulador: usa --port")
 
-    proc = subprocess.Popen([args.emulator, "--web-server", args.dsk],
+    proc = subprocess.Popen([args.emulator, "--web-server",
+                             "--web-port", str(args.port), args.dsk],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                             start_new_session=True)
     failed = 0

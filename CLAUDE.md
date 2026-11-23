@@ -20,7 +20,7 @@ Run in emulator: `cpct_winape -as -f` (Win/Linux) or `cpct_rvm -as -f` (macOS).
 
 VSCode tasks for `make`/`clean`/`cleanall`/`run`: [.vscode/tasks.json](.vscode/tasks.json).
 
-**Version string**: bump `_game_loaded_string` in `src/man/game.s` after every change (currently **V.101**). Mandatory — always increment before finishing a task.
+**Version string**: bump `_game_loaded_string` in `src/man/game.s` after every change (currently **V.102**). Mandatory — always increment before finishing a task.
 
 **Dead code**: `./find_unused.sh [src_dir]` finds `label::` defs with no callers/refs elsewhere.
 
@@ -39,7 +39,7 @@ src/
 ```
 
 **sys/ modules** (each: `.h.s` header + `.s` impl):
-- **render** - Video init (mode/palette/border), screen clear, sprite drawing, `drawSpriteMaskedAlignedColorizeM0` (color-replaced masked sprites). Logical double-buffer via `sys_render_front_buffer`/`sys_render_back_buffer`. `sys_render_draw_screen` draws full static chrome (header, baskets, cat/catty icons, grid); `sys_render_draw_grid` redraws only grid bg — use to refresh board without touching HUD.
+- **render** - Video init (mode/palette/border), screen clear, sprite drawing, `drawSpriteMaskedAlignedColorizeM0` (color-replaced masked sprites). Logical double-buffer via `sys_render_front_buffer`/`sys_render_back_buffer`. The match screen chrome and grid live in `match.s` (`_match_draw_screen`, `_match_draw_grid`).
 - **system** - Firmware disable, chain of 6 interrupt handlers cycling per frame; handler 2 scans keyboard.
 - **input** - Keyboard dispatch table, wait-for-key, `sys_input_getKeyPressed` for polled reads.
 - **messages** - Windowed message overlay, bg save/restore via 3000-byte `message_buffer`.
@@ -52,7 +52,7 @@ src/
 - **game** (`sys_game_init` / `sys_game_update`) - Top-level state machine with four states: `GAME_STATE_MENU=0`, `GAME_STATE_PLAYING=1`, `GAME_STATE_HELP=2`, `GAME_STATE_AI_SELECT=3`. Menu confirmed=1 (ONE PLAYER) → AI_SELECT (difficulty picker); confirmed=2 (TWO PLAYERS) → PLAYING directly; confirmed=3 → HELP. ESC on AI-select returns to menu. Also owns music-track switching on every state transition.
 - **menu** (`man_menu_init` / `man_menu_update` / `man_menu_draw`) - Title screen, pixel-identical to `assets/ui/mockups/title.png` (checked by `tests/ui_smoke.py`). Three options (ONE PLAYER / TWO PLAYERS / HELP); `man_menu_confirmed` = 1/2/3 respectively. Static art (`_s_logo_big`, `_s_title_cats`) is drawn opaque with `cpct_drawSprite_asm`; `man_menu_draw` draws in two passes (unselected options as blue box + white text, then the selected one on `_s_menu_button` with black text) because the button overlaps the next option.
 - **menu_level** (`man_menu_level_init` / `man_menu_level_update`) - AI difficulty picker, pixel-identical to `assets/ui/mockups/ai_select.png` (`tests/ui_smoke.py`). Buttons are solid boxes (body x 25..133 starts on an odd pixel, so edge bytes use mixed patterns `PAT_*` from `common.h.s`); shadows, logo, title, separator and hints are drawn once in `_menu_level_draw_static`. Level icons `_s_ai_icon_1..4` are masked sprites from `src/assets/ui/ai_icons.s`; names start on odd x and use `UITEXT_SHIFT`. On confirm writes `man_ai_level`; `man_menu_level_done` = 1 (confirmed) or 2 (ESC/cancelled).
-- **match** (`man_match_init` / `man_match_update` / `man_match_draw_hud`) - Turn-based 6×6 board game. Manages `man_match_player1`/`player2` structs and `man_match_num_players`. P2 sprite pointers (`_p2_cat_ptr`, `_p2_catty_ptr`) are patched at init to match the selected AI difficulty color (`_s_cat_1`–`_s_cat_4`). Cursor arrows skip occupied cells (scan loop in `_match_input_up/down/left/right`). `_match_restore_cell` and `_match_draw_cursor` are exported (`::`+`.globl`) for use by ai.s.
+- **match** (`man_match_init` / `man_match_update` / `man_match_draw_hud`) - Turn-based 6×6 board game. Manages `man_match_player1`/`player2` structs and `man_match_num_players`. Screen pixel-identical to `assets/ui/mockups/match.png` at match start (`tests/ui_smoke.py`). P2 entries of `_board_sprite_ptrs` (+4 cat, +6 kitten) are patched at init from `_p2_cat_sprites`/`_p2_kitten_sprites` to the AI level colour; pieces come from generated `src/assets/ui/pieces.s`. Cursor arrows skip occupied cells (scan loop in `_match_input_up/down/left/right`). `_match_restore_cell` and `_match_draw_cursor` are exported (`::`+`.globl`) for use by ai.s.
 - **help** (`man_help_init` / `man_help_update`) - Help screen, pixel-identical to `assets/ui/mockups/help.png` (`tests/ui_smoke.py`): logo, two black boxes (`_help_box`, left edge on odd pixel) and a `sys_uitext_draw_list` table of texts. Exposes `man_help_done` (set to 1 when user exits with Enter).
 - **ai** - see AI Module below.
 
@@ -86,7 +86,7 @@ Emulator check: `flock /tmp/amspirit.lock python3 tests/ui_smoke.py --emulator /
 
 ### Asset Pipeline
 
-PNG sprites in `assets/` auto-convert to C arrays via CPCtelera's `IMG2SP` macros (`cfg/image_conversion.mk`). Output: `src/assets/sprites/` (sprites), `src/assets/bg/` (backgrounds). Firmware palette: `PALETTE0` in that file.
+PNG sprites in `assets/` auto-convert to C arrays via CPCtelera's `IMG2SP` macros (`cfg/image_conversion.mk`). Output: `src/assets/sprites/` and `src/assets/ui/`. Masked UI sprites (`ai_icons.s`, `pieces.s`) come from `assets/ui/extract_ui_assets.py`. Firmware palette: `PALETTE0` in that file.
 
 256-byte transparency table at `0x100` (in `main.s`), used by all masked sprite drawing routines.
 
@@ -102,7 +102,7 @@ The editable AT3 songs (`.aks`) and reusable instruments (`.aki`) live in `asset
 
 **Board** (`_match_board`) — 36-byte row-major array; cell values: `BOARD_EMPTY=0`, `BOARD_P1_CAT=1`, `BOARD_P1_KITTEN=2`, `BOARD_P2_CAT=3`, `BOARD_P2_KITTEN=4`
 
-**Grid geometry** (`match.h.s`): first cell X=19 bytes, Y=36 px; pitch 7 bytes × 24 px; 6 cols × 6 rows. Cursor color `CURSOR_COLOR=0x3C` (pen 6, bright yellow). Blocked cursor `BLOCKED_CURSOR_COLOR=0xF0` (pen 3, red) — flashed when Space pressed but target piece type has 0 remaining.
+**Grid geometry** (`match.h.s`): first cell X=25 bytes, Y=55 px; pitch 5 bytes × 19 px; 6 cols × 6 rows. Cursor color `CURSOR_COLOR=0x3C` (pen 6, bright yellow). Blocked cursor `BLOCKED_CURSOR_COLOR=0xF0` (pen 5, orange) — flashed when Space pressed but target piece type has 0 remaining.
 
 **Player struct** (`match.h.s`): `score` 4B BCD (offset 0), `cats` 1B (4), `kittens` 1B (5); `sizeof_Player=6`.
 
@@ -140,7 +140,7 @@ Both win conditions call `_match_declare_winner` (A=1 P1, A=2 P2): shows "PLAYER
 
 `_boop_transit_cnt` = valid entry count in `_boop_transit_buf`.
 
-**Turn announcement** (`_match_show_turn_message`) — tail call at end of `man_match_init` (P1 starts) and end of `_match_place_piece` (after each move, unless `_match_cancelled`). Shows "PLAYER X TURN", auto-dismiss 2s window (A=2 mode): orange bg P1 (pen 5), blue bg P2 (pen 2).
+**Turn bar** (`_match_show_turn_message` / `_match_draw_turn_bar`): "Px TURN" bar under the logo, repainted at match start and after each move unless `_match_cancelled`. Non-blocking (it replaced a 2 s window).
 
 ### CPCtelera Calling Conventions
 
@@ -148,7 +148,7 @@ Both win conditions call `_match_declare_winner` (A=1 P1, A=2 P2): shows "PLAYER
 - `cpct_drawSpriteMaskedAlignedTable_asm`: DE=dst, BC=sprite_ptr, IXL=width, IXH=height, HL=transparency_table
 - `cpct_drawSolidBox_asm`: DE=dst, B=height, C=width, A=pattern; clobbers DE
 - `cpct_isKeyPressed_asm`: HL=key_constant → A≠0 if pressed; clobbers AF
-- `cpct_px2byteM0_asm`: H=left_pen, L=right_pen → A=encoded byte
+- `cpct_px2byteM0_asm`: L=left_pen, H=right_pen → L=encoded byte
 - Macros: `ld__ixl n`, `ld__ixh n` — load IXL/IXH immediate; `cpctm_screenPtr_asm DE, BASE, X, Y` — compile-time fixed screen ptr
 
 ### sys_messages_show Calling Convention
@@ -160,7 +160,7 @@ Input: A=wait_flag (1=block until keypress, auto-restores background on return),
 Modified: AF, HL, DE, BC
 ```
 
-**Critical**: `m_msg_w_background BK` (in `common.h.s`) clobbers **AF and HL** (calls `cpct_px2byteM0_asm`, stores result in AF'). Always invoke first, then load E,D,B,C,A,HL. To preserve a value across the call, wrap with `push af`/`pop af`.
+**Critical**: `m_msg_w_background BK` (in `common.h.s`) clobbers **AF and HL** (calls `cpct_px2byteM0_asm`, stores result in AF', and the pen in `sys_messages_pen_bg` for the text background). Always invoke first, then load E,D,B,C,A,HL. To preserve a value across the call, wrap with `push af`/`pop af`.
 
 ### Struct Definition Macros (common.h.s)
 

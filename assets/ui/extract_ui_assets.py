@@ -21,6 +21,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 MOCK = HERE / "mockups"
 MASKED_OUT = ROOT / "src" / "assets" / "ui" / "ai_icons.s"
+PIECES_OUT = ROOT / "src" / "assets" / "ui" / "pieces.s"
 MASKED = ["ai_icon_1", "ai_icon_2", "ai_icon_3", "ai_icon_4"]
 
 FW = {
@@ -48,8 +49,8 @@ CROPS = {
     "logo_small":  ("match.png", 56, 14, 103, 33, "opaque"),
     "title_cats":  ("title.png", 44, 69, 115, 99, "opaque"),
     "menu_button": ("title.png", 36, 109, 123, 129, "button"),
-    "cell_blue":   ("match.png", 50, 75, 59, 93, "opaque"),
-    "cell_teal":   ("match.png", 60, 75, 69, 93, "opaque"),
+    "cell_blue":   ("match.png", 50, 74, 59, 92, "opaque"),
+    "cell_teal":   ("match.png", 60, 74, 69, 92, "opaque"),
     "cursor":      ("match.png", 50, 55, 59, 73, "only_yellow"),
     "panel_p1":    ("match.png", 8, 71, 41, 145, "opaque"),
     "panel_p2":    ("match.png", 118, 71, 151, 145, "opaque"),
@@ -112,6 +113,37 @@ def masked_source(images):
     return "\n".join(out) + "\n"
 
 
+# Gatos de la partida. La forma sale del panel P1 de match.png; el juego de
+# colores 0 es P1 y 1..4 son P2 segun el nivel de IA: (cuerpo, sombra) firmware.
+PIECE_SRC = {"cat": (14, 96), "kitten": (14, 122)}      # 12x12
+PIECE_W, PIECE_H, PIECE_BOARD_W = 12, 12, 10
+PIECE_COLORS = [(15, 25), (11, 23), (22, 25), (14, 25), (16, 25)]
+
+
+def piece(kind, color, x0=0, width=PIECE_W):
+    """RGBA; x0 = pixels de desplazamiento a la derecha."""
+    im = Image.open(MOCK / "match.png").convert("RGB")
+    rgb = {fw: c for c, fw in FW.items()}
+    swap = {rgb[15]: rgb[PIECE_COLORS[color][0]], rgb[25]: rgb[PIECE_COLORS[color][1]]}
+    ox, oy = PIECE_SRC[kind]
+    out = Image.new("RGBA", (width, PIECE_H))
+    for y in range(PIECE_H):
+        for x in range(PIECE_W):
+            c = im.getpixel((ox + x, oy + y))
+            if c != BG and x + x0 < width:
+                out.putpixel((x + x0, y), swap.get(c, c) + (255,))
+    return out
+
+
+def piece_images():
+    """Tablero (10x12; la cola del gato pierde 1 pixel) y panel (12x12; en P2
+    va 1 pixel a la derecha porque su panel empieza en x impar)."""
+    for n in range(len(PIECE_COLORS)):
+        for kind in PIECE_SRC:
+            yield f"{kind}_{n}", piece(kind, n, 0, PIECE_BOARD_W)
+            yield f"hud_{kind}_{n}", piece(kind, n, 1 if n else 0)
+
+
 def main():
     check = "--check" in sys.argv
     stale = []
@@ -130,6 +162,12 @@ def main():
             stale.append(str(MASKED_OUT.relative_to(ROOT)))
     else:
         MASKED_OUT.write_text(src)
+    src = masked_source(list(piece_images()))
+    if check:
+        if not PIECES_OUT.exists() or PIECES_OUT.read_text() != src:
+            stale.append(str(PIECES_OUT.relative_to(ROOT)))
+    else:
+        PIECES_OUT.write_text(src)
     if stale:
         sys.exit("desactualizados: " + ", ".join(stale))
 

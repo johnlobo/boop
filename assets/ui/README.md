@@ -12,7 +12,7 @@ falla si algun PNG no coincide con su maqueta.
 | Resolucion y modo | Las maquetas son Mode 0 160x200 exacto: sin cambio de modo. |
 | Memoria | Binario actual `0x0200..0x743C` (29,5 KB), una sola pantalla en `0xC000`, pila bajo `0xC000`. Libre: unos 19 KB. Los assets recortados suman unos 5 KB sin los paneles. Cabe. |
 | Paleta | Las maquetas usan 14 colores: 0 1 2 10 11 14 15 16 20 22 23 24 25 26. `PALETTE0` actual tiene 3 6 9 12 13 que las maquetas no usan y le faltan 22 23 25. Hay que cambiar la paleta y repintar `cat.png`, `catty.png`, `basket.png`, `grid.png`, `header.png` y `font_chars_0.png`, que usan 3 5 9 12 13 17. Quedan 2 huecos libres. |
-| Tablero | Celda de 9x16 px con paso 10x19, tablero 6x6 de 60x114 en `(50,56)`. El tablero actual es 88x148 con sprites de 10x17: hay que redibujar gato y gatito a 9x16 como mucho y cambiar las coordenadas de celda en `match.s`. |
+| Tablero | Celda de 9x16 px con paso 10x19, tablero 6x6 de 60x114 en `(50,56)`. El tablero anterior era 88x148 con sprites de 10x17; las piezas de ahora son de 10x12. |
 | Texto | Las maquetas usan dos alturas: 5 lineas (ayuda de abajo) y 10 lineas (menus, titulos). Es la misma fuente a doble altura. |
 | Marcos y botones | Paneles P1/P2, botones de menu, barra de turno y caja de ayuda son rectangulos de color con sombra negra: se pintan con cajas solidas, no con sprites. |
 
@@ -25,7 +25,7 @@ falla si algun PNG no coincide con su maqueta.
 | `title_cats` | 72x31 | 1116 | los tres gatos del titulo (opaco) |
 | `menu_button` | 88x21 | 924 | boton amarillo de la opcion elegida, sin texto |
 | `cell_blue`, `cell_teal` | 10x19 | 95 cada uno | casillas del tablero |
-| `cursor` | 10x19 | 95 | marco amarillo del selector |
+| `cursor` | 10x19 | 95 | solo referencia: el marco se pinta por codigo |
 | `ai_icon_1..4` | 12x13 | 156 cada uno con mascara | iconos de nivel de IA (`src/assets/ui/ai_icons.s`) |
 | `panel_p1`, `panel_p2` | 34x75 | 1275 cada uno | solo referencia: se pintan con cajas |
 
@@ -48,8 +48,8 @@ de GlasnostFWK).
 
 - Paleta aplicada: `PALETTE0=0 13 2 3 25 15 24 23 16 22 10 14 11 20 1 26`.
 - Fuente 3x5: `build_font.py` la extrae de todos los textos de las maquetas
-  (28 glyphs, cada letra igual en todas sus apariciones) y anade 17 a mano
-  (digitos que faltan, Q, Z, signos y las dos estrellas). 295 bytes, frente a
+  (28 glyphs, cada letra igual en todas sus apariciones) y anade 20 a mano
+  (digitos que faltan, Q, Z, signos, parentesis, barra y las dos estrellas). 295 bytes, frente a
   846 de la fuente anterior.
 - Pantalla de titulo: hecha, identica pixel a pixel a `mockups/title.png`
   (`tests/ui_smoke.py`). El gatito que paseaba por el menu ya no esta: la
@@ -60,5 +60,7 @@ de GlasnostFWK).
   el contorno negro.
 - Ayuda: hecha, identica a `mockups/help.png`. Cajas negras con cajas solidas
   y textos desde una tabla (`sys_uitext_draw_list`).
-- Pendiente: partida. Hasta rediseñar la partida, sus
-  casillas oliva salen naranjas y las cestas cambian de color.
+- Partida: hecha, identica a `mockups/match.png` al empezar. Chrome con cajas
+  solidas, casillas con `cell_blue`/`cell_teal` (y 55 + 19*fila, x 25 + 5*col
+  bytes) y piezas con mascara de `src/assets/ui/pieces.s`, generadas para los
+  cuatro colores de P2. La barra de turno sustituye a la ventana de 2 s.
