@@ -1,0 +1,209 @@
+;;-----------------------------LICENSE NOTICE------------------------------------
+;;
+;;  This program is free software: you can redistribute it and/or modify
+;;  it under the terms of the GNU Lesser General Public License as published by
+;;  the Free Software Foundation, either version 3 of the License, or
+;;  (at your option) any later version.
+;;
+;;  This program is distributed in the hope that it will be useful,
+;;  but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;  GNU Lesser General Public License for more details.
+;;
+;;  You should have received a copy of the GNU Lesser General Public License
+;;  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;;-------------------------------------------------------------------------------
+
+;;-------------------------------------------------------------------------------
+;; sys/uitext: texto opaco 3x5 del nuevo interfaz.
+;;
+;; Cada caracter es una celda de 2 bytes (4 pixels Mode 0); cada fila del
+;; glyph es un byte con las columnas 0..3 en los bits 3..0. Las letras dejan
+;; la columna 0 vacia. Se pinta opaco (tinta y fondo), sin mascara, asi que el
+;; negro (pen 0) sirve como tinta. Con doble altura cada fila se repite.
+;;-------------------------------------------------------------------------------
+.module sys_uitext
+
+.include "cpctelera.h.s"
+.include "common.h.s"
+.include "sys/uitext.h.s"
+
+.area _DATA
+
+;; Byte de video por par de pixels: indice = (izquierdo << 1) | derecho,
+;; 1 = tinta, 0 = fondo.
+_ut_combo:  .db 0, 0, 0, 0
+_ut_double: .db 0                   ;; flags de sys_uitext_draw
+_ut_byte0:  .db 0
+
+.area _CODE
+
+;;-----------------------------------------------------------------
+;; sys_uitext_set_colors
+;;   Entrada: L = pen de tinta, H = pen de fondo
+;;   Salida:  -
+;;   Destruye: AF, BC, DE, HL
+;;
+sys_uitext_set_colors::
+   ld (_ut_pens), hl
+   ld a, h
+   ld l, a
+   call cpct_px2byteM0_asm           ;; L = izquierdo, H = derecho -> L
+   ld a, l
+   ld (_ut_combo + 0), a             ;; fondo / fondo
+   ld hl, (_ut_pens)
+   ld a, l
+   ld l, h
+   ld h, a                           ;; L = fondo, H = tinta
+   call cpct_px2byteM0_asm
+   ld a, l
+   ld (_ut_combo + 1), a             ;; fondo / tinta
+   ld hl, (_ut_pens)                 ;; L = tinta, H = fondo
+   call cpct_px2byteM0_asm
+   ld a, l
+   ld (_ut_combo + 2), a             ;; tinta / fondo
+   ld hl, (_ut_pens)
+   ld a, l
+   ld h, a
+   call cpct_px2byteM0_asm
+   ld a, l
+   ld (_ut_combo + 3), a             ;; tinta / tinta
+   ret
+_ut_pens: .dw 0
+
+;;-----------------------------------------------------------------
+;; sys_uitext_draw
+;;   Pinta una cadena terminada en 0 con los colores de
+;;   sys_uitext_set_colors. Caracteres validos: ' '..'Z'.
+;;   Entrada: HL = cadena, DE = memoria de video (byte de la celda),
+;;            A  = UITEXT_SINGLE | UITEXT_DOUBLE, mas UITEXT_SHIFT para
+;;                 empezar 1 pixel antes (celda en x impar: DE apunta al
+;;                 byte siguiente)
+;;   Salida:  -
+;;   Destruye: AF, BC, DE, HL
+;;
+sys_uitext_draw::
+   ld (_ut_double), a
+_ut_char:
+   ld a, (hl)
+   or a
+   ret z
+   push hl                           ;; cadena
+   push de                           ;; celda
+   sub #32                           ;; glyph = _font3x5 + (c - 32) * 5
+   ld l, a
+   ld h, #0
+   ld b, h
+   ld c, l
+   add hl, hl
+   add hl, hl
+   add hl, bc
+   ld bc, #_font3x5
+   add hl, bc
+   ld b, #5
+_ut_row:
+   ld a, (_ut_double)
+   and #UITEXT_SHIFT
+   ld a, (hl)
+   jr z, _ut_noshift
+   add a, a                          ;; columnas 1..3 pasan a 0..2
+_ut_noshift:
+   inc hl
+   push hl
+   push bc
+   ld c, a
+   rrca                              ;; byte 0: columnas 0 y 1 (bits 3, 2)
+   rrca
+   and #3
+   ld hl, #_ut_combo
+   add_hl_a
+   ld a, (hl)
+   ld (_ut_byte0), a
+   ld a, c                           ;; byte 1: columnas 2 y 3 (bits 1, 0)
+   and #3
+   ld hl, #_ut_combo
+   add_hl_a
+   ld c, (hl)
+   ld a, (_ut_byte0)
+   ld b, a
+   call _ut_put
+   ld a, (_ut_double)
+   and #UITEXT_DOUBLE
+   call nz, _ut_put
+   pop bc
+   pop hl
+   djnz _ut_row
+   pop de
+   inc de
+   inc de
+   pop hl
+   inc hl
+   jr _ut_char
+
+;; Escribe B, C en DE, DE+1 y baja DE una linea de pantalla.
+;; Destruye: AF, DE
+_ut_put:
+   ld a, b
+   ld (de), a
+   inc de
+   ld a, c
+   ld (de), a
+   dec de
+   ld a, d
+   add a, #0x08
+   ld d, a
+   and #0x38
+   ret nz
+   ld a, e
+   add a, #0x50
+   ld e, a
+   ld a, d
+   adc a, #0xC0
+   ld d, a
+   ret
+
+;;-----------------------------------------------------------------
+;; sys_uitext_draw_list
+;;   Pinta una lista de textos. Cada entrada: x (bytes), y, flags de
+;;   sys_uitext_draw, pen de tinta, pen de fondo, puntero a cadena (.dw).
+;;   La lista acaba con x = UITEXT_END.
+;;   Entrada: HL = lista
+;;   Salida:  -
+;;   Destruye: AF, BC, DE, HL
+;;
+sys_uitext_draw_list::
+   ld a, (hl)
+   cp #UITEXT_END
+   ret z
+   ld c, a                           ;; x
+   inc hl
+   ld b, (hl)                        ;; y
+   inc hl
+   ld a, (hl)
+   ld (_utl_flags), a
+   inc hl
+   ld e, (hl)                        ;; tinta
+   inc hl
+   ld d, (hl)                        ;; fondo
+   inc hl
+   ld a, (hl)
+   ld (_utl_str), a
+   inc hl
+   ld a, (hl)
+   ld (_utl_str + 1), a
+   inc hl
+   push hl                           ;; siguiente entrada
+   push bc
+   ex de, hl                         ;; L = tinta, H = fondo
+   call sys_uitext_set_colors
+   pop bc
+   ld de, #CPCT_VMEM_START_ASM
+   call cpct_getScreenPtr_asm
+   ex de, hl
+   ld hl, (_utl_str)
+   ld a, (_utl_flags)
+   call sys_uitext_draw
+   pop hl
+   jr sys_uitext_draw_list
+_utl_flags: .db 0
+_utl_str:   .dw 0

@@ -40,23 +40,25 @@ _hint_line2: .asciz "SPACE - CHANGE CAT TYPE"
 .area _CODE
 
 ;;====================================================
-;; sys_render_init_back_buffer
-;;  Initialize screen buffers
-;;  Entrada: hl : buffer
+;; sys_render_clear_buffer
+;;  Pone toda la pantalla a pen 0 (negro).
+;; sys_render_fill_screen
+;;  Rellena toda la pantalla con un byte de patron.
+;;  Entrada: A = patron (solo sys_render_fill_screen)
 ;;  Salida:
-;;  Destruye: BC, DE, HL
-;;
-;; Code taken form Miss Input 
+;;  Destruye: AF, BC, DE, HL
 ;;====================================================
 sys_render_clear_buffer::
+    xor a
+sys_render_fill_screen::
     ld hl, #CPCT_VMEM_START_ASM
+    ld (hl), a
     ld d, h
     ld e, l
     inc de
     ld bc, #0x4000-1
-
     ldir
-ret
+    ret
 
 ;;-----------------------------------------------------------------
 ;;
@@ -71,11 +73,11 @@ sys_render_init::
     ld c,#0                                 ;; Set video mode
     call cpct_setVideoMode_asm              ;;
     
-    ;; Palette: pen → colour (firmware index)
-    ;;  0=Black(0)        1=White(13)       2=Bright Blue(2)   3=Red(3)
-    ;;  4=Bright Red(6)   5=Orange(15)      6=Pastel Green(24) 7=Yellow(12)
-    ;;  8=Pink(16)        9=Green(9)       10=Cyan(10)        11=Pastel Blue(14)
-    ;; 12=Bright Cyan(11) 13=Bright Green(20) 14=Blue(1)      15=Bright White(26)
+    ;; Palette: pen -> colour (firmware index), PALETTE0 in cfg/image_conversion.mk
+    ;;  0=Black(0)          1=Grey(13)          2=Bright Blue(2)    3=Red(3)
+    ;;  4=Pastel Yellow(25) 5=Orange(15)        6=Bright Yellow(24) 7=Pastel Cyan(23)
+    ;;  8=Pink(16)          9=Pastel Green(22) 10=Cyan(10)         11=Pastel Blue(14)
+    ;; 12=Sky Blue(11)     13=Bright Cyan(20)  14=Blue(1)          15=Bright White(26)
     ld hl, #_g_palette0                     ;; Set palette
     ld de, #16                              ;;
     call cpct_setPalette_asm                ;;
